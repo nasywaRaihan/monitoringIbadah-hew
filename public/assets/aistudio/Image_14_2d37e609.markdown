@@ -1,0 +1,269 @@
+---
+name: Serene Recitation & Worship
+colors:
+  surface: '#f9f9ff'
+  surface-dim: '#d3daef'
+  surface-bright: '#f9f9ff'
+  surface-container-lowest: '#ffffff'
+  surface-container-low: '#f1f3ff'
+  surface-container: '#e9edff'
+  surface-container-high: '#e1e8fd'
+  surface-container-highest: '#dce2f7'
+  on-surface: '#141b2b'
+  on-surface-variant: '#414844'
+  inverse-surface: '#293040'
+  inverse-on-surface: '#edf0ff'
+  outline: '#717973'
+  outline-variant: '#c1c8c2'
+  surface-tint: '#3f6653'
+  primary: '#012d1d'
+  on-primary: '#ffffff'
+  primary-container: '#1b4332'
+  on-primary-container: '#86af99'
+  inverse-primary: '#a5d0b9'
+  secondary: '#775a19'
+  on-secondary: '#ffffff'
+  secondary-container: '#fed488'
+  on-secondary-container: '#785a1a'
+  tertiary: '#002d1b'
+  on-tertiary: '#ffffff'
+  tertiary-container: '#00452c'
+  on-tertiary-container: '#53b889'
+  error: '#ba1a1a'
+  on-error: '#ffffff'
+  error-container: '#ffdad6'
+  on-error-container: '#93000a'
+  primary-fixed: '#c1ecd4'
+  primary-fixed-dim: '#a5d0b9'
+  on-primary-fixed: '#002114'
+  on-primary-fixed-variant: '#274e3d'
+  secondary-fixed: '#ffdea5'
+  secondary-fixed-dim: '#e9c176'
+  on-secondary-fixed: '#261900'
+  on-secondary-fixed-variant: '#5d4201'
+  tertiary-fixed: '#92f7c3'
+  tertiary-fixed-dim: '#75daa8'
+  on-tertiary-fixed: '#002113'
+  on-tertiary-fixed-variant: '#005235'
+  background: '#f9f9ff'
+  on-background: '#141b2b'
+  surface-variant: '#dce2f7'
+typography:
+  display-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 36px
+    fontWeight: '700'
+    lineHeight: 44px
+    letterSpacing: -0.02em
+  display-lg-mobile:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 28px
+    fontWeight: '700'
+    lineHeight: 36px
+    letterSpacing: -0.01em
+  headline-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 24px
+    fontWeight: '600'
+    lineHeight: 32px
+    letterSpacing: -0.01em
+  headline-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+  headline-sm:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 18px
+    fontWeight: '600'
+    lineHeight: 24px
+  quran-verse-lg:
+    fontFamily: Amiri
+    fontSize: 28px
+    fontWeight: '400'
+    lineHeight: 60px
+  quran-verse-md:
+    fontFamily: Amiri
+    fontSize: 22px
+    fontWeight: '400'
+    lineHeight: 48px
+  body-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 16px
+    fontWeight: '400'
+    lineHeight: 24px
+  body-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 14px
+    fontWeight: '400'
+    lineHeight: 20px
+  body-sm:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 12px
+    fontWeight: '400'
+    lineHeight: 16px
+  label-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 14px
+    fontWeight: '600'
+    lineHeight: 20px
+    letterSpacing: 0.01em
+  label-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 12px
+    fontWeight: '600'
+    lineHeight: 16px
+    letterSpacing: 0.02em
+  label-sm:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 10px
+    fontWeight: '600'
+    lineHeight: 14px
+    letterSpacing: 0.04em
+rounded:
+  sm: 0.25rem
+  DEFAULT: 0.5rem
+  md: 0.75rem
+  lg: 1rem
+  xl: 1.5rem
+  full: 9999px
+spacing:
+  gutter: 1rem
+  gutter-tablet: 1.5rem
+  margin: 1.25rem
+  margin-tablet: 2rem
+  space-xs: 0.25rem
+  space-sm: 0.5rem
+  space-md: 1rem
+  space-lg: 1.5rem
+  space-xl: 2rem
+  space-2xl: 3rem
+---
+
+## Brand & Style
+
+This design system expresses quiet reverence, clarity, and mindful focus. Designed for daily worship tracking, Quranic recitation evaluation, and spiritual progress tracking, the visual language avoids overstimulating gamification tropes in favor of contemplative progression, refined micro-feedback, and organic geometry.
+
+### Personality & Principles
+- **Contemplative Serenity:** Negative space is treated as breathing room. Layouts avoid clutter, aggressive banners, or high-friction overlays to sustain mental tranquility.
+- **Dignified Progression:** Gamification signals (streaks, recitation mastery scores, memorization tiers) rely on luminous champagne golds, subtle radial rings, and refined badge iconography rather than hyperactive arcade aesthetics.
+- **Bi-Scriptural Balance:** English UI elements and Classical Arabic typography coexist harmoniously, matching baseline weights, rhythmic line heights, and visual hierarchy.
+- **Tactile Softness:** Clean surfaces, organic radii, and whispered hairline borders echo the balance of physical devotional notebooks bound in natural linen and parchment.
+
+## Colors
+
+The palette grounds the interface in nature and tradition, balancing deep forest emeralds with atmospheric sage washes and celestial champagne golds.
+
+### Palette Architecture
+- **Primary (Deep Emerald & Sage):**
+  - Deep Emerald (`#1B4332`): Core brand anchor, primary action backgrounds, solid active states, app bar titles.
+  - Deep Sea Green (`#2D6A4F`): Pressed/hover button states and prominent iconography.
+  - Emerald Tint (`#40916C`): Secondary accents and visual checkpoints.
+  - Sage Mid (`#52B788`): Interactive toggles, active track fills, positive recitation indicators.
+  - Soft Sage Tint (`#D8F3DC`): Selected item containers, chip backgrounds, low-contrast highlights.
+  - Mist Sage (`#EBF5EE`): Ambient surface fills and subtle card backgrounds.
+- **Secondary (Champagne & Metallic Gold):**
+  - Metallic Gold (`#C5A059`): Milestone rings, badge outlines, ayah completion stars, gamified tiers.
+  - Luminous Gold (`#D4AF37`): Audio scrubber playheads, streak flames, high-tier achievement illumination.
+  - Cream Gold Wash (`#F5EBE1`): Badge surface underlays and gentle reward card surfaces.
+  - Celestial Cream (`#FAF6EE`): Quranic text highlight containers and verse study callouts.
+- **Neutral & Typography (Slate Charcoal):**
+  - Charcoal 900 (`#111827`): Primary titles, Ayah text, high-emphasis metrics.
+  - Slate 700 (`#374151`): Secondary body, English translations, verse commentary.
+  - Slate 600 (`#4B5563`): Supporting labels, timestamps, metadata.
+  - Slate 400 (`#6B7280`): Placeholders, disabled states, unselected navigation icons.
+- **Surfaces & Canvases:**
+  - Base App Canvas (`#FBFBFA`): Warm, crisp off-white minimizing glare during nighttime or dawn worship.
+  - Secondary Canvas (`#F4F6F4`): Soft sage-tinted cream for section wrappers and bottom sheets.
+  - Card & Modal Surface (`#FFFFFF`): Pristine white providing separation via hairline borders.
+  - Hairline Border Stroke (`#E5E7EB` / `rgba(27, 67, 50, 0.08)`): Ultra-crisp division.
+
+## Typography
+
+The type system brings modern geometric clarity to navigation and metrics through `Plus Jakarta Sans`, and classical authority to divine scripture via classical Naskh typography (`Amiri` / `Scheherazade New`).
+
+### Typographic Rules
+- **Arabic Quranic Texts:** Arabic verses require expanded vertical clearance. Line heights are intentionally set between `2.0` and `2.2x` the font size to allow full diacritic markers (*Tashkeel*) and pause annotations (*Waqf*) without clipping. Ayah ending symbols incorporate numerals within decorative arabesque rings.
+- **Bilingual Stacking:** When an Arabic verse is paired with its English translation, place a vertical gap of `space-md` (16px) between them. The English translation is rendered in `body-md` with `#4B5563`, maintaining secondary prominence behind the scriptural text.
+- **Numbers and Metrics:** Recitation accuracy percentages, streak counts, and prayer countdowns adopt tabular figures (`tnum`) in `Plus Jakarta Sans` semi-bold/bold to ensure numbers align neatly in streak matrices and recitation summary modules.
+
+## Layout & Spacing
+
+A mobile-first fluid layout prioritizing thumbs-reach comfort, safe visual margins, and single-column clarity for reflective recitation.
+
+### Screen Structure & Breakpoints
+- **Mobile (< 600px):**
+  - Outer lateral canvas margin: `1.25rem` (20px).
+  - Grid: 4 fluid columns with `1rem` (16px) gutters.
+  - Safe navigation zone: Bottom action dock height 64px + safe-area inset.
+- **Tablet / Large Display (600px - 1024px):**
+  - Outer lateral canvas margin: `2rem` (32px).
+  - Grid: 8 fluid columns with `1.5rem` (24px) gutters.
+  - Reading Mode: Quran and audio waveform modules stay centered with a maximum content width of 640px to prevent uncomfortably long lines.
+
+### Spacing Principles
+- Dynamic breathing margins frame the central Ayah card during recitation practice, isolating the vocal analysis canvas from secondary navigation.
+- Progress metrics, prayer clock timelines, and gamified streak cards follow an 8pt base grid rhythm (`0.25rem` = 4px, `0.5rem` = 8px, `1rem` = 16px, `1.5rem` = 24px, `2rem` = 32px).
+
+## Elevation & Depth
+
+Visual depth is achieved through tranquil layering, gossamer hairline strokes, and diffused emerald/gold ambient light rather than stark black dropshadows.
+
+### Elevation Hierarchy
+- **Level 0 (Flat Ground):**
+  - Used for background canvas (`#FBFBFA`) and static table groups. No shadow.
+- **Level 1 (Card & Module Resting):**
+  - Background: `#FFFFFF`.
+  - Border: 1px solid `rgba(27, 67, 50, 0.06)`.
+  - Shadow: `0px 2px 12px -2px rgba(27, 67, 50, 0.04), 0px 1px 3px rgba(0, 0, 0, 0.02)`.
+  - Purpose: Worship tracking items, daily prayer status strips, routine list cards.
+- **Level 2 (Active Testing & Audio Decks):**
+  - Background: `#FFFFFF` or `#EBF5EE`.
+  - Border: 1px solid `rgba(27, 67, 50, 0.12)`.
+  - Shadow: `0px 8px 24px -4px rgba(27, 67, 50, 0.08), 0px 2px 6px -1px rgba(27, 67, 50, 0.03)`.
+  - Purpose: Recitation audio waveform recording trays, interactive memorization tiles, current Surah modal sheets.
+- **Level 3 (Floating Action & Overlays):**
+  - Background: `#1B4332` (Primary) or `#FFFFFF` (Parchment sheet).
+  - Shadow: `0px 16px 36px -6px rgba(27, 67, 50, 0.20), 0px 4px 12px -2px rgba(27, 67, 50, 0.08)`.
+  - Purpose: Primary voice recording action trigger, bottom sheets, context menus.
+- **Gold Ambient Glow (Achievements & Streaks):**
+  - Applied to high-tier recitation trophies, streak badges, and Tajweed mastery circles.
+  - Shadow: `0px 0px 24px 2px rgba(212, 175, 55, 0.25), 0px 4px 12px rgba(197, 160, 89, 0.15)`.
+
+## Shapes
+
+The geometric framework favors generous, welcoming curvatures that reduce visual tension and evoke organic tranquility.
+
+### Radius Scale
+- **Pill Radius (`rounded-full` / 9999px):** Applied to status badges, category chips, audio action bars, recording buttons, and prayer time indicators.
+- **Card Large (`rounded-xl` / 1.5rem / 24px):** Primary Surah recitation cards, memorization dashboard widgets, achievement reveal banners.
+- **Card Standard (`rounded-lg` / 1.0rem / 16px):** Prayer tracking rows, audio snippet containers, feedback dialogue blocks.
+- **Interactive Controls (`rounded` / 0.5rem / 8px):** Stepper selectors, input fields, and Tajweed rule highlight tags.
+
+## Components
+
+### Buttons & Interactive Triggers
+- **Primary Action (Worship/Recite):** Solid Deep Emerald (`#1B4332`), text `#FFFFFF`, rounded pill (`9999px`). Height 52px on mobile with semi-bold typography. Active state darkens to `#133024`.
+- **Secondary / Champagne Accent:** Surface `#F5EBE1`, border 1px solid `#C5A059`, text `#1B4332`.
+- **Ghost / Tertiary:** Transparent background, text `#2D6A4F`, active fill `#EBF5EE`.
+- **Microphone / Recite Master Trigger:** Concentric pulsing rings. Center button is a 64px circular primary emerald trigger with a subtle gold microphone glyph. During recitation recording, a pulsing ambient ring (`rgba(82, 183, 136, 0.24)`) expands radially.
+
+### Audio Waveforms & Recitation Analysis
+- **Waveform Canvas:** Soft sage track (`#EBF5EE`) with vertical audio sample bars (width 3px, gap 2px, radius 2px).
+- **Playhead / Live Recitation State:** Traversed bars fill with Deep Emerald (`#1B4332`); live vocal pitch/frequency bars pulse with Sage Mid (`#52B788`).
+- **Tajweed Diagnostic Highlights:**
+  - Pronunciation accurate: Glowing underline `#52B788`.
+  - Phonetic nuance note (Madd, Ghunnah, Qalqalah): Warm champagne chip badge (`#FAF6EE` background, `#C5A059` border and text).
+  - Correction area: Soft warm terracotta stroke (`#E07A5F`) with micro-tooltip.
+
+### Gamification & Worship Tracking Badges
+- **Streak Counter:** Pill badge (`#FAF6EE`) with 1px border (`#C5A059`). Contains a small stylized flame or crescent icon in `#D4AF37` followed by the day count in `#111827` (`label-md`).
+- **Hafiz / Memorization Mastery Ring:** Circular SVG track (`#E5E7EB`) with animated stroke-dashoffset rendered in `#C5A059` (Metallic Gold) with a glowing gold shadow.
+- **Worship Checklist / Daily Tracker:** Circular checkboxes with 22px diameter. Unchecked: 1.5px border `#6B7280`. Checked: filled `#1B4332` with a crisp white checkmark accompanied by an unobtrusive haptic tick and micro-fade transition.
+
+### Cards & Quran Containers
+- **Ayah Card:** Pristine white background, 20px radius, 1px stroke `#E5E7EB`. Top bar displays Surah name and Ayah index in gold pill chip. Body features right-to-left centered classical script (`Amiri`, 28px). Bottom bar houses audio playback speed controls, bookmark star, and phonetic breakdown toggles.
+- **Prayer Monitoring Row:** Horizontal flex layout within a 16px radius card. Left: prayer name and scheduled time (`body-md`, `#111827`). Right: soft toggle or status pill (e.g., "Offered", "Jama'ah", "Missed") tinted in appropriate sage or muted charcoal shades.
+
+### Input Fields & Search
+- **Surah/Juz Search Field:** Height 48px, radius 12px. Background `#F4F6F4`, border 1px solid transparent, focus border 1px solid `#40916C` with zero harsh box-shadow (soft glow only). Left accessory icon in `#4B5563`.

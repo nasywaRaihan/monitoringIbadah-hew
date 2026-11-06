@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "surface": "#f9f9ff", "error-container": "#ffdad6", "on-error": "#ffffff", "surface-dim": "#d3daef", "surface-container-lowest": "#ffffff", "inverse-on-surface": "#edf0ff", "secondary-fixed-dim": "#e9c176", "on-error-container": "#93000a", "on-tertiary-container": "#53b889", "surface-variant": "#dce2f7", "surface-tint": "#3f6653", "tertiary-fixed-dim": "#75daa8", "on-secondary": "#ffffff", "on-primary": "#ffffff", "on-tertiary-fixed": "#002113", "inverse-primary": "#a5d0b9", "outline": "#717973", "on-surface": "#141b2b", "on-secondary-fixed": "#261900", "tertiary-fixed": "#92f7c3", "surface-container": "#e9edff", "error": "#ba1a1a", "primary-container": "#1b4332", "surface-bright": "#f9f9ff", "secondary-fixed": "#ffdea5", "tertiary": "#002d1b", "primary": "#012d1d", "surface-container-high": "#e1e8fd", "on-primary-container": "#86af99", "secondary": "#775a19", "on-primary-fixed-variant": "#274e3d", "tertiary-container": "#00452c", "primary-fixed": "#c1ecd4", "surface-container-low": "#f1f3ff", "outline-variant": "#c1c8c2", "on-secondary-container": "#785a1a", "on-primary-fixed": "#002114", "surface-container-highest": "#dce2f7", "on-tertiary": "#ffffff", "on-surface-variant": "#414844", "on-tertiary-fixed-variant": "#005235", "inverse-surface": "#293040", "on-background": "#141b2b", "primary-fixed-dim": "#a5d0b9", "background": "#f9f9ff", "on-secondary-fixed-variant": "#5d4201", "secondary-container": "#fed488" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-xs": "0.25rem", "space-xl": "2rem", "margin": "1.25rem", "space-2xl": "3rem", "margin-tablet": "2rem", "space-lg": "1.5rem", "gutter-tablet": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "space-md": "1rem" }, fontFamily: { "quran-verse-md": ["Amiri"], "label-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "quran-verse-lg": ["Amiri"], "display-lg-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"] }, fontSize: { "quran-verse-md": ["22px", { "lineHeight": "48px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "quran-verse-lg": ["28px", { "lineHeight": "60px", "fontWeight": "400" }], "display-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;vertical-align:middle;line-height:1;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="NoorWorship Brand Logo" class="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1UConMQyHWMW8sCCyxUucC2vWnG9-YL2u0OJZwf-th1M6RMbDpQbBWvbT8DVsiUBWUkHquhGzQvso0n6wI4yIrn-e-XCz77Lpsl89cbteos9eqH5e6rYNWU3SgLZi_FIhBLFtj-gIw2pQXzim1jl9im4iqNmcmvJu21nl_edZRtiCSznrt4aycFHBPuEA8k5CPyIxzEcKw8RXF_7FVIYiJ15cCTAkzWKH1bD1Akdq6_ASVEU4CB5v0nRM4"/><div class="flex flex-col min-w-0"><div class="flex items-center gap-1.5"><span class="font-headline-sm text-headline-sm text-primary tracking-tight truncate">NoorWorship</span><span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary font-label-sm text-label-sm uppercase tracking-wider shrink-0">Halaqah Al-Fajr</span></div><span class="font-label-sm text-label-sm text-on-surface-variant truncate">Hq Admin &amp; All Users Directory</span></div></div><div class="flex items-center gap-space-xs shrink-0"><button aria-label="Notifications" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors relative"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-secondary ring-2 ring-surface"></span></button><div class="relative flex items-center pl-1"><img alt="Profile" class="w-8 h-8 rounded-full object-cover shadow-[0_0_8px_rgba(1,45,29,0.12)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg"/></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface"><div class="flex flex-col w-full">
+<!-- HQ Global Overview Header & Analytics Pill -->
+<section class="px-margin pt-space-md pb-space-sm">
+<!-- Super Admin Header Level -->
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-container text-on-primary font-label-sm text-label-sm shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-tertiary-fixed" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+          Super Admin HQ
+        </span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/40 text-secondary font-label-sm text-label-sm font-semibold">
+          18 Active Halaqahs
+        </span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
+<span class="inline-block w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
+        Live Sync
+      </div>
+</div>
+<!-- KPI Metric Bento Grid -->
+<div class="grid grid-cols-2 gap-space-xs">
+<!-- Total Users -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl shadow-[0_2px_12px_-2px_rgba(27,67,50,0.04)] flex flex-col justify-between">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Global Roster</span>
+<span class="w-6 h-6 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[15px]">groups</span>
+</span>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary leading-none">1,248</span>
+<span class="font-label-sm text-label-sm text-tertiary-container font-semibold">+32 this wk</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">Across 18 Halaqahs</span>
+</div>
+<!-- Active Today -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl shadow-[0_2px_12px_-2px_rgba(27,67,50,0.04)] flex flex-col justify-between">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Active Today</span>
+<span class="w-6 h-6 rounded-lg bg-primary-fixed/50 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[15px]">electric_bolt</span>
+</span>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary leading-none">892</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">71.5%</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">Fajr Recitations recorded</span>
+</div>
+<!-- Avg Tajweed Score -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl shadow-[0_2px_12px_-2px_rgba(27,67,50,0.04)] flex flex-col justify-between">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Score</span>
+<span class="w-6 h-6 rounded-lg bg-secondary-container/30 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</span>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary leading-none">93.1%</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">HQ Mumtaz</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mt-1.5">
+<div class="bg-secondary h-full rounded-full" style="width: 93.1%"></div>
+</div>
+</div>
+<!-- Geofence Verified -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl shadow-[0_2px_12px_-2px_rgba(27,67,50,0.04)] flex flex-col justify-between">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Geofence Verif.</span>
+<span class="w-6 h-6 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[15px]">pin_drop</span>
+</span>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary leading-none">84%</span>
+<span class="font-label-sm text-label-sm text-tertiary-container font-semibold">Jama'ah</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mt-1.5">
+<div class="bg-primary-container h-full rounded-full" style="width: 84%"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Governance & Quick Actions Bar -->
+<section class="px-margin py-space-xs">
+<div class="flex items-center gap-space-xs">
+<button class="flex-1 h-11 px-space-sm bg-primary text-on-primary rounded-xl font-label-md text-label-md flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(1,45,29,0.15)] active:bg-primary-container transition-transform active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-[18px]">person_add</span>
+<span>Add Reciter</span>
+</button>
+<button class="h-11 px-3.5 bg-surface-container-lowest text-primary rounded-xl font-label-md text-label-md flex items-center justify-center gap-1.5 shadow-sm active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>Export CSV</span>
+</button>
+<button aria-label="Broadcast alert to all Halaqahs" class="h-11 w-11 bg-surface-container-lowest text-primary rounded-xl flex items-center justify-center shadow-sm active:bg-surface-container transition-colors shrink-0" type="button">
+<span class="material-symbols-outlined text-[20px]">campaign</span>
+</button>
+</div>
+</section>
+<!-- Search & Multi-Group Filters -->
+<section class="px-margin pt-space-sm pb-space-xs flex flex-col gap-space-xs">
+<!-- Search Bar -->
+<div class="relative w-full">
+<span class="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</span>
+<input class="w-full h-11 pl-10 pr-10 bg-surface-container-lowest rounded-xl font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm" placeholder="Search reciter name, email, or Halaqah..." type="text"/>
+<button aria-label="Audio reciter filter" class="absolute inset-y-0 right-2 flex items-center px-1.5 text-on-surface-variant hover:text-primary" type="button">
+<span class="material-symbols-outlined text-[18px]">mic</span>
+</button>
+</div>
+<!-- Halaqah Filter Chips (Horizontal Scroll) -->
+<div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+<button class="px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-semibold shrink-0 shadow-sm flex items-center gap-1" type="button">
+<span>All Groups</span>
+<span class="px-1.5 py-0.2 rounded-full bg-on-primary/20 text-[10px]">1,248</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shrink-0 shadow-sm hover:text-primary flex items-center gap-1" type="button">
+<span>Halaqah Al-Fajr</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-[10px]">38</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shrink-0 shadow-sm hover:text-primary flex items-center gap-1" type="button">
+<span>Hafiz Circle</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-[10px]">24</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shrink-0 shadow-sm hover:text-primary flex items-center gap-1" type="button">
+<span>Youth Tajweed</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-[10px]">42</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shrink-0 shadow-sm hover:text-primary flex items-center gap-1" type="button">
+<span>Masjid Al-Ikhlas</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-[10px]">115</span>
+</button>
+</div>
+<!-- Secondary Status Pills -->
+<div class="flex items-center justify-between text-on-surface-variant pt-1">
+<div class="flex items-center gap-1 overflow-x-auto no-scrollbar">
+<span class="px-2 py-0.5 rounded-md bg-surface-container-highest/60 text-primary font-label-sm text-label-sm font-medium">All Status</span>
+<span class="px-2 py-0.5 rounded-md bg-transparent hover:bg-surface-container text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+          Flagged Errors (14)
+        </span>
+<span class="px-2 py-0.5 rounded-md bg-transparent hover:bg-surface-container text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          Top Mumtaz
+        </span>
+</div>
+<button class="flex items-center gap-0.5 text-primary font-label-sm text-label-sm pl-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>Filter</span>
+</button>
+</div>
+</section>
+<!-- User Roster Listing -->
+<section class="px-margin py-space-sm flex flex-col gap-space-sm">
+<!-- Section Title & Result Count -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-primary">All Reciters</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm">Showing 5 of 1,248</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">swap_vert</span>
+<span>Rank: Tajweed High</span>
+</div>
+</div>
+<!-- Reciter Card 1: Tariq Mansoor (Top Performer / Live Now) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_2px_12px_-2px_rgba(27,67,50,0.06)] flex flex-col gap-space-xs transition-all hover:shadow-[0_4px_16px_rgba(27,67,50,0.08)]">
+<!-- User Card Header -->
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait photo of Tariq Mansoor, a focused Muslim Quran reciter with a neat beard and kufi cap, gentle warm morning studio lighting, high resolution dignified portrait." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxUvy8dcUkArsPUzlK3EWJ7-YZwvRO6i1pNvZP2V-XXhY9QAXkX9ctclshGt0vXgy5oOSBhulpHshdKxzXlOAXqseZKYrM7t_AS-ThOPy5j_qTaaUDnC5-pwFGK0HlFNOiCOSUc9GQ6Jp1F3XXZ8L4mCvLPaMcGhuQjQF3nVlHKE0i1t1ZWzLoUl7YE6xDzelCltHIFN8xEO8CqxQB-Oimx_QaBtJdna2fI6ltmN_i6OynIgF-0VRrug"/>
+<span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-tertiary-container ring-2 ring-surface-container-lowest flex items-center justify-center" title="Active live session">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-container-lowest"></span>
+</span>
+</div>
+<div class="min-w-0 flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Tariq Mansoor</span>
+<span class="px-1.5 py-0.2 rounded bg-secondary-container/40 text-secondary font-label-sm text-label-sm font-bold shrink-0">
+                Mumtaz
+              </span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Hafiz Circle • Masjid Central</span>
+</div>
+</div>
+<!-- Live Status Pill -->
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold flex items-center gap-1 shrink-0">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>
+          Live Session
+        </span>
+</div>
+<!-- Performance Metrics Matrix -->
+<div class="grid grid-cols-3 gap-1.5 py-1.5 bg-surface-container-low/70 rounded-xl px-2.5">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Acc.</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">98.2%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Geofence</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">20/20 <span class="font-label-sm text-label-sm text-tertiary-container">100%</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Streak / XP</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">28d</span>
+</div>
+</div>
+</div>
+<!-- Footer Micro-Activity & Quick Actions -->
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">record_voice_over</span>
+<span class="truncate">Reciting Surah An-Nur (Ayah 35)</span>
+</div>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-sm text-label-sm font-semibold transition-colors flex items-center gap-1 shrink-0" type="button">
+<span>Manage</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Reciter Card 2: Maryam Al-Zahra (Global Top 1% / Sister's Circle) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_2px_12px_-2px_rgba(27,67,50,0.06)] flex flex-col gap-space-xs transition-all hover:shadow-[0_4px_16px_rgba(27,67,50,0.08)]">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Warm respectful portrait representation of Maryam Al-Zahra, a modest female student wearing an olive green hijab, soft natural lighting, peaceful scholastic Quranic environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMxQ7RtfswlRDYQ98MNcACZgs5-Ey1ncw_eeWPAS-5xbw7LyeNkwVJdWS8pf-pTtCJzdoDuK6jwkptscXQQaCiDIoUM3wKhNq_KdEN_S0hBuya6DSojTu2Md0dls9Jh6UyMiq_0wxuNwbOjLNs7OihXe2bUOu_0a4ae5MsUXk8Cq8U6lxDxltUzGw1oqdpI-dDU4DbyQ6WJ9V2VyTX032uTLdAIL2IQZhBZLgbGIk2-6fD18tsA3nxcQ"/>
+<span class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center text-[10px] shadow-sm">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</span>
+</div>
+<div class="min-w-0 flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Maryam Al-Zahra</span>
+<span class="px-1.5 py-0.2 rounded bg-secondary-container/40 text-secondary font-label-sm text-label-sm font-bold shrink-0">
+                Top 1%
+              </span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Sister's Quran Circle • Online</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-medium shrink-0">
+          5m ago
+        </span>
+</div>
+<!-- Performance Metrics Matrix -->
+<div class="grid grid-cols-3 gap-1.5 py-1.5 bg-surface-container-low/70 rounded-xl px-2.5">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Acc.</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">99.1%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Halaqah Verif.</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Remote <span class="font-label-sm text-label-sm text-tertiary-container">Proctored</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Streak / XP</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">45d</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">21.3k</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">verified</span>
+<span class="truncate">Hafiz Candidate • Surah Maryam Mastered</span>
+</div>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-sm text-label-sm font-semibold transition-colors flex items-center gap-1 shrink-0" type="button">
+<span>Profile</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Reciter Card 3: Hamza Malik (FLAGGED / NEEDS REVIEW) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_2px_12px_-2px_rgba(27,67,50,0.06)] flex flex-col gap-space-xs transition-all ring-1 ring-error/20">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait photo of Hamza Malik, a young student reciter with an open expression, seated by a prayer hall column with soft filtered sunlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDl2oh3o0y1qDHWksSoqmd8XMiZZldRTSjimhlbpgvokYxxLZf3dzPd7n29Nhetf_Olmrxo8f9PEEVJhi4uXMk4tNb7fFd_nZUOzN5Rdja-yRE3q5yF17T8TSUKJOy1bcgtuTtokarrdyNVkM2Z_9y1dzn6US_MYhabTxnbkjabBFoyfSVw_r_AWxTv7v3vkt5B9VHnhxEkJqUEqS7Pe5oQFVZO3Zo5EoaPga-DW757Niz5e4SApnpruQ"/>
+<span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-error ring-2 ring-surface-container-lowest flex items-center justify-center" title="Phonetic errors flagged">
+<span class="material-symbols-outlined text-[10px] text-on-error">priority_high</span>
+</span>
+</div>
+<div class="min-w-0 flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Hamza Malik</span>
+<span class="px-1.5 py-0.2 rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-bold shrink-0">
+                Review Needed
+              </span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Halaqah Al-Fajr • Sheikh Omar</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-error-container/60 text-on-error-container font-label-sm text-label-sm font-semibold flex items-center gap-1 shrink-0">
+<span class="material-symbols-outlined text-[13px]">warning</span>
+          Flagged
+        </span>
+</div>
+<!-- Tajweed Diagnostic Warning Banner -->
+<div class="bg-error-container/30 rounded-xl p-2.5 flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-error shrink-0 mt-0.5">graphic_eq</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-on-error-container font-semibold">3 Phonetic Errors on Ayah 14</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Recitation of Surah Al-Mulk: Qalqalah missed on 'ق' (Qaf)</span>
+</div>
+</div>
+<!-- Performance Metrics Matrix -->
+<div class="grid grid-cols-3 gap-1.5 py-1.5 bg-surface-container-low/70 rounded-xl px-2.5">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Acc.</span>
+<span class="font-headline-sm text-headline-sm text-error font-bold">84.5%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Geofence</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">12/20 <span class="font-label-sm text-label-sm text-on-surface-variant">60%</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Streak</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant font-semibold">3d</span>
+</div>
+</div>
+<!-- Action Level specifically for admin intervention -->
+<div class="flex items-center justify-between pt-1 gap-2">
+<button class="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">headset</span>
+<span>Inspect Audio</span>
+</button>
+<button class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant hover:text-primary font-label-sm text-label-sm font-medium flex items-center justify-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">assignment_ind</span>
+<span>Assign Ustadh</span>
+</button>
+</div>
+</div>
+<!-- Reciter Card 4: Zayd Al-Amin (Consistent Daily Reciter) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_2px_12px_-2px_rgba(27,67,50,0.06)] flex flex-col gap-space-xs transition-all hover:shadow-[0_4px_16px_rgba(27,67,50,0.08)]">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait photo of Zayd Al-Amin, an adult reciter with glasses and serene demeanor holding an open prayer book in a peaceful Islamic learning center." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL8eyZ8tnKQ_pNL9nhrbu1ZrjoYNAjCOhMK5SE5d4mXRd3UfyHkHCPJgj_EcHF2yjzDVTuzZBpcFAnKNY7rCAhlBYvwXCquVJodKYbzYgjZtisHS_hqLM9GoUB9jVhekcw2jGEXKve9Qx2hlLIFHbaQiuHrknZElLeHp_d6DggLVy2-Q4Qm_pBPNnWGgeKdBLuVaEBC_k8dpga9lqdryg65Y55aM3Wl9yZJtnVHHXip-_Dd2Rikf81sQ"/>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-surface-container-highest ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="min-w-0 flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Zayd Al-Amin</span>
+<span class="px-1.5 py-0.2 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold shrink-0">
+                Jayyid Jiddan
+              </span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Halaqah Al-Fajr • Sheikh Omar</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-medium shrink-0">
+          14m ago
+        </span>
+</div>
+<!-- Performance Metrics Matrix -->
+<div class="grid grid-cols-3 gap-1.5 py-1.5 bg-surface-container-low/70 rounded-xl px-2.5">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Acc.</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">96.0%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Geofence</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">18/20 <span class="font-label-sm text-label-sm text-tertiary-container">90%</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Streak / XP</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">12d</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">8.4k</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">menu_book</span>
+<span class="truncate">Surah Al-Mulk (Ayahs 1–30 completed)</span>
+</div>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-sm text-label-sm font-semibold transition-colors flex items-center gap-1 shrink-0" type="button">
+<span>Manage</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Reciter Card 5: Bilal Kareem (Youth Reciter) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_2px_12px_-2px_rgba(27,67,50,0.06)] flex flex-col gap-space-xs transition-all hover:shadow-[0_4px_16px_rgba(27,67,50,0.08)]">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative shrink-0">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait photo of Bilal Kareem, a teenage boy student with an energetic warm smile wearing traditional clean thobe in front of calligraphy wall art." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk7Ng2NYqB-E8a77cnkx5RcXAWy5V_quwhyswZscObx00whBdBV1MJfpsPuKOTMOME1dPKfDRZnGMeT6yR5PXCxFcrBhSwSHLT6ZdbBCEZFFfIHvBdsYxd4PPcQ17SZfTiyVT6qz06ZZsB6Msxk1vN_TxPOW1Tfm_DPsI00lTcglSJX2xH6uSo3GgmQAaQ12g-D5DM4h6v6mtFc-oHZWc1RLZSFmEDoSkXjH-5JwI3TRzX03Zl0UNJWg"/>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-surface-container-highest ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="min-w-0 flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Bilal Kareem</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-primary font-label-sm text-label-sm font-semibold shrink-0">
+                Youth League
+              </span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Youth Tajweed • Masjid Al-Ikhlas</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-medium shrink-0">
+          2h ago
+        </span>
+</div>
+<!-- Performance Metrics Matrix -->
+<div class="grid grid-cols-3 gap-1.5 py-1.5 bg-surface-container-low/70 rounded-xl px-2.5">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed Acc.</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">91.5%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Geofence</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">15/20 <span class="font-label-sm text-label-sm text-tertiary-container">75%</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Streak / XP</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">5d</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">4.1k</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">school</span>
+<span class="truncate">Juz Amma Revision • Passed Surah An-Naba</span>
+</div>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-sm text-label-sm font-semibold transition-colors flex items-center gap-1 shrink-0" type="button">
+<span>Manage</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Roster Governance & Batch Operations Drawer Card -->
+<section class="px-margin pt-space-xs pb-space-lg flex flex-col gap-space-xs">
+<!-- Load More & Infinite Scroll Indicator -->
+<div class="flex flex-col items-center justify-center gap-2 py-space-sm bg-surface-container-low/50 rounded-2xl p-space-sm">
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+<span>Displaying 5 of 1,248 registered reciters</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+</div>
+<button class="w-full max-w-xs h-11 rounded-xl bg-surface-container-lowest text-primary font-label-md text-label-md flex items-center justify-center gap-2 shadow-sm hover:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+<span>Load Next 20 Reciters</span>
+</button>
+<!-- Batch HQ Quick Drawer Link -->
+<div class="flex items-center justify-between w-full pt-2 px-1 text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-tertiary-container">verified_user</span>
+<span>End-to-End Encrypted Roster</span>
+</div>
+<button class="text-primary hover:underline font-semibold" type="button">
+          Multi-Select Mode
+        </button>
+</div>
+</div>
+</section>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_16px_rgba(1,45,29,0.06)]" data-active-classes="text-primary font-semibold"><div class="flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[50px] h-12 gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="worship-dashboard-geofenced-tasks" href="#"><span class="material-symbols-outlined text-[22px]">mosque</span><span class="font-label-sm text-label-sm tracking-tight">Worship</span></a><a class="flex flex-col items-center justify-center min-w-[50px] h-12 gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="gamified-worship-leaderboard" href="#"><span class="material-symbols-outlined text-[22px]">emoji_events</span><span class="font-label-sm text-label-sm tracking-tight">Rankings</span></a><a class="flex flex-col items-center justify-center min-w-[50px] h-12 gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="admin-monitoring-group-analytics" href="#"><span class="material-symbols-outlined text-[22px]">shield_person</span><span class="font-label-sm text-label-sm tracking-tight">Group</span></a><a class="flex flex-col items-center justify-center min-w-[50px] h-12 gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="hq-admin-all-users-directory" href="#"><span class="material-symbols-outlined text-[22px]">corporate_fare</span><span class="font-label-sm text-label-sm tracking-tight">HQ Admin</span></a></div></nav></body></html>

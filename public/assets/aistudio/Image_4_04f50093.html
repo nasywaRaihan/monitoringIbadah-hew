@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "surface": "#f9f9ff", "error-container": "#ffdad6", "on-error": "#ffffff", "surface-dim": "#d3daef", "surface-container-lowest": "#ffffff", "inverse-on-surface": "#edf0ff", "secondary-fixed-dim": "#e9c176", "on-error-container": "#93000a", "on-tertiary-container": "#53b889", "surface-variant": "#dce2f7", "surface-tint": "#3f6653", "tertiary-fixed-dim": "#75daa8", "on-secondary": "#ffffff", "on-primary": "#ffffff", "on-tertiary-fixed": "#002113", "inverse-primary": "#a5d0b9", "outline": "#717973", "on-surface": "#141b2b", "on-secondary-fixed": "#261900", "tertiary-fixed": "#92f7c3", "surface-container": "#e9edff", "error": "#ba1a1a", "primary-container": "#1b4332", "surface-bright": "#f9f9ff", "secondary-fixed": "#ffdea5", "tertiary": "#002d1b", "primary": "#012d1d", "surface-container-high": "#e1e8fd", "on-primary-container": "#86af99", "secondary": "#775a19", "on-primary-fixed-variant": "#274e3d", "tertiary-container": "#00452c", "primary-fixed": "#c1ecd4", "surface-container-low": "#f1f3ff", "outline-variant": "#c1c8c2", "on-secondary-container": "#785a1a", "on-primary-fixed": "#002114", "surface-container-highest": "#dce2f7", "on-tertiary": "#ffffff", "on-surface-variant": "#414844", "on-tertiary-fixed-variant": "#005235", "inverse-surface": "#293040", "on-background": "#141b2b", "primary-fixed-dim": "#a5d0b9", "background": "#f9f9ff", "on-secondary-fixed-variant": "#5d4201", "secondary-container": "#fed488" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-xs": "0.25rem", "space-xl": "2rem", "margin": "1.25rem", "space-2xl": "3rem", "margin-tablet": "2rem", "space-lg": "1.5rem", "gutter-tablet": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "space-md": "1rem" }, fontFamily: { "quran-verse-md": ["Amiri"], "label-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "quran-verse-lg": ["Amiri"], "display-lg-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"] }, fontSize: { "quran-verse-md": ["22px", { "lineHeight": "48px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "quran-verse-lg": ["28px", { "lineHeight": "60px", "fontWeight": "400" }], "display-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;vertical-align:middle;line-height:1;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><button aria-label="Go Back" class="w-11 h-11 -ml-2 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container transition-colors shrink-0" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><img alt="NoorWorship Brand Logo" class="h-7 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1UConMQyHWMW8sCCyxUucC2vWnG9-YL2u0OJZwf-th1M6RMbDpQbBWvbT8DVsiUBWUkHquhGzQvso0n6wI4yIrn-e-XCz77Lpsl89cbteos9eqH5e6rYNWU3SgLZi_FIhBLFtj-gIw2pQXzim1jl9im4iqNmcmvJu21nl_edZRtiCSznrt4aycFHBPuEA8k5CPyIxzEcKw8RXF_7FVIYiJ15cCTAkzWKH1bD1Akdq6_ASVEU4CB5v0nRM4"/><div class="flex flex-col min-w-0"><h1 class="font-headline-sm text-headline-sm text-primary tracking-tight truncate">Recitation Test Session</h1><span class="font-label-sm text-label-sm text-on-surface-variant truncate">NoorWorship • Halaqah Al-Fajr</span></div></div><div class="flex items-center gap-space-xs shrink-0"><img alt="Profile" class="w-8 h-8 rounded-full object-cover shadow-[0_0_8px_rgba(1,45,29,0.12)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg"/></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 bg-surface"><div class="flex flex-col w-full pb-safe">
+<!-- Interactive & Decorative Ambient Background -->
+<div class="relative w-full px-margin space-y-gutter">
+<!-- Top Assessment Context Card -->
+<section class="mt-space-sm bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex items-center justify-between gap-space-sm">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px] mr-1" style="font-variation-settings: 'FILL' 1;">stars</span>
+              Halaqah Assessment
+            </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Ayah 1 of 3</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-primary truncate">Surah Al-Mulk (67:1-3)</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Session 14 • Classical Warsh / Hafs</p>
+</div>
+<!-- Radial Accuracy Meter -->
+<div class="relative flex items-center justify-center shrink-0 w-16 h-16 rounded-full bg-surface-container-low shadow-[0_0_16px_rgba(233,193,118,0.2)]">
+<svg class="w-14 h-14 -rotate-90" viewbox="0 0 48 48">
+<circle class="text-surface-variant fill-none" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="3.5"></circle>
+<circle class="text-secondary fill-none transition-all duration-700 ease-out" cx="24" cy="24" id="accuracyRing" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="7.28" stroke-linecap="round" stroke-width="3.5"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-label-lg text-label-lg font-bold text-primary leading-none">94<span class="text-[10px] text-secondary font-normal">%</span></span>
+<span class="font-label-sm text-[9px] uppercase tracking-wider text-on-surface-variant">Acc</span>
+</div>
+</div>
+</div>
+<!-- Quick Guidance Pill Row -->
+<div class="mt-space-sm pt-space-xs flex items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-primary">auto_stories</span>
+<span>Tajweed: Idgham &amp; Madd Rules</span>
+</div>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-secondary bg-surface-container px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+<span>Strict AI Mode</span>
+</div>
+</div>
+</section>
+<!-- Ayah Card with Intelligent Word-by-Word Diagnostics -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden">
+<!-- Subtle watermark calligraphy accent -->
+<div class="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-primary-fixed/30 pointer-events-none blur-2xl"></div>
+<!-- Header of Card -->
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-sm text-label-sm text-primary bg-primary-fixed/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">record_voice_over</span> Ayah 1
+        </span>
+<button class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm hover:text-primary transition-colors" id="listenTeacherBtn">
+<span class="material-symbols-outlined text-[16px]">volume_up</span>
+          Hear Sheikh
+        </button>
+</div>
+<!-- Main Arabic Script Box with Interactive Tajweed Chips -->
+<div class="py-space-md text-right dir-rtl leading-relaxed">
+<p class="font-quran-verse-lg text-quran-verse-lg text-on-surface tracking-wide flex flex-wrap flex-row-reverse justify-start items-center gap-y-3 gap-x-2.5">
+<!-- Word 1: Perfect -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center bg-primary-fixed/40 px-2.5 py-1 rounded-lg" id="word-word1" onclick="selectWord('word1')">
+<span>تَبَارَكَ</span>
+<span class="font-label-sm text-[10px] text-tertiary-container mt-0.5 tracking-tighter">98% • Perfect</span>
+</span>
+<!-- Word 2: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word2" onclick="selectWord('word2')">
+<span>ٱلَّذِي</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Correct</span>
+</span>
+<!-- Word 3: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word3" onclick="selectWord('word3')">
+<span>بِيَدِهِ</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Accurate</span>
+</span>
+<!-- Word 4: Minor Amber Notice -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center bg-secondary-container px-2.5 py-1 rounded-lg shadow-sm" id="word-word4" onclick="selectWord('word4')">
+<span>ٱلْمُلْكُ</span>
+<span class="font-label-sm text-[10px] text-on-secondary-container font-semibold mt-0.5">Ghunnah -0.2s</span>
+</span>
+<!-- Word 5: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word5" onclick="selectWord('word5')">
+<span>وَهُوَ</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Correct</span>
+</span>
+<!-- Word 6: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word6" onclick="selectWord('word6')">
+<span>عَلَىٰ</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Accurate</span>
+</span>
+<!-- Word 7: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word7" onclick="selectWord('word7')">
+<span>كُلِّ</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Correct</span>
+</span>
+<!-- Word 8: Accurate -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center px-1 py-1 rounded-lg hover:bg-surface-container" id="word-word8" onclick="selectWord('word8')">
+<span>شَيْءٍ</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant opacity-70 mt-0.5">Ikhafa OK</span>
+</span>
+<!-- Word 9: Coral Attention Trigger -->
+<span class="cursor-pointer transition-all duration-200 inline-flex flex-col items-center bg-error-container text-on-error-container px-2.5 py-1 rounded-lg shadow-sm" id="word-word9" onclick="selectWord('word9')">
+<span class="font-bold">قَدِيرٌ</span>
+<span class="font-label-sm text-[10px] font-bold mt-0.5">Madd 2h vs 4h</span>
+</span>
+<!-- Ayah End Marker -->
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-container text-primary font-headline-sm text-headline-sm select-none">
+            ۝١
+          </span>
+</p>
+</div>
+<!-- Dynamic Contextual Inspector Card (Switches per tapped word) -->
+<div class="mt-space-xs bg-surface-container-low rounded-lg p-space-sm transition-all duration-300" id="diagnosticFeedbackPanel">
+<div class="flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center shrink-0 mt-0.5 shadow-sm" id="diagnosticIconWrapper">
+<span class="material-symbols-outlined text-[18px]" id="diagnosticIcon">priority_high</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold" id="diagnosticTitle">Madd 'Arid Lissukun Length Slip</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-quran-verse-md" id="diagnosticWordChip">قَدِيرٌ</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5" id="diagnosticBody">
+              Detected elongation duration of <strong class="text-error">2 Harakah</strong>. For your halaqah recitation tier, complete at least <strong class="text-primary">4 to 6 Harakah</strong> before pausing.
+            </p>
+<div class="mt-2 flex items-center gap-space-xs">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-primary font-label-sm text-label-sm hover:bg-surface-variant transition-colors" onclick="playIsolatedPhonetic()">
+<span class="material-symbols-outlined text-[14px]">play_circle</span>
+                Hear Target Madd (4h)
+              </button>
+<button class="text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm px-2" onclick="dismissFeedback()">
+                Dismiss
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- English Translation Banner -->
+<div class="mt-space-sm pt-space-xs">
+<p class="font-body-md text-body-md text-on-surface-variant italic leading-snug">
+          "Blessed is He in whose hand is kingship, and He is over all things competent."
+        </p>
+</div>
+</section>
+<!-- Real-time Live Audio Recitation Waveform Deck -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex items-center justify-between mb-space-xs">
+<!-- Live AI Listening Indicator -->
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-tertiary-container"></span>
+</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">AI Tajweed Engine: Active</span>
+</div>
+<!-- Recitation Timer -->
+<span class="font-label-md text-label-md text-on-surface font-mono">00:18 / 00:45</span>
+</div>
+<!-- Waveform Visualizer Canvas Container -->
+<div class="h-16 w-full bg-surface-container-low rounded-lg p-space-xs flex items-center justify-between gap-[3px] overflow-hidden px-3">
+<!-- Waveform bars -->
+<div class="w-1 bg-primary-container h-3 rounded-full opacity-40"></div>
+<div class="w-1 bg-primary-container h-5 rounded-full opacity-60"></div>
+<div class="w-1 bg-primary-container h-8 rounded-full opacity-80"></div>
+<div class="w-1 bg-primary-container h-12 rounded-full"></div>
+<div class="w-1 bg-primary-container h-6 rounded-full opacity-70"></div>
+<div class="w-1 bg-primary-container h-10 rounded-full"></div>
+<div class="w-1 bg-primary-container h-14 rounded-full"></div>
+<div class="w-1 bg-primary-container h-9 rounded-full opacity-90"></div>
+<div class="w-1 bg-primary h-11 rounded-full"></div>
+<div class="w-1 bg-primary h-7 rounded-full opacity-80"></div>
+<div class="w-1 bg-primary h-12 rounded-full"></div>
+<!-- Active live frequency segment -->
+<div class="w-1.5 bg-secondary h-14 rounded-full animate-pulse shadow-[0_0_8px_rgba(233,193,118,0.8)]"></div>
+<div class="w-1.5 bg-tertiary-container h-16 rounded-full animate-pulse shadow-[0_0_10px_rgba(83,184,137,0.8)]"></div>
+<div class="w-1.5 bg-secondary h-12 rounded-full animate-pulse"></div>
+<!-- Upcoming track preview -->
+<div class="w-1 bg-surface-variant h-8 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-5 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-10 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-7 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-4 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-9 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-6 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-3 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-4 rounded-full"></div>
+<div class="w-1 bg-surface-variant h-2 rounded-full"></div>
+</div>
+<!-- Quick Audio Controls Strip -->
+<div class="mt-space-xs flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary-container">mic_none</span>
+          Noise Filter: High
+        </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">speed</span>
+          Speed: 1.0x (Tartil)
+        </span>
+</div>
+</section>
+<!-- Score Breakdown & Evaluation Matrix (Bento Grid) -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-secondary font-bold uppercase tracking-wider">Evaluation Grade</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Mumtaz • Excellent (94%)</h3>
+</div>
+<span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+          Top 5% Halaqah
+        </span>
+</div>
+<!-- 3-Pillar Progress Metrics Grid -->
+<div class="grid grid-cols-3 gap-space-xs pt-space-xs">
+<!-- Metric 1: Makharij -->
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Makharij</span>
+<span class="material-symbols-outlined text-[16px] text-primary">record_voice_over</span>
+</div>
+<div class="mt-2">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-headline-sm text-headline-sm text-primary font-bold">96%</span>
+<span class="font-label-sm text-[10px] text-primary">High</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 96%"></div>
+</div>
+</div>
+</div>
+<!-- Metric 2: Tajweed Rules -->
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Tajweed</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">menu_book</span>
+</div>
+<div class="mt-2">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-headline-sm text-headline-sm text-secondary font-bold">91%</span>
+<span class="font-label-sm text-[10px] text-secondary">Solid</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 91%"></div>
+</div>
+</div>
+</div>
+<!-- Metric 3: Fluency & Waqf -->
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Fluency</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary-container">graphic_eq</span>
+</div>
+<div class="mt-2">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-headline-sm text-headline-sm text-primary font-bold">95%</span>
+<span class="font-label-sm text-[10px] text-tertiary-container">Smooth</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 95%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Peer Halaqah Tip Card -->
+<div class="bg-surface-container p-space-sm rounded-lg flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px] shrink-0" style="font-variation-settings: 'FILL' 1;">tips_and_updates</span>
+<div class="min-w-0">
+<p class="font-body-sm text-body-sm text-on-surface leading-tight">
+<strong>Ustadh's Tip:</strong> Slow down slightly at the end of Ayah 1 to give the <span class="font-quran-verse-md">قَدِيرٌ</span> complete 4-beat resonance.
+          </p>
+</div>
+</div>
+</section>
+<!-- Bottom Actions Deck (Dual Retest & XP Submission) -->
+<section class="pt-space-xs space-y-space-sm pb-space-lg">
+<div class="flex items-center gap-space-sm">
+<!-- Retest Mic Trigger -->
+<button class="flex-1 h-[52px] px-space-md rounded-full bg-surface-container-lowest text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform" id="retestVerseBtn">
+<span class="material-symbols-outlined text-[20px] text-error">replay</span>
+<span>Re-test Verse</span>
+</button>
+<!-- Live Recite Floating Mic Action Button -->
+<button aria-label="Toggle Voice Recitation" class="relative w-[52px] h-[52px] rounded-full bg-error text-on-error flex items-center justify-center shadow-lg active:scale-90 transition-transform shrink-0" id="mainMicRecordBtn">
+<span class="material-symbols-outlined text-[26px]">mic</span>
+<span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-secondary-container"></span>
+</button>
+</div>
+<!-- Submit Recitation with XP Badge -->
+<button class="w-full h-[54px] rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md active:bg-primary-container transition-all" id="submitAssessmentBtn">
+<span class="material-symbols-outlined text-[20px] text-secondary-fixed">auto_awesome</span>
+<span>Submit Recitation (+150 XP)</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<p class="text-center font-label-sm text-label-sm text-on-surface-variant">
+        Recitation auto-syncs with Ustadh Tariq’s Halaqah Gradebook
+      </p>
+</section>
+</div>
+</div>
+<script>
+  // Dynamic Diagnostic Data Store
+  const wordDiagnostics = {
+    word1: {
+      title: "Perfect Pronunciation",
+      chip: "تَبَارَكَ",
+      type: "success",
+      icon: "check_circle",
+      body: "Accurate letter output from the tongue depth (Taa, Baa, Raa). 98% AI acoustic confidence match.",
+      audioHint: "Pronunciation is flawless. Keep this tempo."
+    },
+    word2: {
+      title: "Lisan & Madd Natural",
+      chip: "ٱلَّذِي",
+      type: "success",
+      icon: "check_circle",
+      body: "Natural Madd (2 harakah) measured accurately with proper soft lisan contact on Dhal.",
+      audioHint: "Correct articulation."
+    },
+    word3: {
+      title: "Haa Whispering (Hams)",
+      chip: "بِيَدِهِ",
+      type: "success",
+      icon: "check_circle",
+      body: "Proper throat chest emission of the letter Ha without excessive tension.",
+      audioHint: "Pronunciation verified."
+    },
+    word4: {
+      title: "Minor Ghunnah Timing Slip",
+      chip: "ٱلْمُلْكُ",
+      type: "warning",
+      icon: "schedule",
+      body: "Ghunnah duration was 0.2s shorter than the standard target for Lam Sakinah clarity before Kaaf.",
+      audioHint: "Hold the nasal vibration for a half beat longer."
+    },
+    word5: {
+      title: "Waw Vocal Opening",
+      chip: "وَهُوَ",
+      type: "success",
+      icon: "check_circle",
+      body: "Good lip rounding on Waw, clear short harakat transitions.",
+      audioHint: "Smooth transition."
+    },
+    word6: {
+      title: "Alif Maqsurah Length",
+      chip: "عَلَىٰ",
+      type: "success",
+      icon: "check_circle",
+      body: "Proper 2 harakah elongation on Ayn and Lam.",
+      audioHint: "Accurate pitch."
+    },
+    word7: {
+      title: "Shaddah Emphasis",
+      chip: "كُلِّ",
+      type: "success",
+      icon: "check_circle",
+      body: "Crisp doubling on Lam without cutting the airflow sharply.",
+      audioHint: "Crisp doubling."
+    },
+    word8: {
+      title: "Ikhfa Haqiqi Precision",
+      chip: "شَيْءٍ",
+      type: "success",
+      icon: "check_circle",
+      body: "Tanween before Qaf prepared smoothly in the upper pharynx with 92% adherence.",
+      audioHint: "Good soft concealment."
+    },
+    word9: {
+      title: "Madd 'Arid Lissukun Length Slip",
+      chip: "قَدِيرٌ",
+      type: "error",
+      icon: "priority_high",
+      body: "Detected elongation duration of 2 Harakah. For your halaqah recitation tier, complete at least 4 to 6 Harakah before pausing.",
+      audioHint: "Hold the Ya elongation through 4 finger counts."
+    }
+  };
+
+  function selectWord(key) {
+    const data = wordDiagnostics[key];
+    if (!data) return;
+
+    const titleEl = document.getElementById('diagnosticTitle');
+    const chipEl = document.getElementById('diagnosticWordChip');
+    const bodyEl = document.getElementById('diagnosticBody');
+    const iconEl = document.getElementById('diagnosticIcon');
+    const iconWrapper = document.getElementById('diagnosticIconWrapper');
+    const panel = document.getElementById('diagnosticFeedbackPanel');
+
+    // Update text
+    titleEl.textContent = data.title;
+    chipEl.textContent = data.chip;
+    bodyEl.innerHTML = data.body;
+    iconEl.textContent = data.icon;
+
+    // Reset styles
+    iconWrapper.className = "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-sm ";
+    if (data.type === 'error') {
+      iconWrapper.classList.add('bg-error', 'text-on-error');
+    } else if (data.type === 'warning') {
+      iconWrapper.classList.add('bg-secondary', 'text-on-secondary');
+    } else {
+      iconWrapper.classList.add('bg-tertiary-container', 'text-on-primary');
+    }
+
+    // Micro-highlight effect
+    panel.classList.remove('opacity-0', 'scale-98');
+    panel.classList.add('opacity-100', 'scale-100');
+  }
+
+  function dismissFeedback() {
+    const panel = document.getElementById('diagnosticFeedbackPanel');
+    panel.classList.add('opacity-40');
+    setTimeout(() => {
+      panel.classList.remove('opacity-40');
+    }, 400);
+  }
+
+  function playIsolatedPhonetic() {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[14px] animate-spin">sync</span> Playing...`;
+    setTimeout(() => {
+      btn.innerHTML = `<span class="material-symbols-outlined text-[14px]">check</span> Done`;
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1200);
+    }, 1400);
+  }
+
+  // Interactive buttons
+  document.getElementById('mainMicRecordBtn')?.addEventListener('click', function() {
+    this.classList.toggle('animate-pulse');
+  });
+
+  document.getElementById('submitAssessmentBtn')?.addEventListener('click', function() {
+    const original = this.innerHTML;
+    this.innerHTML = `<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> Submitting to Halaqah...`;
+    setTimeout(() => {
+      this.innerHTML = `<span class="material-symbols-outlined text-[20px] text-secondary-fixed">verified</span> Assessment Recorded (+150 XP)`;
+      this.classList.replace('bg-primary', 'bg-tertiary-container');
+    }, 1500);
+  });
+
+  document.getElementById('retestVerseBtn')?.addEventListener('click', function() {
+    const ring = document.getElementById('accuracyRing');
+    if (ring) {
+      ring.style.strokeDashoffset = "125.6";
+      setTimeout(() => {
+        ring.style.strokeDashoffset = "7.28";
+      }, 500);
+    }
+  });
+</script></main></body></html>

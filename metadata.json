@@ -1,0 +1,9 @@
+{
+  "name": "NoorWorship - Sacred Worship & Quranic Recitation",
+  "description": "Daily worship tracker, masjid geofence attendance verification, and Quranic recitation support for halaqahs.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

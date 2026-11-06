@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "halaqah": { "type": "string" },
+        "halaqahCode": { "type": "string" },
+        "role": { "type": "string", "enum": ["member", "admin", "dept-hx", "hq-admin"] },
+        "totalXp": { "type": "integer" },
+        "streakDays": { "type": "integer" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "totalXp", "streakDays"]
+    },
+    "IbadahDirective": {
+      "title": "Ibadah Directive",
+      "description": "Task template created by Ustadz",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["yaumiyah", "usbu'iyah"] },
+        "title": { "type": "string" },
+        "target": { "type": "string" },
+        "xp": { "type": "integer" },
+        "status": { "type": "string", "enum": ["Aktif", "Selesai"] },
+        "category": { "type": "string" },
+        "compliancePercent": { "type": "integer" }
+      },
+      "required": ["id", "type", "title", "xp", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Student task completion record",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "completedAt": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["studentId", "isCompleted"]
+    },
+    "HalaqahAttendanceSession": {
+      "title": "Halaqah Attendance Session",
+      "description": "Attendance log filled by Ustadz for halaqah members and ustadz itself, synced with Dept HX",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "halaqahName": { "type": "string" },
+        "date": { "type": "string" },
+        "timeStr": { "type": "string" },
+        "sessionTitle": { "type": "string" },
+        "location": { "type": "string" },
+        "ustadzId": { "type": "string" },
+        "ustadzName": { "type": "string" },
+        "ustadzStatus": { "type": "string", "enum": ["hadir", "izin", "sakit", "pengganti"] },
+        "totalMembers": { "type": "integer" },
+        "presentCount": { "type": "integer" },
+        "attendanceRate": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "halaqahName", "date", "sessionTitle", "ustadzId", "ustadzName", "ustadzStatus", "totalMembers", "presentCount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Global users directory"
+    },
+    "/ibadahDirectives/{directiveId}": {
+      "schema": "IbadahDirective",
+      "description": "Tasks assigned by Ustadz"
+    },
+    "/ibadahDirectives/{directiveId}/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Individual student completions for a task"
+    },
+    "/halaqahAttendanceSessions/{sessionId}": {
+      "schema": "HalaqahAttendanceSession",
+      "description": "Attendance sessions created by Ustadz, synced with Dept HX"
+    }
+  }
+}
