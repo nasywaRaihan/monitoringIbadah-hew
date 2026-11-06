@@ -17,7 +17,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   // Navigation items customized per role:
   // - Santri (member): Ibadah, Peringkat, Tilawah
-  // - Ustadz (admin): Dashboard, Santri (list santri di halaqah), Peringkat
+  // - Ustadz (admin): Dashboard, Karyawan (list binaan), Peringkat
   // - Dept HX / HQ: Dashboard (Dept HX), Tilawah, Peringkat
   let navItems: { id: TabType; label: string; icon: string }[];
 
@@ -34,7 +34,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       { id: 'leaderboard', label: 'Peringkat', icon: 'emoji_events' }
     ];
   } else {
-    // Akun Dept HX / HQ: Menu Dept HX dinamakan Dashboard, Tilawah, dan Peringkat
     navItems = [
       { id: 'dept-hx', label: 'Dashboard', icon: 'dashboard' },
       { id: 'recitation', label: 'Tilawah', icon: 'mic' },
@@ -44,10 +43,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-[#f9f9ff]/92 backdrop-blur-xl border-t border-[#1b4332]/8 shadow-[0_-2px_16px_rgba(1,45,29,0.06)]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="fixed bottom-0 left-0 right-0 z-50 bg-[#f9f9ff]/95 backdrop-blur-xl border-t border-[#1b4332]/8 shadow-[0_-2px_16px_rgba(1,45,29,0.06)]"
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
+      aria-label="Navigasi Bawah Utama"
     >
-      <div className="flex items-center justify-around h-16 max-w-4xl mx-auto px-2">
+      <div className="flex items-center justify-around h-16 max-w-md md:max-w-xl mx-auto px-3">
         {navItems.map((item) => {
           const isActive =
             currentTab === item.id ||
@@ -56,26 +56,35 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             <button
               key={item.id}
               onClick={() => onChangeTab(item.id)}
-              className={`flex flex-col items-center justify-center min-w-[68px] h-12 gap-0.5 transition-all relative cursor-pointer ${
-                isActive
-                  ? 'text-[#1b4332] font-semibold'
-                  : 'text-[#414844] hover:text-[#012d1d]'
-              }`}
+              className="flex flex-col items-center justify-center flex-1 min-h-[52px] py-1 transition-all relative cursor-pointer select-none group active:scale-95"
+              aria-current={isActive ? 'page' : undefined}
             >
-              <span
-                className={`material-symbols-outlined text-[22px] transition-transform ${
-                  isActive ? 'scale-110' : ''
+              {/* Material Design 3 Active Pill Indicator */}
+              <div
+                className={`relative flex items-center justify-center w-14 h-8 rounded-full transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#c1ecd4] text-[#002114] shadow-2xs'
+                    : 'text-[#414844] group-hover:bg-[#1b4332]/5 group-hover:text-[#012d1d]'
                 }`}
-                style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
               >
-                {item.icon}
-              </span>
-              <span className="text-[11px] tracking-tight leading-none">
+                <span
+                  className="material-symbols-outlined text-[22px] transition-transform"
+                  style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {item.icon}
+                </span>
+              </div>
+
+              {/* Label */}
+              <span
+                className={`text-[11px] mt-1 tracking-tight leading-none transition-colors ${
+                  isActive
+                    ? 'font-bold text-[#002114]'
+                    : 'font-medium text-[#414844] group-hover:text-[#012d1d]'
+                }`}
+              >
                 {item.label}
               </span>
-              {isActive && (
-                <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-[#1b4332]" />
-              )}
             </button>
           );
         })}

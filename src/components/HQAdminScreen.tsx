@@ -1152,52 +1152,52 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       </section>
 
       {/* Dept HX View Mode Selector */}
-      <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl shadow-sm border border-[#1b4332]/15 flex-wrap">
+      <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl shadow-xs border border-[#1b4332]/10 overflow-x-auto no-scrollbar scroll-smooth">
         <button
           onClick={() => { setDeptHxTab('halaqah'); setSelectedHalaqahGroup(null); }}
-          className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'halaqah'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">groups</span>
+          <span className="material-symbols-outlined text-[18px]">groups</span>
           <span>Lihat Halaqah</span>
         </button>
         <button
           onClick={() => { setDeptHxTab('students'); setSelectedHalaqahGroup(null); }}
-          className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'students'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">badge</span>
+          <span className="material-symbols-outlined text-[18px]">badge</span>
           <span>List Karyawan</span>
         </button>
         <button
           onClick={() => { setDeptHxTab('amalan-paten'); setSelectedHalaqahGroup(null); }}
-          className={`flex-1 min-w-[140px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'amalan-paten'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px] text-[#fed488]">checklist_rtl</span>
-          <span>Amalan Pasti </span>
+          <span className="material-symbols-outlined text-[18px] text-[#fed488]">checklist_rtl</span>
+          <span>Amalan Pasti</span>
           <span className="px-1.5 py-0.2 rounded-full bg-[#fed488] text-[#261900] text-[9px] font-bold">
-            11 
+            11
           </span>
         </button>
         <button
           onClick={() => { setDeptHxTab('presensi'); setSelectedHalaqahGroup(null); }}
-          className={`flex-1 min-w-[130px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'presensi'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px] text-[#92f7c3]">how_to_reg</span>
+          <span className="material-symbols-outlined text-[18px] text-[#92f7c3]">how_to_reg</span>
           <span>Rekap Presensi</span>
           {activeAttendanceSessions.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
@@ -1207,13 +1207,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         </button>
         <button
           onClick={() => { setDeptHxTab('tugas-ustadz'); setSelectedHalaqahGroup(null); }}
-          className={`flex-1 min-w-[140px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'tugas-ustadz'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">assignment_turned_in</span>
+          <span className="material-symbols-outlined text-[18px]">assignment_turned_in</span>
           <span>Tugas Ustadz</span>
           {ibadahDirectives && ibadahDirectives.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">

@@ -2712,7 +2712,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             aria-label="Tombol Rekam Tilawah"
             title={isRecording ? 'Hentikan Rekaman & Hitung Koreksi' : 'Mulai Rekam Suara'}
             className={`relative ${
-              recordedAudioUrl ? 'w-14 h-14' : 'w-full h-14'
+              recordedAudioUrl ? 'w-14 h-14 shrink-0' : 'w-full h-14'
             } rounded-full flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer ${
               isRecording
                 ? 'bg-[#ba1a1a] text-white animate-pulse ring-4 ring-[#ffdad6]'
@@ -2722,7 +2722,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             <span className="material-symbols-outlined text-[28px]">
               {isRecording ? 'stop' : 'mic'}
             </span>
-            <span className="font-bold text-sm">
+            <span className={`font-bold text-sm ${recordedAudioUrl ? 'hidden' : 'inline'}`}>
               {isRecording ? 'Hentikan & Koreksi' : 'Mulai Rekam Tilawah'}
             </span>
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#fed488]" />

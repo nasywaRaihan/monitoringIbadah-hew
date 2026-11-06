@@ -708,46 +708,46 @@ export default function AdminScreen({
       </div>
 
       {/* Tab Switcher Konsol Ustadz */}
-      <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl shadow-sm border border-[#1b4332]/10 flex-wrap">
+      <div className="grid grid-cols-3 gap-1 p-1 bg-white rounded-2xl shadow-xs border border-[#1b4332]/10">
         <button
           onClick={() => setDashboardTab('halaqah')}
-          className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
             dashboardTab === 'halaqah'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">checklist_rtl</span>
-          <span>Tugas &amp; Mutaba'ah</span>
+          <span className="material-symbols-outlined text-[18px]">checklist_rtl</span>
+          <span className="truncate">Tugas</span>
         </button>
 
         <button
           onClick={() => setDashboardTab('presensi')}
-          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 relative ${
             dashboardTab === 'presensi'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px] text-[#92f7c3]">how_to_reg</span>
-          <span>Presensi Halaqah</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+          <span className="material-symbols-outlined text-[18px] text-[#92f7c3]">how_to_reg</span>
+          <span className="truncate">Presensi</span>
+          <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
             dashboardTab === 'presensi' ? 'bg-[#92f7c3] text-[#002114]' : 'bg-[#c1ecd4] text-[#002114]'
           }`}>
-            Sinkron HX
+            HX
           </span>
         </button>
 
         <button
           onClick={() => setDashboardTab('students')}
-          className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
             dashboardTab === 'students'
-              ? 'bg-[#012d1d] text-white shadow-sm'
+              ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">groups</span>
-          <span>Data Binaan ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
+          <span className="material-symbols-outlined text-[18px]">groups</span>
+          <span className="truncate">Binaan ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
         </button>
       </div>
 

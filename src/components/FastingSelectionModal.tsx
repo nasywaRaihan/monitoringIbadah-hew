@@ -19,6 +19,8 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
   const dayNames = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const currentDayName = dayNames[dayIndex];
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   // Auto recommend based on today
@@ -29,7 +31,7 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
     const match = checkFastingMatch(chosen.id, now);
 
     if (!match.isValid) {
-      alert(match.message);
+      setErrorMessage(match.message);
       return;
     }
 
@@ -45,7 +47,7 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#1b4332]/10 animate-in zoom-in-95 duration-200 my-auto flex flex-col space-y-4">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-[#1b4332]/10 animate-in zoom-in-95 duration-200 my-auto flex flex-col space-y-3.5 max-h-[88vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start gap-3 pb-3 border-b border-[#f1f3ff]">
           <div className="w-12 h-12 rounded-2xl bg-[#fed488]/30 text-[#775a19] flex items-center justify-center shrink-0 shadow-sm">
@@ -160,12 +162,20 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
           />
         </div>
 
+        {/* Error Notification if any */}
+        {errorMessage && (
+          <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-red-600 shrink-0">error</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 pt-1">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#e9edff] text-xs font-bold text-[#414844] transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#e9edff] text-xs font-bold text-[#414844] transition-colors cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
           >
             Batal
           </button>
@@ -173,13 +183,13 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
             type="button"
             onClick={handleConfirm}
             disabled={matchResult ? !matchResult.isValid : false}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer ${
+            className={`w-full flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer min-h-[46px] ${
               matchResult && !matchResult.isValid
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-[#00452c] hover:bg-[#012d1d]'
             }`}
           >
-            <span className="material-symbols-outlined text-[17px]">how_to_reg</span>
+            <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
             <span>Konfirmasi Puasa Sunnah (+10 XP)</span>
           </button>
         </div>

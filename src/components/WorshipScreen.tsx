@@ -514,22 +514,22 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
           </div>
 
           {/* 5 Daily Prayer Times Strip */}
-          <div className="grid grid-cols-5 gap-1.5 pt-1">
+          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 pt-1">
             {prayerTimesList.filter((p) => p.isPrayer).map((p) => {
               const isNext = p.id === nextPrayer.id;
               return (
                 <div
                   key={p.id}
-                  className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all ${
+                  className={`flex flex-col items-center justify-center py-2 px-0.5 sm:px-1 rounded-xl sm:rounded-2xl transition-all ${
                     isNext
                       ? 'bg-[#fed488]/25 border border-[#fed488] text-white shadow-sm ring-1 ring-[#fed488]/50'
                       : 'bg-white/5 hover:bg-white/10 text-[#dce2f7] border border-white/5'
                   }`}
                 >
-                  <span className={`text-[10px] font-bold tracking-tight uppercase ${isNext ? 'text-[#fed488]' : 'text-[#86af99]'}`}>
+                  <span className={`text-[9px] sm:text-[10px] font-bold tracking-tight uppercase truncate max-w-full ${isNext ? 'text-[#fed488]' : 'text-[#86af99]'}`}>
                     {p.name}
                   </span>
-                  <span className="text-xs font-bold font-mono mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-bold font-mono tabular-nums mt-0.5 whitespace-nowrap">
                     {p.timeStr}
                   </span>
                   {isNext && (
@@ -643,26 +643,27 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
               return (
                 <div
                   key={task.id}
-                  className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 flex flex-col space-y-3"
+                  className="p-3.5 sm:p-4 rounded-2xl bg-white shadow-xs border border-[#1b4332]/8 flex flex-col space-y-3"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
                       <button
                         onClick={() => onToggleTask(task.id)}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center mt-0.5 shrink-0 transition-colors cursor-pointer ${
+                        aria-label="Setor atau putar tilawah"
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mt-0.5 shrink-0 transition-transform active:scale-95 cursor-pointer ${
                           task.completed
-                            ? 'bg-[#775a19] text-white'
+                            ? 'bg-[#775a19] text-white shadow-2xs'
                             : 'bg-[#e9edff] text-[#012d1d] hover:bg-[#dce2f7]'
                         }`}
                       >
-                        <span className="material-symbols-outlined text-[16px]">
+                        <span className="material-symbols-outlined text-[18px]">
                           {task.completed ? 'check' : 'play_arrow'}
                         </span>
                       </button>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h4
-                            className={`font-semibold text-sm sm:text-base text-[#141b2b] truncate ${
+                            className={`font-bold text-sm sm:text-base text-[#141b2b] truncate ${
                               task.completed ? 'line-through opacity-75' : ''
                             }`}
                           >
@@ -681,35 +682,35 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                         <p className="text-xs text-[#414844] mt-0.5">{task.category}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-[#012d1d] shrink-0">
+                    <span className="text-xs sm:text-sm font-bold text-[#012d1d] shrink-0 bg-[#e9fbf2] px-2 py-0.5 rounded-lg">
                       +{task.xp} XP
                     </span>
                   </div>
 
-                  {/* Action Tray */}
-                  <div className="flex items-center justify-between pt-1 border-t border-[#f1f3ff]">
+                  {/* Action Tray: Responsive mobile stack */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-[#f1f3ff]">
                     <div className="flex items-center gap-1.5 text-[#414844] text-xs font-medium">
                       <span className="material-symbols-outlined text-[16px] text-[#012d1d]">
                         graphic_eq
                       </span>
-                      Pengukuran Tajwid &amp; Suara AI
+                      <span>Pengukuran Tajwid &amp; Suara AI</span>
                     </div>
                     <button
                       onClick={handleStartRecitationTest}
                       disabled={isOpeningStudio}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1b4332] hover:bg-[#012d1d] text-white text-xs font-semibold shadow-sm active:scale-95 transition-all cursor-pointer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl sm:rounded-full bg-[#1b4332] hover:bg-[#012d1d] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer min-h-[42px]"
                     >
                       {isOpeningStudio ? (
                         <>
                           <span className="material-symbols-outlined text-[16px] animate-spin">
                             refresh
                           </span>
-                          Membuka Studio...
+                          <span>Membuka Studio...</span>
                         </>
                       ) : (
                         <>
                           <span className="material-symbols-outlined text-[16px]">mic</span>
-                          Mulai Ujian Sekarang
+                          <span>Mulai Ujian Sekarang</span>
                         </>
                       )}
                     </button>
@@ -722,11 +723,11 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
               return (
                 <div
                   key={task.id}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-[#f1f3ff] shadow-sm border border-[#1b4332]/5 opacity-90"
+                  className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-[#f1f3ff] shadow-xs border border-[#1b4332]/5 opacity-90 gap-2.5"
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-[#dce2f7] text-[#414844] flex items-center justify-center mt-0.5 shrink-0">
-                      <span className="material-symbols-outlined text-[15px]">lock</span>
+                  <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#dce2f7] text-[#414844] flex items-center justify-center mt-0.5 shrink-0">
+                      <span className="material-symbols-outlined text-[16px]">lock</span>
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-sm sm:text-base text-[#141b2b] truncate">
@@ -738,9 +739,9 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#dce2f7] text-[#414844] text-xs font-medium shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#dce2f7] text-[#414844] text-[11px] sm:text-xs font-medium shrink-0">
                     <span className="material-symbols-outlined text-[14px]">lock</span>
-                    {task.lockReason || 'Amalan Belum Masuk Waktu'}
+                    <span className="truncate max-w-[120px] sm:max-w-none">{task.lockReason || 'Belum Masuk Waktu'}</span>
                   </span>
                 </div>
               );
@@ -751,24 +752,24 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
               <div
                 key={task.id}
                 onClick={() => handleTaskClick(task)}
-                className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 cursor-pointer hover:bg-[#f9f9ff] transition-colors"
+                className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white shadow-xs border border-[#1b4332]/5 cursor-pointer hover:bg-[#f9f9ff] active:scale-[0.99] transition-all gap-2.5 select-none"
               >
-                <div className="flex items-start gap-3 min-w-0">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mt-0.5 shrink-0 transition-all ${
                       task.completed
-                        ? 'bg-[#00452c] text-white'
-                        : 'border-2 border-[#717973] hover:border-[#012d1d]'
+                        ? 'bg-[#00452c] text-white shadow-2xs'
+                        : 'border-2 border-[#717973] hover:border-[#012d1d] bg-[#f9f9ff]'
                     }`}
                   >
                     {task.completed && (
-                      <span className="material-symbols-outlined text-[16px]">check</span>
+                      <span className="material-symbols-outlined text-[18px]">check</span>
                     )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <h4
-                        className={`font-semibold text-sm sm:text-base text-[#141b2b] truncate ${
+                        className={`font-bold text-sm sm:text-base text-[#141b2b] truncate ${
                           task.completed ? 'line-through opacity-70' : ''
                         }`}
                       >
@@ -819,10 +820,10 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                       task.completed
                         ? 'bg-[#e9edff] text-[#414844]'
-                        : 'bg-[#f1f3ff] text-[#012d1d] font-semibold'
+                        : 'bg-[#00452c] text-white shadow-2xs'
                     }`}
                   >
                     {task.completed ? 'Selesai' : 'Tandai Selesai'}
@@ -835,10 +836,10 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                         e.stopPropagation();
                         setTaskToDeleteInWorship(task);
                       }}
-                      className="p-1 rounded-lg text-[#717973] hover:text-[#ba1a1a] hover:bg-red-50 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-[#717973] hover:text-[#ba1a1a] hover:bg-red-50 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
                       title="Hapus amalan halaqah ini"
                     >
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   )}
                 </div>
@@ -919,7 +920,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       {/* Modal: Sesuaikan Daerah & Waktu Shalat Berdasarkan Lokasi Kunjungan */}
       {showRegionModal && (
         <div className="fixed inset-0 z-50 bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl text-[#141b2b] space-y-4 my-auto relative border border-[#c1ecd4]">
+          <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl text-[#141b2b] space-y-3.5 my-auto relative border border-[#c1ecd4] max-h-[88vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-2.5">

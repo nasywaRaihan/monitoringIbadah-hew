@@ -594,21 +594,21 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                         </div>
 
                         {/* Status Buttons & Notes */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
+                          <div className="grid grid-cols-4 sm:flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
                             {(
                               [
-                                { key: 'hadir' as const, label: 'Hadir', badge: 'H', activeCls: 'bg-[#00452c] text-white shadow-xs' },
-                                { key: 'izin' as const, label: 'Izin', badge: 'I', activeCls: 'bg-blue-600 text-white shadow-xs' },
-                                { key: 'sakit' as const, label: 'Sakit', badge: 'S', activeCls: 'bg-amber-600 text-white shadow-xs' },
-                                { key: 'alpa' as const, label: 'Alpa', badge: 'A', activeCls: 'bg-rose-600 text-white shadow-xs' }
+                                { key: 'hadir' as const, label: 'Hadir', activeCls: 'bg-[#00452c] text-white shadow-xs' },
+                                { key: 'izin' as const, label: 'Izin', activeCls: 'bg-blue-600 text-white shadow-xs' },
+                                { key: 'sakit' as const, label: 'Sakit', activeCls: 'bg-amber-600 text-white shadow-xs' },
+                                { key: 'alpa' as const, label: 'Alpa', activeCls: 'bg-rose-600 text-white shadow-xs' }
                               ] as const
                             ).map((btn) => (
                               <button
                                 key={btn.key}
                                 type="button"
                                 onClick={() => handleMemberStatusChange(member.id, btn.key)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                className={`py-2 px-2.5 sm:py-1 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center active:scale-95 ${
                                   record.status === btn.key
                                     ? btn.activeCls
                                     : 'text-[#414844] hover:bg-gray-100'
@@ -625,8 +625,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                             type="text"
                             value={record.notes}
                             onChange={(e) => handleMemberNoteChange(member.id, e.target.value)}
-                            placeholder="Catatan..."
-                            className="px-2.5 py-1 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#00452c] w-full sm:w-36"
+                            placeholder="Catatan izin/alpa..."
+                            className="px-3 py-2 sm:py-1 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#00452c] w-full sm:w-36 min-h-[38px] sm:min-h-[32px]"
                           />
                         </div>
                       </div>
