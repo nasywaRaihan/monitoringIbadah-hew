@@ -12,6 +12,9 @@
         "role": { "type": "string", "enum": ["member", "admin", "dept-hx", "hq-admin"] },
         "totalXp": { "type": "integer" },
         "streakDays": { "type": "integer" },
+        "lastActiveDate": { "type": "string" },
+        "longestStreak": { "type": "integer" },
+        "activeDates": { "type": "array" },
         "avatar": { "type": "string" }
       },
       "required": ["id", "name", "role", "totalXp", "streakDays"]

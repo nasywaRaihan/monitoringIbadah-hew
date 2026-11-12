@@ -136,7 +136,7 @@ export const RECITATION_AYAHS: RecitationAyah[] = [
     ayahNumber: 1,
     surahName: '110. Surah An-Nasr',
     surahArabic: 'سُورَةُ النَّصْرِ',
-    sheikhAudioUrl: 'https://everyayah.com/data/Alafasy_128kbps/11001.mp3',
+    sheikhAudioUrl: 'https://everyayah.com/data/Alafasy_128kbps/110001.mp3',
     translation: 'Apabila telah datang pertolongan Allah dan kemenangan, dan kamu lihat manusia masuk agama Allah dengan berbondong-bondong.',
     tajweedRule: 'Mad Wajib Muttashil (4-5 Harakat), Tafkhim Shad, & Tafkhim/Tarqiq Raa Waqaf',
     idealDurationMinSec: 10,

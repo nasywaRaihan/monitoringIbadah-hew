@@ -11,6 +11,8 @@ import {
 import { evaluatePrayerWindow, FastingOption } from '../services/amalanPaten';
 import { MuraqabahConfirmModal } from './MuraqabahConfirmModal';
 import { FastingSelectionModal } from './FastingSelectionModal';
+import { StreakModal } from './StreakModal';
+import { hasUserCompletedIbadahToday } from '../services/streakService';
 
 interface WorshipScreenProps {
   tasks: DailyTask[];
@@ -42,6 +44,11 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 }) => {
   const [isOpeningStudio, setIsOpeningStudio] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
+
+  const isDoneToday = useMemo(() => {
+    return hasUserCompletedIbadahToday(activeUser.id) || tasks.some((t) => t.completed);
+  }, [activeUser.id, tasks]);
 
   // Ustadz / Pembimbing privilege check: only Ustadz can add amalan
   const isUstadz = activeUser.role === 'admin' || activeUser.role === 'dept-hx' || activeUser.role === 'hq-admin';
@@ -546,18 +553,35 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* Streak & Ranking Widget */}
       <div className="grid grid-cols-3 gap-2.5">
-        <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center">
-          <div className="flex items-center gap-1 text-[#775a19]">
+        <button
+          type="button"
+          onClick={() => setIsStreakModalOpen(true)}
+          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#e65100]/40 hover:shadow-md transition-all active:scale-95 text-center cursor-pointer relative group"
+          title="Klik untuk melihat kalender runtutan amalan & istiqamah"
+        >
+          <div className="flex items-center gap-1 text-[#e65100]">
             <span
-              className="material-symbols-outlined text-[20px]"
+              className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               local_fire_department
             </span>
-            <span className="text-xl font-bold text-[#141b2b]">{streakDays}</span>
+            <span className="text-xl font-extrabold text-[#141b2b]">{streakDays}</span>
           </div>
-          <span className="text-xs text-[#414844] mt-0.5">Runtutan Hari</span>
-        </div>
+          <span className="text-xs text-[#414844] mt-0.5 flex items-center gap-1">
+            <span>Runtutan Hari</span>
+            <span className="material-symbols-outlined text-[13px] text-[#717973]">info</span>
+          </span>
+          {isDoneToday ? (
+            <span className="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full bg-[#e8f5e9] text-[#00452c] text-[9px] font-bold border border-[#c1ecd4]">
+              Aktif 🔥
+            </span>
+          ) : (
+            <span className="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full bg-[#fff8e1] text-[#785a1a] text-[9px] font-bold border border-[#ffe082]">
+              Detail
+            </span>
+          )}
+        </button>
 
         <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center">
           <div className="flex items-center gap-1 text-[#012d1d]">
@@ -1340,6 +1364,15 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Streak Details & Activity Calendar Modal */}
+      <StreakModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        activeUser={activeUser}
+        streakDays={streakDays}
+        onNavigateToRecitation={onNavigateToRecitation}
+      />
     </div>
   );
 };

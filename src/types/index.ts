@@ -133,6 +133,9 @@ export interface ActiveUser {
   role: 'member' | 'admin' | 'dept-hx' | 'hq-admin';
   totalXp: number;
   streakDays: number;
+  lastActiveDate?: string;
+  longestStreak?: number;
+  activeDates?: string[];
   assignedHalaqahBy?: string; // 'Dept HX'
   hxAssignmentId?: string;
   hxStatus?: 'Resmi Dept HX' | 'Terdaftar';

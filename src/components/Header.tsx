@@ -129,9 +129,16 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-[11px] text-[#414844] truncate mt-0.5">
                       {activeUser?.halaqah || 'Halaqah Al-Fajr'}
                     </p>
-                    <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
-                      {activeUser?.role === 'admin' ? 'Ustadz Pembimbing' : 'Karyawan Aktif'}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
+                        {activeUser?.role === 'admin' ? 'Ustadz Pembimbing' : 'Karyawan Aktif'}
+                      </span>
+                      {activeUser?.streakDays !== undefined && (
+                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[#fff8e1] text-[#785a1a] text-[9px] font-bold border border-[#ffe082]">
+                          🔥 {activeUser.streakDays} Hari
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {onLogout && (

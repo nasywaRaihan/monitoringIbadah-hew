@@ -60,6 +60,7 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { ImportedReciterRecord, downloadPerColumnCSV } from './services/csvExport';
 import { DeptHXPasscodeModal } from './components/DeptHXPasscodeModal';
 import { getStoredStandardAmalan } from './services/amalanPaten';
+import { recordDailyActivityStreak, evaluateStreakOnLoad } from './services/streakService';
 
 export default function App() {
   // Splash & Authentication Lifecycle State
@@ -482,6 +483,15 @@ export default function App() {
       console.warn('Failed saving active user to localStorage', e);
     }
   }, [activeUser]);
+
+  // Evaluate & maintain streak consistency on load / user switch
+  useEffect(() => {
+    if (!activeUser?.id) return;
+    const evaluated = evaluateStreakOnLoad(activeUser);
+    if (evaluated.currentStreak !== streakDays) {
+      setStreakDays(evaluated.currentStreak);
+    }
+  }, [activeUser?.id]);
 
   // Guard: Role-based strict tab enforcement
   useEffect(() => {
@@ -952,16 +962,40 @@ export default function App() {
       )
     );
 
+    const streakResult = recordDailyActivityStreak(activeUser);
     const newXp = totalXp + finalXp;
     setTotalXp(newXp);
-    const updatedUser = { ...activeUser, totalXp: newXp };
+    setStreakDays(streakResult.streakDays);
+
+    const updatedUser: ActiveUser = {
+      ...activeUser,
+      totalXp: newXp,
+      streakDays: streakResult.streakDays,
+      longestStreak: streakResult.longestStreak,
+      lastActiveDate: streakResult.lastActiveDate,
+      activeDates: streakResult.activeDates
+    };
     setActiveUser(updatedUser);
 
+    setRegisteredUsers((prev) =>
+      prev.map((u) => (u.id === activeUser.id ? updatedUser : u))
+    );
+
     try {
-      await setDoc(doc(db, 'users', activeUser.id), { totalXp: newXp }, { merge: true });
+      await setDoc(
+        doc(db, 'users', activeUser.id),
+        {
+          totalXp: newXp,
+          streakDays: streakResult.streakDays,
+          longestStreak: streakResult.longestStreak,
+          lastActiveDate: streakResult.lastActiveDate,
+          activeDates: streakResult.activeDates
+        },
+        { merge: true }
+      );
       localStorage.setItem('noorworship_active_user_v2', JSON.stringify(updatedUser));
     } catch (e) {
-      console.error('Error syncing user XP:', e);
+      console.error('Error syncing user XP & Streak:', e);
     }
 
     if (task.directiveId) {
@@ -984,7 +1018,11 @@ export default function App() {
       }
     }
 
-    showToast(`Alhamdulillah! +${finalXp} XP diraih untuk amalan "${task.title}" (terkunci)`);
+    if (streakResult.isNewDayStreak) {
+      showToast(`${streakResult.statusMessage} (+${finalXp} XP "${task.title}")`);
+    } else {
+      showToast(`Alhamdulillah! +${finalXp} XP diraih untuk amalan "${task.title}" (terkunci)`);
+    }
 
     if (googleToken && spreadsheet) {
       try {
@@ -1074,11 +1112,19 @@ export default function App() {
       // Dept HX evaluation: Internal to Dept HX only! (Does NOT add XP to Klasemen)
       showToast(`Hasil evaluasi tilawah Dept HX tersimpan privat di Rekap Internal HX (Tidak memengaruhi Klasemen Karyawan).`);
     } else if (isUstadz && targetStudentId) {
-      // Ustadz evaluation: Adds XP to Karyawan for Klasemen!
+      // Ustadz evaluation: Adds XP to Karyawan for Klasemen & marks student streak!
       setRegisteredUsers((prev) =>
         prev.map((usr) => {
           if (usr.id === targetStudentId) {
-            const updatedStudent = { ...usr, totalXp: (usr.totalXp || 0) + earnedXp };
+            const studentStreak = recordDailyActivityStreak(usr);
+            const updatedStudent: ActiveUser = {
+              ...usr,
+              totalXp: (usr.totalXp || 0) + earnedXp,
+              streakDays: studentStreak.streakDays,
+              longestStreak: studentStreak.longestStreak,
+              lastActiveDate: studentStreak.lastActiveDate,
+              activeDates: studentStreak.activeDates
+            };
             setDoc(doc(db, 'users', targetStudentId), updatedStudent, { merge: true }).catch((e) => {
               console.error('Error syncing student XP to Firestore:', e);
             });
@@ -1090,13 +1136,33 @@ export default function App() {
       showToast(`Alhamdulillah! Nilai tilawah Ustadz untuk ${details?.studentName || 'Karyawan'} tersimpan (+${earnedXp} XP Klasemen).`);
     } else if (!isDeptHX && !isUstadz) {
       // Regular employee self-tilawah submission (guided by Ustadz)
+      const streakResult = recordDailyActivityStreak(activeUser);
       const newXp = totalXp + earnedXp;
       setTotalXp(newXp);
-      const updatedUser = { ...activeUser, totalXp: newXp };
+      setStreakDays(streakResult.streakDays);
+
+      const updatedUser: ActiveUser = {
+        ...activeUser,
+        totalXp: newXp,
+        streakDays: streakResult.streakDays,
+        longestStreak: streakResult.longestStreak,
+        lastActiveDate: streakResult.lastActiveDate,
+        activeDates: streakResult.activeDates
+      };
       setActiveUser(updatedUser);
+
+      setRegisteredUsers((prev) =>
+        prev.map((u) => (u.id === activeUser.id ? updatedUser : u))
+      );
+
       try {
         await setDoc(doc(db, 'users', activeUser.id), updatedUser, { merge: true });
+        localStorage.setItem('noorworship_active_user_v2', JSON.stringify(updatedUser));
       } catch (e) {}
+
+      if (streakResult.isNewDayStreak) {
+        showToast(`Alhamdulillah! ${streakResult.statusMessage} (+${earnedXp} XP Ujian Tilawah)`);
+      }
     }
 
     const todayStr = new Date().toISOString().split('T')[0];

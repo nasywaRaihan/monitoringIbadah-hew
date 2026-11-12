@@ -3,7 +3,7 @@ import { RECITATION_AYAHS, RecitationAyah, AyahWord } from '../data/recitationVe
 import { ActiveUser } from '../types';
 import { logRecitationToSheets } from '../services/googleSheets';
 import { downloadPerColumnCSV } from '../services/csvExport';
-import { runLocalTarteelModel } from '../services/localEvaluator';
+import { runLocalTarteelModel, simulateRecitationProfile, FeasibilityProfile } from '../services/localEvaluator';
 
 export interface RecitationExamRecord {
   id: string;
@@ -971,6 +971,53 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
     onShowToast(`Menyiapkan pengujian ulang untuk ${currentAyah.surahName}...`);
     setTimeout(() => {
       startRecording();
+    }, 400);
+  };
+
+  // Instant Feasibility Simulator for any of the 37 surahs in Juz 30 (Zero-Cost Testing)
+  const handleSimulateFeasibility = (profile: FeasibilityProfile) => {
+    if (isRecording) {
+      onShowToast('Hentikan rekaman mikrofon terlebih dahulu.');
+      return;
+    }
+    if (isPlayingSheikh && sheikhAudioRef.current) {
+      sheikhAudioRef.current.pause();
+      setIsPlayingSheikh(false);
+    }
+    if (isPlayingUserAudio && userAudioRef.current) {
+      userAudioRef.current.pause();
+      setIsPlayingUserAudio(false);
+    }
+
+    setIsAnalyzing(true);
+    setIsSilenceDetected(false);
+
+    const profileLabels: Record<FeasibilityProfile, string> = {
+      mumtaz: 'Tartil Mumtaz (97%)',
+      hurried: 'Tempo Cepat & Mad Tergesa (84%)',
+      makhraj_fix: 'Perbaikan Makhraj Huruf (76%)',
+    };
+
+    setAnalysisStep(`Menjalankan simulasi kelayakan tilawah: ${profileLabels[profile]}...`);
+
+    setTimeout(() => {
+      const data = simulateRecitationProfile(currentAyah, profile);
+      setIsAnalyzing(false);
+      setIsSilenceDetected(false);
+      setOverallScore(data.overallScore);
+      setMakhrajScore(data.makhrajScore);
+      setTajweedScore(data.tajweedScore);
+      setFluencyScore(data.fluencyScore);
+      setDetectedSurahName(data.detectedSurah);
+      setUstadzFeedback(data.ustadzFeedback);
+      setEvaluatedWords(data.words);
+      setRecordSeconds(data.simulatedDurationSec || currentAyah.idealDurationMinSec || 15);
+
+      const faultyWord = data.words.find((w) => w.status === 'error' || w.status === 'warning');
+      setSelectedWord((faultyWord || data.words[0]) as any);
+
+      setIsEvaluated(true);
+      onShowToast(`🧪 Uji Kelayakan [${profileLabels[profile]}] berhasil untuk ${currentAyah.surahName}! Simak evaluasi kata di bawah.`);
     }, 400);
   };
 
@@ -2694,6 +2741,57 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
 
       {/* Bottom Main Actions: Microphone and Submit */}
       <section className="space-y-3 pt-1">
+        {/* Panel Uji Kelayakan Cepat (Feasibility Test Simulator for Juz 30) */}
+        <div className="p-3 bg-[#f1f3ff] rounded-2xl border border-[#1b4332]/10 space-y-2 text-left shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d]">
+              <span className="material-symbols-outlined text-[17px] text-[#00452c]">science</span>
+              <span>Uji Kelayakan Instan (Simulasi 3 Profil)</span>
+            </div>
+            <span className="text-[10px] font-semibold text-[#00452c] bg-[#c1ecd4] px-2 py-0.5 rounded-full">
+              100% Gratis • Tanpa Mic
+            </span>
+          </div>
+          <p className="text-[11px] text-[#414844] leading-relaxed">
+            Pilih skenario untuk menguji kelayakan analisis tajwid surah <strong>{currentAyah.surahName}</strong> secara instan:
+          </p>
+          <div className="grid grid-cols-3 gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={() => handleSimulateFeasibility('mumtaz')}
+              disabled={isRecording || isAnalyzing}
+              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#c1ecd4]/50 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#00452c]">
+                <span>🌟 Mumtaz</span>
+              </div>
+              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Tartil fasih ~97%</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSimulateFeasibility('hurried')}
+              disabled={isRecording || isAnalyzing}
+              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#ffe082]/30 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#785a1a]">
+                <span>⚠️ Cepat</span>
+              </div>
+              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Mad kurang ~84%</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSimulateFeasibility('makhraj_fix')}
+              disabled={isRecording || isAnalyzing}
+              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#ffdad6]/40 border border-[#ba1a1a]/20 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a]">
+                <span>❌ Makhraj</span>
+              </div>
+              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Perlu koreksi ~76%</p>
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           {/* Retest Trigger (only shown if already recorded or evaluated) */}
           {recordedAudioUrl && (
