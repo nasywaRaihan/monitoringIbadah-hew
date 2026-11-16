@@ -291,7 +291,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             JejakTaqwa
           </h1>
           <p className="text-xs text-[#414844] mt-1">
-            Aplikasi monitoring ibadah karyawan PT Herba Emas Wahidatama
+            Sistem Halaqoh • Muthoba'ah dan Hafalan
           </p>
         </div>
 
