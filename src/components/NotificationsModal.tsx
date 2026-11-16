@@ -74,10 +74,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
-      <div className="w-full max-w-md bg-[#ffffff] rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-200">
-        <div className="w-10 h-1 bg-[#dce2f7] rounded-full mx-auto mb-3 sm:hidden" />
-        
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 transition-opacity">
+      <div className="w-full max-w-md bg-[#ffffff] rounded-3xl p-5 shadow-2xl border border-[#1b4332]/10 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between pb-3 border-b border-[#e9edff]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#1b4332]/10 flex items-center justify-center text-[#012d1d]">

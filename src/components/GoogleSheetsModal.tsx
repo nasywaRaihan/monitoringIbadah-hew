@@ -154,7 +154,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
   const uniqueHalaqahs = Array.from(new Set(parsedData.map((d) => d.halaqah)));
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#1b4332]/10 animate-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col">
         {/* Close Button */}
         <button

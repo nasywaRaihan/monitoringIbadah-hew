@@ -339,58 +339,58 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-3 space-y-4 max-w-4xl mx-auto pb-28">
       {/* Halaqah Header Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#012d1d] text-white p-5 shadow-md">
+      <div className="relative overflow-hidden rounded-2xl bg-[#012d1d] text-white p-3.5 sm:p-5 shadow-md">
         <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-[#00452c]/40 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 w-36 h-36 rounded-full bg-[#fed488]/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-[#ffdea5]">
-                <span className="material-symbols-outlined text-[18px]">groups</span>
+        <div className="relative z-10 flex flex-col gap-2.5 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 text-[#ffdea5] shrink-0">
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">groups</span>
               </span>
-              <span className="text-xs uppercase tracking-wider text-[#86af99] font-bold">
+              <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#86af99] font-bold truncate">
                 Direktori Karyawan Binaan
               </span>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-[#92f7c3] animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/10 text-white text-[10px] sm:text-xs font-semibold backdrop-blur-md shrink-0 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#92f7c3] animate-pulse shrink-0" />
               Kode: {halaqahCode}
             </span>
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
               {currentHalaqah}
             </h2>
-            <p className="text-xs text-[#86af99] mt-0.5">
+            <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
               Ustadz Pembimbing: <strong className="text-white">{supervisorName}</strong> • {students.length} Karyawan Binaan Aktif
             </p>
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Karyawan Mumtaz</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-[#ffdea5]">{mumtazCount}</span>
-                <span className="text-xs text-[#ffdea5]/80">/{students.length}</span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Mumtaz</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-[#ffdea5] tabular-nums leading-none">{mumtazCount}</span>
+                <span className="text-[10px] sm:text-xs text-[#ffdea5]/80 leading-tight">/{students.length}</span>
               </div>
             </div>
 
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Presensi Jamaah</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-white">{avgAttendance}%</span>
-                <span className="text-xs text-[#92f7c3] font-semibold">Tepat Waktu</span>
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Presensi Jamaah</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">{avgAttendance}%</span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Tepat Waktu</span>
               </div>
             </div>
 
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Rata-rata Tajwid</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-white">{avgTajweed}%</span>
-                <span className="material-symbols-outlined text-[13px] text-[#92f7c3]">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Rata-rata Tajwid</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">{avgTajweed}%</span>
+                <span className="material-symbols-outlined text-[12px] sm:text-[13px] text-[#92f7c3] shrink-0">
                   verified
                 </span>
               </div>
@@ -566,7 +566,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
 
       {/* Student Detail & Guidance Modal */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between pb-3 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-3">
@@ -676,7 +676,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       )}
       {/* Pop Up Konfirmasi Hapus Karyawan */}
       {deletingStudentTarget && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-red-100 text-center">
             <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
               <span className="material-symbols-outlined text-[30px]">person_remove</span>

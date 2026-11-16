@@ -492,3 +492,117 @@ export function saveStoredStandardAmalan(items: StandardAmalanHX[]): void {
     console.warn('Could not save standard amalan', e);
   }
 }
+
+const KNOWN_PATEN_PHRASE_ALIASES: Record<string, string[]> = {
+  'paten-sholat-subuh': [
+    'shalat subuh',
+    'shalat fardhu',
+    'shalat wajib',
+    'shalat 5 waktu',
+    'shalat lima waktu'
+  ],
+  'paten-sholat-dzuhur': ['shalat dzuhur'],
+  'paten-sholat-ashar': ['shalat ashar'],
+  'paten-sholat-maghrib': ['shalat maghrib'],
+  'paten-sholat-isya': ['shalat isya'],
+  'paten-dzikir-pagi': ['dzikir pagi', 'dzikir pagi dan petang', 'dzikir pagi petang', 'matsurat pagi'],
+  'paten-dzikir-petang': ['dzikir petang', 'dzikir sore', 'matsurat petang'],
+  'paten-sholat-dhuha': ['shalat dhuha'],
+  'paten-qiyamullail': ['qiyamullail', 'shalat tahajjud', 'tahajjud', 'shalat malam', 'shalat witir'],
+  'paten-puasa-sunnah': ['puasa sunnah', 'puasa senin', 'puasa kamis', 'puasa daud', 'ayyamul bidh', 'puasa arafah', 'puasa syawal'],
+  'paten-olahraga': ['olahraga', 'kebugaran jasmani', 'senam', 'jogging', 'lari pagi']
+};
+
+const STOP_WORDS = new Set([
+  'dan',
+  'atau',
+  'yang',
+  'di',
+  'ke',
+  'dari',
+  'untuk',
+  'pada',
+  'minimal',
+  'setiap',
+  'hari',
+  'harian',
+  'pekan',
+  'pekanan',
+  'rutin',
+  'membaca',
+  'amalan',
+  'ibadah',
+  'surat',
+  'surah'
+]);
+
+export function normalizeAmalanTitle(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[’'`´]/g, '')
+    .replace(/&/g, ' dan ')
+    .replace(/\bsh[ao]l[ao]t\b/g, 'shalat')
+    .replace(/\b(?:zhuhur|zuhur|dzuhur)\b/g, 'dzuhur')
+    .replace(/\b(?:ashr|ashar|asar)\b/g, 'ashar')
+    .replace(/\b(?:isyak|isya)\b/g, 'isya')
+    .replace(/\b(?:qiyamul\s*lail|qiyamullail)\b/g, 'qiyamullail')
+    .replace(/\btahajud\b/g, 'tahajjud')
+    .replace(/\b(?:shaum|saum)\b/g, 'puasa')
+    .replace(/\b(?:zikir|dhikr)\b/g, 'dzikir')
+    .replace(/\b(?:al[\s-]*ma?tsurat|matsurat)\b/g, 'matsurat')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function findConflictingStandardAmalan(
+  candidateTitle: string,
+  standardItems?: StandardAmalanHX[]
+): StandardAmalanHX | null {
+  const normCandidate = normalizeAmalanTitle(candidateTitle);
+  if (!normCandidate) return null;
+
+  const activeItems = (standardItems || getStoredStandardAmalan()).filter((item) => item.isActive);
+
+  for (const item of activeItems) {
+    const normItem = normalizeAmalanTitle(item.title);
+    if (!normItem) continue;
+
+    if (normCandidate === normItem) {
+      return item;
+    }
+
+    const aliases = KNOWN_PATEN_PHRASE_ALIASES[item.id];
+    if (aliases) {
+      if (aliases.some((alias) => normCandidate.includes(alias))) {
+        return item;
+      }
+      // Special check: combined "dzikir pagi ... petang" or "al-matsurat"
+      if (
+        (item.id === 'paten-dzikir-pagi' || item.id === 'paten-dzikir-petang') &&
+        normCandidate.includes('dzikir') &&
+        normCandidate.includes('matsurat')
+      ) {
+        return item;
+      }
+      continue;
+    }
+
+    // Custom amalan paten added by Dept HX
+    if (
+      (normItem.length >= 6 && normCandidate.includes(normItem)) ||
+      (normCandidate.length >= 6 && normItem.includes(normCandidate))
+    ) {
+      return item;
+    }
+
+    const itemTokens = normItem.split(' ').filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
+    const candTokens = new Set(normCandidate.split(' ').filter((w) => w.length >= 3 && !STOP_WORDS.has(w)));
+    if (itemTokens.length > 0 && itemTokens.every((t) => candTokens.has(t))) {
+      return item;
+    }
+  }
+
+  return null;
+}
+

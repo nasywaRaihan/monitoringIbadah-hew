@@ -25,7 +25,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({
   const totalActiveDays = Math.max((activeUser.activeDates || []).length, streakDays > 0 ? 1 : 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 border border-[#1b4332]/10 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="relative bg-gradient-to-br from-[#012d1d] via-[#1b4332] to-[#00452c] p-6 text-white text-center overflow-hidden">

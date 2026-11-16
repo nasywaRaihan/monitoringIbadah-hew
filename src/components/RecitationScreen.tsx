@@ -1181,7 +1181,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
   }, [examRecords, recapSelectedStudentNames, recapMonthFilter]);
 
   const renderReportModal = () => (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-[#f1f3ff] flex items-center justify-between bg-[#f9f9ff]">
@@ -1351,7 +1351,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
   );
 
   const renderSavedExamModal = () => (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
           <div className="flex items-center gap-2">
@@ -1447,7 +1447,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
     const highestScore = totalExams > 0 ? Math.max(...history.map((h) => h.totalScore)) : 0;
 
     return (
-      <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
         <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150 border border-[#1b4332]/10">
           {/* Modal Header */}
           <div className="p-4 sm:p-5 border-b border-[#f1f3ff] bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white flex items-center justify-between gap-3">
@@ -1872,35 +1872,35 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
     <div className="flex flex-col w-full px-4 md:px-6 py-3 space-y-4 max-w-4xl mx-auto pb-28">
       {/* Examiner Active Student Session Top Banner */}
       {isExaminer && selectedStudent ? (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white shadow-md flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
             <img
               src={selectedStudent.avatar}
               alt={selectedStudent.name}
-              className="w-12 h-12 rounded-full object-cover ring-2 ring-white/30 shrink-0"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-white/30 shrink-0"
             />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#92f7c3]">
                   Sesi Ujian Karyawan
                 </span>
-                <span className="px-2 py-0.2 rounded-full bg-white/20 text-[10px] font-bold">
+                <span className="px-2 py-0.2 rounded-full bg-white/20 text-[10px] font-bold truncate max-w-[160px] sm:max-w-none">
                   {selectedStudent.halaqah}
                 </span>
               </div>
-              <h2 className="text-base font-bold text-white truncate">
+              <h2 className="text-sm sm:text-base font-bold text-white truncate">
                 {selectedStudent.name}
               </h2>
-              <p className="text-xs text-[#86af99] truncate">
+              <p className="text-[11px] sm:text-xs text-[#86af99] truncate">
                 Penguji: {activeUser?.name || 'Ustadz Pembimbing'} • Target: {currentAyah.surahName}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto justify-end shrink-0">
             <button
               onClick={() => setViewingStudentHistory(selectedStudent)}
-              className="px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
               title={`Lihat Riwayat Ujian ${selectedStudent.name}`}
             >
               <span className="material-symbols-outlined text-[16px]">history</span>
@@ -1908,14 +1908,14 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             </button>
             <button
               onClick={() => setSelectedStudent(null)}
-              className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">swap_horiz</span>
               <span>Ganti Karyawan</span>
             </button>
             <button
               onClick={() => setIsViewingReportModal(true)}
-              className="px-2.5 py-1.5 rounded-full bg-[#fed488] hover:bg-[#fed488]/90 text-[#775a19] text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-full bg-[#fed488] hover:bg-[#fed488]/90 text-[#775a19] text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
               title="Lihat Rekap & Export Excel"
             >
               <span className="material-symbols-outlined text-[16px]">table_chart</span>
@@ -1925,20 +1925,20 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
         </div>
       ) : (
         /* Top Breadcrumb Bar for Student */
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-[#e9edff] text-xs font-semibold text-[#012d1d] shadow-sm transition-colors border border-[#1b4332]/5 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#e9edff] text-[11px] sm:text-xs font-semibold text-[#012d1d] shadow-sm transition-colors border border-[#1b4332]/5 cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">arrow_back</span>
             <span>Kembali ke Ibadah</span>
           </button>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#00452c] bg-[#c1ecd4] px-2.5 py-0.5 rounded-full">
-              <span className="material-symbols-outlined text-[13px]">verified</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-[#00452c] bg-[#c1ecd4] px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0">
+              <span className="material-symbols-outlined text-[12px] sm:text-[13px]">verified</span>
               Uji Tilawah Halaqah
             </span>
-            <span className="text-xs text-[#414844] font-medium hidden sm:inline">
+            <span className="text-xs text-[#414844] font-medium hidden sm:inline truncate">
               {currentAyah.surahName}
             </span>
           </div>
@@ -1946,29 +1946,29 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       )}
 
       {/* Surah & Ayat Selection Shelf */}
-      <div className="bg-gradient-to-r from-[#012d1d] via-[#00452c] to-[#012d1d] rounded-2xl p-4 text-white shadow-md border border-[#c1ecd4]/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#012d1d] via-[#00452c] to-[#012d1d] rounded-2xl p-3.5 sm:p-4 text-white shadow-md border border-[#c1ecd4]/20 relative overflow-hidden">
         <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#fed488]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2 relative z-10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-xs">
+        <div className="flex flex-col gap-2 mb-3 relative z-10">
+          <div className="flex items-start gap-2.5 w-full">
+            <div className="w-8 h-8 rounded-xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-xs shrink-0 mt-0.5">
               <span className="material-symbols-outlined text-[18px]">menu_book</span>
             </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center flex-wrap gap-1.5">
                 <span>Pilih Surah Tilawah (Juz 30 Complete)</span>
-                <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.2 rounded-full font-bold">
+                <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold shrink-0 whitespace-nowrap inline-flex items-center">
                   39 Surah Tersedia
                 </span>
               </h3>
-              <p className="text-[11px] text-[#c1ecd4]/90">
+              <p className="w-full text-[11px] text-[#c1ecd4]/90 leading-relaxed mt-0.5">
                 Pilih surah dari dropdown di bawah. AI akan otomatis menyesuaikan dan menganalisis bacaan sesuai ayat yang Anda baca.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-[#e9fbf2] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1">
-              <span>Aktif:</span>
-              <strong className="text-[#fed488] font-bold">{currentAyah.surahName}</strong>
+          <div className="flex items-center gap-1.5 max-w-full">
+            <span className="text-[10px] text-[#e9fbf2] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 inline-flex items-center gap-1 max-w-full min-w-0">
+              <span className="shrink-0">Aktif:</span>
+              <strong className="text-[#fed488] font-bold truncate">{currentAyah.surahName}</strong>
             </span>
           </div>
         </div>
@@ -2020,22 +2020,6 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Quick Surah Info Pill Bar */}
-        <div className="mt-2.5 flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar relative z-10 text-[11px] text-[#c1ecd4]">
-          <span className="shrink-0 flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
-            <span className="material-symbols-outlined text-[14px] text-[#fed488]">translate</span>
-            <span>Kategori: {currentAyah.surahNumber <= 114 && currentAyah.surahNumber >= 78 ? 'Juz 30' : 'Surah Pilihan'}</span>
-          </span>
-          <span className="shrink-0 flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
-            <span className="material-symbols-outlined text-[14px] text-[#fed488]">grid_view</span>
-            <span>{currentAyah.words.length} Segmentasi Kata Tajwid</span>
-          </span>
-          <span className="shrink-0 flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
-            <span className="material-symbols-outlined text-[14px] text-[#fed488]">verified_user</span>
-            <span>Model AI Evaluasi Opsi Dept HX</span>
-          </span>
-        </div>
       </div>
 
       {/* AI Detected Surah Notification Card (if different from target) */}
@@ -2073,28 +2057,28 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       )}
 
       {/* Target Ayah Scripture Card */}
-      <section className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#1b4332]/5 relative overflow-hidden">
+      <section className="bg-white rounded-2xl p-3.5 sm:p-5 shadow-sm border border-[#1b4332]/5 relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-[#c1ecd4]/30 pointer-events-none blur-2xl" />
 
         {/* Card Header & Sheikh Reference Audio Toggle */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff] flex-wrap gap-2">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-xs text-[#012d1d] bg-[#c1ecd4]/70 px-2.5 py-0.5 rounded-full font-bold">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#f1f3ff] gap-2.5 relative z-10">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+              <span className="text-xs text-[#012d1d] bg-[#c1ecd4]/70 px-2.5 py-0.5 rounded-full font-bold inline-flex items-center max-w-full">
                 {currentAyah.surahName.includes('Ayat') ? currentAyah.surahName : `${currentAyah.surahName} : Ayat ${currentAyah.ayahNumber}`}
               </span>
-              <span className="text-[11px] text-[#414844] font-medium">
+              <span className="text-[11px] text-[#414844] font-medium whitespace-nowrap">
                 Riwayat Hafs &apos;an &apos;Ashim
               </span>
             </div>
-            <p className="text-xs text-[#775a19] font-medium">
+            <p className="text-xs text-[#775a19] font-medium leading-snug">
               Target Tartil: {currentAyah.idealDurationMinSec}–{currentAyah.idealDurationMaxSec} detik • {currentAyah.tajweedRule}
             </p>
           </div>
 
           <button
             onClick={handleToggleSheikh}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+            className={`w-full sm:w-auto justify-center shrink-0 whitespace-nowrap flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer ${
               isPlayingSheikh
                 ? 'bg-[#00452c] text-white shadow-sm'
                 : 'bg-[#f1f3ff] text-[#012d1d] hover:bg-[#e9edff]'
@@ -2110,7 +2094,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
         {/* Evaluation filter tabs (ONLY SHOWN AFTER EVALUATION) */}
         {isEvaluated && (
           <div className="mt-3 flex items-center justify-between flex-wrap gap-2 animate-in fade-in">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
@@ -2269,9 +2253,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
 
         {/* Selected Word Diagnostic & Correction Guidance Deck (ONLY SHOWN AFTER EVALUATION) */}
         {isEvaluated && selectedWord && (
-          <div className="mt-3 bg-[#f1f3ff] rounded-2xl p-4 transition-all duration-300 border border-[#1b4332]/10 shadow-xs animate-in fade-in">
+          <div className="mt-3 bg-[#f1f3ff] rounded-2xl p-3.5 sm:p-4 transition-all duration-300 border border-[#1b4332]/10 shadow-xs animate-in fade-in">
             <div className="flex items-start justify-between gap-3 border-b border-[#dce2f7] pb-3 flex-wrap">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm text-white ${
                     selectedWord.status === 'error'
@@ -2285,13 +2269,13 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                     {selectedWord.icon || (selectedWord.status === 'error' ? 'priority_high' : 'check_circle')}
                   </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
                     <h4 className="text-sm sm:text-base font-bold text-[#141b2b]">
                       {selectedWord.title}
                     </h4>
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 whitespace-nowrap ${
                         selectedWord.status === 'error'
                           ? 'bg-[#ffdad6] text-[#ba1a1a]'
                           : selectedWord.status === 'warning'
@@ -2306,7 +2290,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                         : 'Lafaz Fasih & Tepat'}
                     </span>
                   </div>
-                  <p className="text-xs text-[#414844] mt-0.5">
+                  <p className="text-xs text-[#414844] mt-0.5 leading-snug">
                     Target: <strong>{selectedWord.transliteration || selectedWord.arabic}</strong> • Kaidah: {selectedWord.tajweedRuleName || selectedWord.targetMetric}
                   </p>
                 </div>
@@ -2604,22 +2588,23 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       )}
 
       {/* Audio Recording & Microphone Deck */}
-      <section className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#1b4332]/5">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-3 w-3">
+      <section className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#1b4332]/8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#c1ecd4]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-center justify-between gap-2.5 mb-3 relative z-10">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="relative flex h-3.5 w-3.5 shrink-0">
               <span
                 className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
                   isRecording ? 'animate-ping bg-[#ba1a1a]' : 'bg-[#53b889]'
                 }`}
               />
               <span
-                className={`relative inline-flex rounded-full h-3 w-3 ${
+                className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
                   isRecording ? 'bg-[#ba1a1a]' : 'bg-[#53b889]'
                 }`}
               />
             </span>
-            <span className="text-xs font-bold text-[#012d1d]">
+            <span className="text-xs sm:text-sm font-bold text-[#012d1d] leading-snug truncate">
               {isRecording
                 ? 'Sedang Merekam Suara & Mengukur Akustik...'
                 : isAnalyzing
@@ -2632,13 +2617,13 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             </span>
           </div>
 
-          <span className="text-xs font-mono font-bold text-[#141b2b] bg-[#f1f3ff] px-2.5 py-1 rounded-full">
+          <span className="text-xs font-mono font-bold text-[#012d1d] bg-[#f1f3ff] px-3 py-1 rounded-full shrink-0 whitespace-nowrap tabular-nums shadow-2xs border border-[#dce2f7]">
             {formatTimer(recordSeconds)}
           </span>
         </div>
 
         {/* Dynamic Spectrum Waveform Visualizer */}
-        <div className="h-16 w-full bg-[#f1f3ff] rounded-xl p-2 flex items-center justify-between gap-[3px] overflow-hidden px-3">
+        <div className="h-16 w-full bg-gradient-to-r from-[#f1f3ff] via-[#f8f9ff] to-[#f1f3ff] rounded-xl p-2.5 flex items-center justify-between gap-[3px] overflow-hidden px-3.5 border border-[#dce2f7]/60 shadow-inner relative z-10">
           {visualizerBars.map((height, idx) => {
             const isCenterPulse = idx >= 10 && idx <= 14;
             const barBg = isRecording
@@ -2663,15 +2648,15 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
         </div>
 
         {/* Recording Controls & User Playback */}
-        <div className="mt-3 flex items-center justify-between text-[#414844] text-xs flex-wrap gap-2 pt-2 border-t border-[#f1f3ff]">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="mt-3.5 flex items-center justify-between text-[#414844] text-xs flex-wrap gap-2.5 pt-3 border-t border-[#f1f3ff] relative z-10">
+          <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
             {recordedAudioUrl ? (
               <button
                 type="button"
                 onClick={handleToggleUserAudio}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer shadow-xs ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer shadow-xs shrink-0 ${
                   isPlayingUserAudio
-                    ? 'bg-[#00452c] text-white'
+                    ? 'bg-[#00452c] text-white shadow-sm'
                     : 'bg-[#c1ecd4] hover:bg-[#a0dbb9] text-[#002114]'
                 }`}
               >
@@ -2685,14 +2670,14 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 </span>
               </button>
             ) : (
-              <span className="flex items-center gap-1 font-medium text-[#414844]">
-                <span className="material-symbols-outlined text-[15px] text-[#53b889]">mic</span>
-                Tekan tombol bulat merah di bawah untuk mulai merekam
+              <span className="inline-flex items-center gap-1.5 font-medium text-[#414844] leading-snug">
+                <span className="material-symbols-outlined text-[16px] text-[#53b889] shrink-0">mic</span>
+                <span>Tekan tombol bulat merah di bawah untuk mulai merekam</span>
               </span>
             )}
 
             {recordedAudioUrl && (
-              <span className="text-[11px] text-[#775a19] bg-[#fed488]/40 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[11px] text-[#775a19] bg-[#fed488]/40 px-2.5 py-1 rounded-full font-semibold shrink-0 whitespace-nowrap border border-[#fed488]/50">
                 Durasi: {recordSeconds} detik
               </span>
             )}
@@ -2709,7 +2694,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
               setSpeedMode(speeds[nextIndex]);
               onShowToast(`Irama bacaan disesuaikan ke: ${speeds[nextIndex]}`);
             }}
-            className="flex items-center gap-1 font-medium hover:text-[#012d1d] hover:underline cursor-pointer"
+            className="flex items-center gap-1.5 font-semibold text-[#012d1d] hover:text-[#00452c] bg-[#f1f3ff] hover:bg-[#e9edff] px-3 py-1 rounded-full transition-all cursor-pointer shrink-0 whitespace-nowrap border border-[#dce2f7]"
           >
             <span className="material-symbols-outlined text-[14px]">speed</span>
             <span>Tempo: {speedMode}</span>
@@ -2742,27 +2727,27 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       {/* Bottom Main Actions: Microphone and Submit */}
       <section className="space-y-3 pt-1">
         {/* Panel Uji Kelayakan Cepat (Feasibility Test Simulator for Juz 30) */}
-        <div className="p-3 bg-[#f1f3ff] rounded-2xl border border-[#1b4332]/10 space-y-2 text-left shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d]">
-              <span className="material-symbols-outlined text-[17px] text-[#00452c]">science</span>
+        <div className="p-3 sm:p-3.5 bg-[#f1f3ff] rounded-2xl border border-[#1b4332]/10 space-y-2 text-left shadow-xs">
+          <div className="flex items-center justify-between flex-wrap gap-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d] min-w-0">
+              <span className="material-symbols-outlined text-[17px] text-[#00452c] shrink-0">science</span>
               <span>Uji Kelayakan Instan (Simulasi 3 Profil)</span>
             </div>
-            <span className="text-[10px] font-semibold text-[#00452c] bg-[#c1ecd4] px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-semibold text-[#00452c] bg-[#c1ecd4] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
               100% Gratis • Tanpa Mic
             </span>
           </div>
           <p className="text-[11px] text-[#414844] leading-relaxed">
             Pilih skenario untuk menguji kelayakan analisis tajwid surah <strong>{currentAyah.surahName}</strong> secara instan:
           </p>
-          <div className="grid grid-cols-3 gap-2 pt-0.5">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5">
             <button
               type="button"
               onClick={() => handleSimulateFeasibility('mumtaz')}
               disabled={isRecording || isAnalyzing}
-              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#c1ecd4]/50 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#c1ecd4]/50 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
             >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#00452c]">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#00452c] whitespace-nowrap">
                 <span>🌟 Mumtaz</span>
               </div>
               <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Tartil fasih ~97%</p>
@@ -2771,9 +2756,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
               type="button"
               onClick={() => handleSimulateFeasibility('hurried')}
               disabled={isRecording || isAnalyzing}
-              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#ffe082]/30 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#ffe082]/30 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
             >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#785a1a]">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#785a1a] whitespace-nowrap">
                 <span>⚠️ Cepat</span>
               </div>
               <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Mad kurang ~84%</p>
@@ -2782,9 +2767,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
               type="button"
               onClick={() => handleSimulateFeasibility('makhraj_fix')}
               disabled={isRecording || isAnalyzing}
-              className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#ffdad6]/40 border border-[#ba1a1a]/20 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#ffdad6]/40 border border-[#ba1a1a]/20 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
             >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a]">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] whitespace-nowrap">
                 <span>❌ Makhraj</span>
               </div>
               <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Perlu koreksi ~76%</p>

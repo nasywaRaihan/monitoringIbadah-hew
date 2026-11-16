@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DailyTask, CommunityChallenge, ActiveUser } from '../types';
+import { DailyTask, CommunityChallenge, ActiveUser, HalaqahAttendanceSession } from '../types';
 import { BRAND_ASSETS } from '../data/mockData';
 import {
   calculatePrayerTimes,
@@ -8,7 +8,7 @@ import {
   RegionLocation,
   PrayerTimeItem
 } from '../services/prayerTimes';
-import { evaluatePrayerWindow, FastingOption } from '../services/amalanPaten';
+import { evaluatePrayerWindow, findConflictingStandardAmalan, FastingOption } from '../services/amalanPaten';
 import { MuraqabahConfirmModal } from './MuraqabahConfirmModal';
 import { FastingSelectionModal } from './FastingSelectionModal';
 import { StreakModal } from './StreakModal';
@@ -28,6 +28,7 @@ interface WorshipScreenProps {
   onShowToast: (msg: string) => void;
   activeUser: ActiveUser;
   onOpenAuth: () => void;
+  attendanceSessions?: HalaqahAttendanceSession[];
 }
 
 export const WorshipScreen: React.FC<WorshipScreenProps> = ({
@@ -40,11 +41,46 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   onNavigateToRecitation,
   onShowToast,
   activeUser,
-  onOpenAuth
+  onOpenAuth,
+  attendanceSessions
 }) => {
   const [isOpeningStudio, setIsOpeningStudio] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
+
+  // Attendance records for the active employee in their halaqah
+  const employeeAttendanceRecords = useMemo(() => {
+    if (!attendanceSessions || attendanceSessions.length === 0) return [];
+    return attendanceSessions
+      .filter((session) => {
+        const isSameHalaqah = session.halaqahName.toLowerCase() === activeUser.halaqah.toLowerCase();
+        const hasUserInMembers = session.members.some((m) => m.userId === activeUser.id || m.userName.toLowerCase() === activeUser.name.toLowerCase());
+        return isSameHalaqah || hasUserInMembers;
+      })
+      .map((session) => {
+        const memberRecord = session.members.find(
+          (m) => m.userId === activeUser.id || m.userName.toLowerCase() === activeUser.name.toLowerCase()
+        );
+        return {
+          session,
+          status: memberRecord ? memberRecord.status : 'belum-direkap',
+          notes: memberRecord?.notes || ''
+        };
+      })
+      .sort((a, b) => new Date(b.session.date).getTime() - new Date(a.session.date).getTime());
+  }, [attendanceSessions, activeUser]);
+
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
+  const attendanceStats = useMemo(() => {
+    const total = employeeAttendanceRecords.length;
+    const hadir = employeeAttendanceRecords.filter(r => r.status === 'hadir').length;
+    const izin = employeeAttendanceRecords.filter(r => r.status === 'izin').length;
+    const sakit = employeeAttendanceRecords.filter(r => r.status === 'sakit').length;
+    const alpa = employeeAttendanceRecords.filter(r => r.status === 'alpa').length;
+    const rate = total > 0 ? Math.round((hadir / total) * 100) : 0;
+    return { total, hadir, izin, sakit, alpa, rate };
+  }, [employeeAttendanceRecords]);
 
   const isDoneToday = useMemo(() => {
     return hasUserCompletedIbadahToday(activeUser.id) || tasks.some((t) => t.completed);
@@ -54,13 +90,31 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   const isUstadz = activeUser.role === 'admin' || activeUser.role === 'dept-hx' || activeUser.role === 'hq-admin';
   const isDeptHX = activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin';
 
-  // Filter tasks: Santri only sees tasks assigned to their halaqah or general/all
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentMinuteKey = Math.floor(currentTime.getTime() / 60000);
+
+  // Filter tasks: Santri only sees active, non-expired tasks assigned to their halaqah or general/all
   const visibleTasks = useMemo(() => {
-    if (isUstadz) return tasks;
-    return tasks.filter(
-      (t) => !t.targetHalaqah || t.targetHalaqah === 'Semua Halaqah' || t.targetHalaqah === 'Semua' || t.targetHalaqah === activeUser.halaqah
-    );
-  }, [tasks, isUstadz, activeUser.halaqah]);
+    const nowMs = Date.now();
+    return tasks.filter((t) => {
+      if (t.isAssigned && t.isRecurring !== true && t.expiresAt) {
+        const expMs = Date.parse(t.expiresAt);
+        if (!Number.isNaN(expMs) && nowMs >= expMs) {
+          return false;
+        }
+      }
+      if (isUstadz) return true;
+      return !t.targetHalaqah || t.targetHalaqah === 'Semua Halaqah' || t.targetHalaqah === 'Semua' || t.targetHalaqah === activeUser.halaqah;
+    });
+  }, [tasks, isUstadz, activeUser.halaqah, currentMinuteKey]);
 
   const doneCount = visibleTasks.filter((t) => t.completed).length;
 
@@ -180,14 +234,6 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
 
 
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Jadwal Shalat Astronomis Otomatis Disesuaikan dengan Daerah yang Dikunjungi
   const prayerTimesList: PrayerTimeItem[] = useMemo(() => {
@@ -205,6 +251,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     countdownText,
     progressPercent,
     masehiDateStr,
+    masehiShortStr,
     hijriDateStr,
     liveClockStr
   } = useMemo(() => {
@@ -219,6 +266,14 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       year: 'numeric'
     });
     const masehiDateStr = masehiFormatter.format(now);
+
+    const masehiShortFormatter = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    const masehiShortStr = masehiShortFormatter.format(now);
 
     // Hijriah
     let hijriDateStr = '';
@@ -319,6 +374,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       countdownText,
       progressPercent,
       masehiDateStr,
+      masehiShortStr,
       hijriDateStr,
       liveClockStr
     };
@@ -359,6 +415,14 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       return;
     }
 
+    const conflictingStandard = findConflictingStandardAmalan(newAmalanTitle);
+    if (conflictingStandard) {
+      onShowToast(
+        `Amalan "${newAmalanTitle.trim()}" sudah termasuk Amalan Pasti dari Dept HX ("${conflictingStandard.title}"). Silakan tambahkan amalan lain di luar daftar Dept HX.`
+      );
+      return;
+    }
+
     const chosenXp = Number(newAmalanXp);
     if (chosenXp > 30) {
       onShowToast(
@@ -387,6 +451,8 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       return;
     }
 
+    const now = new Date();
+    const expDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const newTask: DailyTask = {
       id: `task-halaqah-${Date.now()}`,
       title: newAmalanTitle.trim(),
@@ -397,9 +463,13 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       createdByName: activeUser.name,
       createdByRole: activeUser.role as any,
       isCustomHalaqahTask: true,
+      type: 'yaumiyah',
+      isRecurring: false,
+      validityDays: 1,
+      expiresAt: expDate.toISOString(),
       note: newAmalanNote.trim() || undefined,
       isVerified: false,
-      createdAt: new Date().toISOString()
+      createdAt: now.toISOString()
     };
 
     if (onAddTask) {
@@ -415,24 +485,30 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-4 space-y-4 max-w-4xl mx-auto pb-28">
       {/* Active User Banner */}
-      <div className="flex items-center justify-between p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 gap-2 sm:gap-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <img
             src={activeUser.avatar || BRAND_ASSETS.currentUserAvatar}
             alt={activeUser.name}
             className="w-9 h-9 rounded-full object-cover shrink-0 shadow-sm ring-1 ring-[#c1ecd4]"
           />
-          <div className="min-w-0">
-            <span className="text-xs font-bold text-[#141b2b] truncate block">
-              {activeUser.name}
-            </span>
-            <span className="text-[10px] text-[#414844] block truncate">
-              {activeUser.role === 'admin' ? 'Ustadz Pembimbing' : 'Karyawan Aktif'} • {totalXp} XP • Kode: <span className="font-mono font-bold text-[#012d1d]">{activeUser.halaqahCode || 'HF-4092'}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2 sm:block">
+              <span className="text-xs font-bold text-[#141b2b] truncate block">
+                {activeUser.name}
+              </span>
+              <span className="sm:hidden px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold inline-flex items-center gap-1 shrink-0 max-w-[145px] shadow-2xs">
+                <span className="material-symbols-outlined text-[12px] text-[#00452c] shrink-0">verified</span>
+                <span className="truncate">{activeUser.halaqah}</span>
+              </span>
+            </div>
+            <span className="text-[10px] text-[#414844] block truncate mt-0.5 sm:mt-0">
+              {activeUser.role === 'admin' ? 'Ustadz Pembimbing' : 'Karyawan Aktif'} • {totalXp.toLocaleString()} XP • Kode: <span className="font-mono font-bold text-[#012d1d]">{activeUser.halaqahCode || 'HF-4092'}</span>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <span className="px-2.5 py-1 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold flex items-center gap-1 shadow-2xs">
             <span className="material-symbols-outlined text-[13px] text-[#00452c]">verified</span>
             <span>{activeUser.halaqah}</span>
@@ -441,76 +517,71 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
       </div>
 
       {/* Hijri & Next Prayer Hero Card — Real-time Synchronized */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#012d1d] via-[#1b4332] to-[#012d1d] text-white p-5 shadow-lg border border-[#c1ecd4]/20">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#012d1d] via-[#1b4332] to-[#012d1d] text-white p-3.5 sm:p-5 shadow-lg border border-[#c1ecd4]/20">
         <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-[#00452c]/50 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-36 h-36 rounded-full bg-[#fed488]/15 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col space-y-3.5">
+        <div className="relative z-10 flex flex-col space-y-3 sm:space-y-3.5">
           {/* Header Row: Visited Region & Real-time Live Clock */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setShowRegionModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-[#92f7c3] text-xs font-bold backdrop-blur-md border border-[#92f7c3]/40 shadow-xs cursor-pointer transition-all active:scale-95"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-[#92f7c3] text-[11px] sm:text-xs font-bold backdrop-blur-md border border-[#92f7c3]/40 shadow-xs cursor-pointer transition-all active:scale-95 min-w-0 max-w-[58%] sm:max-w-none sm:shrink-0"
               title="Sesuaikan daerah kunjungan"
             >
-              <span className="material-symbols-outlined text-[15px] text-[#92f7c3]">location_on</span>
-              <span>{currentRegion.name}</span>
-              <span className="text-[11px] text-white/75 font-normal">({currentRegion.timezoneName})</span>
-              <span className="material-symbols-outlined text-[14px] opacity-75">expand_more</span>
+              <span className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#92f7c3] shrink-0">location_on</span>
+              <span className="truncate">{currentRegion.name}</span>
+              <span className="text-[10px] sm:text-[11px] text-white/75 font-normal shrink-0">({currentRegion.timezoneName})</span>
+              <span className="material-symbols-outlined text-[13px] sm:text-[14px] opacity-75 shrink-0">expand_more</span>
             </button>
 
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fed488]/20 text-[#fed488] text-[11px] font-mono font-bold tracking-wider backdrop-blur-md border border-[#fed488]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#92f7c3] animate-ping" />
+            <div className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-[#fed488]/20 text-[#fed488] text-[10px] sm:text-[11px] font-mono font-bold tracking-wider backdrop-blur-md border border-[#fed488]/30 shrink-0 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#92f7c3] animate-ping shrink-0" />
               <span>{liveClockStr}</span>
             </div>
           </div>
 
-          {/* Dates: Hijriah & Modern (Ukuran Disamakan & Terletak di Bawah Informasi Lokasi) */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[#ffdea5] text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs">
-              <span className="material-symbols-outlined text-[14px]">calendar_month</span>
-              <span>{hijriDateStr}</span>
+          {/* Dates: Modern (Left) & Hijriah (Right, directly below clock) */}
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-white/10 text-[#dce2f7] text-[10px] sm:text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs min-w-0">
+              <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">event</span>
+              <span className="sm:hidden truncate">{masehiShortStr}</span>
+              <span className="hidden sm:inline truncate">{masehiDateStr}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[#dce2f7] text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs">
-              <span className="material-symbols-outlined text-[14px]">event</span>
-              <span>{masehiDateStr}</span>
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-white/10 text-[#ffdea5] text-[10px] sm:text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs min-w-0">
+              <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">calendar_month</span>
+              <span className="truncate">{hijriDateStr}</span>
             </span>
           </div>
 
           {/* Next Prayer Highlight */}
-          <div className="flex items-baseline justify-between pt-0.5">
+          <div className="flex items-end justify-between pt-0.5 gap-2">
             <div>
-              <div className="flex items-center gap-1.5 text-[#86af99] text-[11px] font-bold uppercase tracking-wider">
-                <span className="material-symbols-outlined text-[15px] text-[#fed488]">schedule</span>
+              <div className="flex items-center gap-1.5 text-[#86af99] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                <span className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#fed488]">schedule</span>
                 <span>Shalat Berikutnya</span>
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
-                <h2 className="text-3xl font-extrabold tracking-tight text-white">
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                   {nextPrayer.name}
                 </h2>
-                <span className="text-[#ffdea5] text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#012d1d]/80 border border-[#fed488]/20">
-                  {countdownText}
-                </span>
               </div>
             </div>
 
-            <div className="text-right">
-              <span className="font-amiri text-2xl text-[#fed488] block leading-tight">
+            <div className="text-right pb-0.5 shrink-0">
+              <span className="font-amiri text-xl sm:text-2xl text-[#fed488] block leading-tight">
                 {nextPrayer.arabic}
               </span>
-              <p className="text-xs font-bold text-[#86af99] mt-0.5 font-mono">
-                {nextPrayer.timeStr} {currentRegion.timezoneName}
-              </p>
             </div>
           </div>
 
           {/* Prayer timeline progress bar */}
-          <div className="w-full pt-1">
-            <div className="flex justify-between text-[11px] text-[#86af99] mb-1 font-medium">
-              <span>{prevPrayer.name} ({prevPrayer.timeStr})</span>
-              <span className="text-[#ffdea5] font-bold">{progressPercent}% Menuju {nextPrayer.name}</span>
-              <span>{nextPrayer.name} ({nextPrayer.timeStr})</span>
+          <div className="w-full pt-0.5 sm:pt-1">
+            <div className="flex justify-between items-center text-[10px] sm:text-[11px] text-[#86af99] mb-1 font-medium gap-1.5">
+              <span className="whitespace-nowrap">{prevPrayer.name} ({prevPrayer.timeStr})</span>
+              <span className="text-[#ffdea5] font-bold text-center truncate">{countdownText}</span>
+              <span className="whitespace-nowrap">{nextPrayer.name} ({nextPrayer.timeStr})</span>
             </div>
             <div className="h-2 w-full rounded-full bg-[#012d1d]/90 overflow-hidden border border-white/5">
               <div
@@ -552,58 +623,104 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
 
       {/* Streak & Ranking Widget */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
         <button
           type="button"
           onClick={() => setIsStreakModalOpen(true)}
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#e65100]/40 hover:shadow-md transition-all active:scale-95 text-center cursor-pointer relative group"
+          className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#e65100]/40 hover:shadow-md transition-all active:scale-95 text-center cursor-pointer relative group min-w-0"
           title="Klik untuk melihat kalender runtutan amalan & istiqamah"
         >
-          <div className="flex items-center gap-1 text-[#e65100]">
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#e65100]">
             <span
-              className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform"
+              className="material-symbols-outlined text-[18px] sm:text-[20px] group-hover:scale-110 transition-transform shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               local_fire_department
             </span>
-            <span className="text-xl font-extrabold text-[#141b2b]">{streakDays}</span>
+            <span className="text-lg sm:text-xl font-extrabold text-[#141b2b] tabular-nums leading-tight">{streakDays}</span>
           </div>
-          <span className="text-xs text-[#414844] mt-0.5 flex items-center gap-1">
-            <span>Runtutan Hari</span>
-            <span className="material-symbols-outlined text-[13px] text-[#717973]">info</span>
+          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 flex items-center justify-center gap-0.5 sm:gap-1 leading-tight max-w-full">
+            <span className="truncate">Runtutan Hari</span>
+            <span className="material-symbols-outlined text-[11px] sm:text-[13px] text-[#717973] shrink-0">info</span>
           </span>
           {isDoneToday ? (
-            <span className="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full bg-[#e8f5e9] text-[#00452c] text-[9px] font-bold border border-[#c1ecd4]">
+            <span className="absolute -top-2 right-1 sm:-top-1.5 sm:-right-1 px-1.5 py-0.5 rounded-full bg-[#e8f5e9] text-[#00452c] text-[8.5px] sm:text-[9px] font-bold border border-[#c1ecd4] leading-none shadow-2xs">
               Aktif 🔥
             </span>
           ) : (
-            <span className="absolute -top-1.5 -right-1 px-1.5 py-0.2 rounded-full bg-[#fff8e1] text-[#785a1a] text-[9px] font-bold border border-[#ffe082]">
+            <span className="absolute -top-2 right-1 sm:-top-1.5 sm:-right-1 px-1.5 py-0.5 rounded-full bg-[#fff8e1] text-[#785a1a] text-[8.5px] sm:text-[9px] font-bold border border-[#ffe082] leading-none shadow-2xs">
               Detail
             </span>
           )}
         </button>
 
-        <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center">
-          <div className="flex items-center gap-1 text-[#012d1d]">
-            <span className="material-symbols-outlined text-[20px]">bolt</span>
-            <span className="text-xl font-bold text-[#141b2b]">
+        <div className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center min-w-0">
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#012d1d]">
+            <span className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0">bolt</span>
+            <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight truncate">
               {totalXp.toLocaleString()}
             </span>
           </div>
-          <span className="text-xs text-[#414844] mt-0.5">Total XP</span>
+          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full">Total XP</span>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center">
-          <div className="flex items-center gap-1 text-[#775a19]">
+        <div className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center min-w-0">
+          <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#775a19]">
             <span
-              className="material-symbols-outlined text-[20px]"
+              className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               workspace_premium
             </span>
-            <span className="text-xl font-bold text-[#141b2b]">#3</span>
+            <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight">#3</span>
           </div>
-          <span className="text-xs text-[#414844] mt-0.5">Peringkat Halaqah</span>
+          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full">Peringkat Halaqah</span>
+        </div>
+      </div>
+
+      {/* Ringkasan Kehadiran Halaqah (Animated Summary Card) */}
+      <div
+        onClick={() => setIsAttendanceModalOpen(true)}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#012d1d] via-[#00452c] to-[#012d1d] p-4 text-white shadow-md border border-[#c1ecd4]/20 cursor-pointer hover:shadow-lg transition-all group active:scale-[0.99]"
+      >
+        <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-[#fed488]/15 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform" />
+        <div className="flex items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-sm shrink-0 group-hover:rotate-6 transition-transform">
+              <span className="material-symbols-outlined text-[24px]">how_to_reg</span>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c1ecd4]">
+                  Presensi Halaqah • {activeUser.halaqah}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold shadow-2xs border border-[#92f7c3]/60 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-[#00452c]" />
+                  <span>{attendanceStats.rate}%</span>
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight mt-0.5 truncate">
+                {attendanceStats.hadir} dari {attendanceStats.total} Sesi Pertemuan
+              </h3>
+              <p className="text-[11px] text-[#c1ecd4]/80 truncate mt-0.5">
+                Klik untuk melihat detail riwayat absen yang direkap oleh Ustadz ➔
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden sm:flex flex-col items-end shrink-0 text-right">
+            <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center font-mono font-bold text-sm text-[#fed488]">
+              {attendanceStats.rate}%
+            </div>
+          </div>
+        </div>
+
+        {/* Mini Progress Bar */}
+        <div className="mt-3 w-full bg-white/15 h-1.5 rounded-full overflow-hidden relative z-10">
+          <div
+            className="bg-gradient-to-r from-[#fed488] to-[#92f7c3] h-full rounded-full transition-all duration-700"
+            style={{ width: `${attendanceStats.rate}%` }}
+          />
         </div>
       </div>
 
@@ -700,7 +817,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                             {task.type === "usbu'iyah" ? '🌙 1 Pekan (Usbu\'iyah)' : '☀️ 1 Hari (Yaumiyah)'}
                           </span>
                           <span className="px-2 py-0.5 rounded-full bg-[#f1f3ff] text-[#414844] text-[10px] font-semibold">
-                            {task.isRecurring !== false ? '🔁 Berulang' : '⏹️ 1x Selesai'}
+                            {task.isRecurring === true ? '🔁 Berulang' : '⏱️ Nonaktif Otomatis'}
                           </span>
                         </div>
                         <p className="text-xs text-[#414844] mt-0.5">{task.category}</p>
@@ -808,7 +925,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                             {task.type === "usbu'iyah" ? '🌙 1 Pekan' : '☀️ 1 Hari'}
                           </span>
                           <span className="px-1.5 py-0.5 rounded-full bg-[#f1f3ff] text-[#414844] text-[9px] font-semibold">
-                            {task.isRecurring !== false ? '🔁 Berulang' : '⏹️ 1x Selesai'}
+                            {task.isRecurring === true ? '🔁 Berulang' : '⏱️ Nonaktif Otomatis'}
                           </span>
                         </>
                       )}
@@ -902,7 +1019,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* History Modal */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <h3 className="font-bold text-base text-[#141b2b]">Riwayat Amalan Ibadah</h3>
@@ -937,13 +1054,131 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
         </div>
       )}
 
+      {/* Attendance Detail Modal */}
+      {isAttendanceModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-5 shadow-2xl text-[#141b2b] space-y-3.5 my-auto relative border border-[#c1ecd4] max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#012d1d] text-[#fed488] flex items-center justify-center shadow-xs">
+                  <span className="material-symbols-outlined text-[22px]">how_to_reg</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#141b2b]">Riwayat Detail Presensi Halaqah</h3>
+                  <p className="text-xs text-[#414844]">{activeUser.name} • {activeUser.halaqah}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAttendanceModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e9edff] flex items-center justify-center text-[#414844] cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Attendance Stats Overview */}
+            <div className="grid grid-cols-4 gap-2 text-center p-3 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/5 text-xs">
+              <div className="p-2 bg-white rounded-xl shadow-2xs">
+                <span className="text-[10px] text-[#414844] block">Hadir</span>
+                <span className="text-sm font-extrabold text-[#00452c]">{attendanceStats.hadir}</span>
+              </div>
+              <div className="p-2 bg-white rounded-xl shadow-2xs">
+                <span className="text-[10px] text-[#414844] block">Izin</span>
+                <span className="text-sm font-extrabold text-[#012d1d]">{attendanceStats.izin}</span>
+              </div>
+              <div className="p-2 bg-white rounded-xl shadow-2xs">
+                <span className="text-[10px] text-[#414844] block">Sakit</span>
+                <span className="text-sm font-extrabold text-[#775a19]">{attendanceStats.sakit}</span>
+              </div>
+              <div className="p-2 bg-white rounded-xl shadow-2xs">
+                <span className="text-[10px] text-[#414844] block">Alpa</span>
+                <span className="text-sm font-extrabold text-[#ba1a1a]">{attendanceStats.alpa}</span>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
+              {employeeAttendanceRecords.length === 0 ? (
+                <div className="p-6 text-center text-xs text-[#414844]">
+                  Belum ada sesi pertemuan halaqah yang tercatat.
+                </div>
+              ) : (
+                employeeAttendanceRecords.map(({ session, status, notes }, idx) => {
+                  let badgeColor = 'bg-[#f1f3ff] text-[#414844]';
+                  let badgeLabel = 'Belum Direkap';
+                  let badgeIcon = 'pending';
+
+                  if (status === 'hadir') {
+                    badgeColor = 'bg-[#c1ecd4] text-[#002114] border border-[#00452c]/20';
+                    badgeLabel = 'Hadir';
+                    badgeIcon = 'check_circle';
+                  } else if (status === 'izin') {
+                    badgeColor = 'bg-[#e9edff] text-[#012d1d] border border-[#012d1d]/20';
+                    badgeLabel = 'Izin';
+                    badgeIcon = 'info';
+                  } else if (status === 'sakit') {
+                    badgeColor = 'bg-[#fff8e1] text-[#785a1a] border border-[#fed488]';
+                    badgeLabel = 'Sakit';
+                    badgeIcon = 'sick';
+                  } else if (status === 'alpa') {
+                    badgeColor = 'bg-[#ffdad6] text-[#ba1a1a] border border-[#ba1a1a]/30';
+                    badgeLabel = 'Alpa / Tidak Hadir';
+                    badgeIcon = 'cancel';
+                  }
+
+                  return (
+                    <div
+                      key={session.id || idx}
+                      className="p-3.5 rounded-2xl bg-[#f9f9ff] hover:bg-[#f1f3ff] transition-all border border-[#1b4332]/5 flex items-start justify-between gap-3 text-xs"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[#141b2b]">
+                            {session.sessionTitle}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#414844]">
+                          📅 {session.date} • ⏰ {session.timeStr} • 📍 {session.location}
+                        </p>
+                        <p className="text-[11px] text-[#414844]">
+                          Ustadz Pengampu: <strong className="text-[#012d1d]">{session.ustadzName}</strong>
+                        </p>
+                        {notes && (
+                          <p className="text-[10px] text-[#775a19] italic mt-1 bg-white p-2 rounded-xl border border-[#fed488]/40">
+                            Catatan Ustadz: &quot;{notes}&quot;
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 pt-0.5">
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${badgeColor}`}>
+                          <span className="material-symbols-outlined text-[14px]">{badgeIcon}</span>
+                          <span>{badgeLabel}</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsAttendanceModalOpen(false)}
+              className="w-full py-3 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
 
 
 
 
       {/* Modal: Sesuaikan Daerah & Waktu Shalat Berdasarkan Lokasi Kunjungan */}
       {showRegionModal && (
-        <div className="fixed inset-0 z-50 bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl text-[#141b2b] space-y-3.5 my-auto relative border border-[#c1ecd4] max-h-[88vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
@@ -1074,8 +1309,8 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* Modal: Tambah Amalan Ibadah Khusus Ustadz Halaqah */}
       {showAddAmalanModal && (
-        <div className="fixed inset-0 z-50 bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl text-[#141b2b] space-y-4 my-auto relative border border-[#c1ecd4]">
+        <div className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl text-[#141b2b] space-y-4 my-auto relative border border-[#c1ecd4] max-h-[88vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-2.5">
@@ -1112,10 +1347,22 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                   type="text"
                   value={newAmalanTitle}
                   onChange={(e) => setNewAmalanTitle(e.target.value)}
-                  placeholder="Contoh: Shalat Dhuha 4 Rakaat, Sedekah Subuh, Muraja'ah Juz 30"
+                  placeholder="Contoh: Shalat Sunnah Rawatib, Sedekah Subuh, Muraja'ah Juz 30"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/15 text-xs text-[#141b2b] placeholder-[#717973]/70 focus:outline-none focus:ring-2 focus:ring-[#00452c]/30 font-medium"
                   required
                 />
+                {(() => {
+                  const conflict = findConflictingStandardAmalan(newAmalanTitle);
+                  if (!conflict) return null;
+                  return (
+                    <div className="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800 flex items-start gap-1.5 leading-snug">
+                      <span className="material-symbols-outlined text-[15px] text-rose-600 shrink-0 mt-0.5">error</span>
+                      <span>
+                        Sudah ada di Amalan Pasti Dept HX (<strong>{conflict.title}</strong>). Tambahkan amalan lain di luar daftar Dept HX.
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Kategori Amalan */}
@@ -1292,7 +1539,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* Modal Konfirmasi Hapus Amalan Halaqah Ustadz */}
       {taskToDeleteInWorship && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-[#1b4332]/10">
             <div className="flex items-center gap-3 pb-3 border-b border-[#f1f3ff]">
               <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">

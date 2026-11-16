@@ -68,7 +68,7 @@ export const DeptHXPasscodeModal: React.FC<DeptHXPasscodeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
       <div
         className={`w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#1b4332]/10 transition-transform ${
           isShaking ? 'animate-bounce' : 'animate-in zoom-in-95 duration-150'

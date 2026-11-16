@@ -40,7 +40,7 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="relative w-full max-w-lg bg-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-[#1b4332]/10 animate-in zoom-in-95 duration-200 my-auto flex flex-col space-y-3.5 max-h-[88vh] overflow-y-auto">
         {/* Header with Islamic Icon */}
         <div className="flex items-start gap-3 pb-3 border-b border-[#f1f3ff]">

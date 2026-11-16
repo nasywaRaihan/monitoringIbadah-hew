@@ -62,6 +62,12 @@ export interface IbadahDirective {
   validityDays?: number; // 1 for yaumiyah, 7 for usbu'iyah
   expiresAt?: string;
   createdAt?: string;
+  autoDeactivated?: boolean;
+  deactivatedAt?: string;
+  lastResetAt?: string;
+  targetHalaqah?: string;
+  createdBy?: string;
+  isRecitationTest?: boolean;
 }
 
 

@@ -43,7 +43,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-[#f9f9ff]/95 backdrop-blur-xl border-t border-[#1b4332]/8 shadow-[0_-2px_16px_rgba(1,45,29,0.06)]"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-[#f9f9ff]/95 backdrop-blur-xl border-t border-[#1b4332]/8 shadow-[0_-2px_16px_rgba(1,45,29,0.06)]"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
       aria-label="Navigasi Bawah Utama"
     >

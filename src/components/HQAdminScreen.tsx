@@ -22,6 +22,11 @@ import {
   doc
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import {
+  formatDirectiveRemainingTime,
+  isDirectiveCurrentlyActive,
+  isDirectiveExpired
+} from '../services/directiveLifecycle';
 
 export interface HalaqahDetail {
   id: string;
@@ -1051,67 +1056,61 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-3 space-y-4 max-w-4xl mx-auto pb-28">
       {/* Super Admin Dept HX Header & Live Sync */}
-      <section className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b4332] text-white text-xs font-bold shadow-sm">
+      <section className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 min-w-0">
+          <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#1b4332] text-white text-[11px] sm:text-xs font-bold shadow-sm whitespace-nowrap">
             <span
-              className="material-symbols-outlined text-[15px] text-[#92f7c3]"
+              className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#92f7c3] shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               admin_panel_settings
             </span>
             Pusat Kendali Dept HX
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-xs font-bold">
-            18 Halaqah Aktif
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-
-          <div className="flex items-center gap-1.5 text-xs text-[#414844] font-medium">
-            <span className="w-2 h-2 rounded-full bg-[#00452c] animate-pulse" />
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-[#414844] font-medium whitespace-nowrap">
+            <span className="w-2 h-2 rounded-full bg-[#00452c] animate-pulse shrink-0" />
             Sinkronisasi Langsung
           </div>
         </div>
       </section>
 
       {/* KPI Metric Bento Grid */}
-      <section className="grid grid-cols-2 gap-2.5">
+      <section className="grid grid-cols-2 gap-2 sm:gap-2.5">
         {/* Total Users */}
-        <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-[#1b4332]/5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-[#414844] font-medium">Total Karyawan Terdaftar</span>
-            <span className="w-7 h-7 rounded-xl bg-[#e9edff] flex items-center justify-center text-[#012d1d]">
-              <span className="material-symbols-outlined text-[16px]">groups</span>
+        <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-sm border border-[#1b4332]/5 flex flex-col justify-between min-w-0 overflow-hidden">
+          <div className="flex items-start sm:items-center justify-between gap-1.5 mb-1.5 sm:mb-1">
+            <span className="text-[11px] sm:text-xs text-[#414844] font-medium leading-tight min-w-0">
+              Total Karyawan Terdaftar
+            </span>
+            <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#e9edff] flex items-center justify-center text-[#012d1d] shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">groups</span>
             </span>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-[#012d1d] leading-none">1.248</span>
-            <span className="text-xs text-[#00452c] font-bold">+32 pekan ini</span>
+          <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">1.248</span>
+            <span className="text-[11px] sm:text-xs text-[#00452c] font-bold whitespace-nowrap">+32 pekan ini</span>
           </div>
-          <span className="text-[11px] text-[#414844] mt-1 truncate">Di 18 Lingkaran Halaqah</span>
+          <span className="text-[10px] sm:text-[11px] text-[#414844] mt-1 truncate">Di 18 Lingkaran Halaqah</span>
         </div>
 
         {/* Active Today */}
-        <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-[#1b4332]/5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-[#414844] font-medium">Karyawan Aktif Hari Ini</span>
-            <span className="w-7 h-7 rounded-xl bg-[#c1ecd4]/60 flex items-center justify-center text-[#1b4332]">
-              <span className="material-symbols-outlined text-[16px]">electric_bolt</span>
+        <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-sm border border-[#1b4332]/5 flex flex-col justify-between min-w-0 overflow-hidden">
+          <div className="flex items-start sm:items-center justify-between gap-1.5 mb-1.5 sm:mb-1">
+            <span className="text-[11px] sm:text-xs text-[#414844] font-medium leading-tight min-w-0">
+              Karyawan Aktif Hari Ini
+            </span>
+            <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#c1ecd4]/60 flex items-center justify-center text-[#1b4332] shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">electric_bolt</span>
             </span>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-[#012d1d] leading-none">892</span>
-            <span className="text-xs text-[#414844] font-semibold">71.5%</span>
+          <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">892</span>
+            <span className="text-[11px] sm:text-xs text-[#414844] font-semibold whitespace-nowrap">71.5%</span>
           </div>
-          <span className="text-[11px] text-[#414844] mt-1 truncate">
+          <span className="text-[10px] sm:text-[11px] text-[#414844] mt-1 truncate">
             Setoran tilawah Subuh tercatat
           </span>
         </div>
-
-
-
-
       </section>
 
       {/* Governance & Quick Actions Bar */}
@@ -1155,7 +1154,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl shadow-xs border border-[#1b4332]/10 overflow-x-auto no-scrollbar scroll-smooth">
         <button
           onClick={() => { setDeptHxTab('halaqah'); setSelectedHalaqahGroup(null); }}
-          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'halaqah'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
@@ -1166,7 +1165,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         </button>
         <button
           onClick={() => { setDeptHxTab('students'); setSelectedHalaqahGroup(null); }}
-          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'students'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
@@ -1177,7 +1176,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         </button>
         <button
           onClick={() => { setDeptHxTab('amalan-paten'); setSelectedHalaqahGroup(null); }}
-          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'amalan-paten'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
@@ -1191,7 +1190,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         </button>
         <button
           onClick={() => { setDeptHxTab('presensi'); setSelectedHalaqahGroup(null); }}
-          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'presensi'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
@@ -1207,7 +1206,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         </button>
         <button
           onClick={() => { setDeptHxTab('tugas-ustadz'); setSelectedHalaqahGroup(null); }}
-          className={`shrink-0 sm:flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
             deptHxTab === 'tugas-ustadz'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
@@ -1271,14 +1270,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-[#f1f3ff] flex items-center justify-between text-xs">
-                    <span className="text-[#414844] font-medium">
-                      👥 <strong className="text-[#141b2b]">{group.members.length}</strong> Karyawan Anggota
+                  <div className="pt-2.5 border-t border-[#f1f3ff] flex items-center justify-between gap-2 flex-wrap text-[11px] sm:text-xs">
+                    <span className="text-[#414844] font-medium inline-flex items-center gap-1 min-w-0 truncate">
+                      <span>👥</span>
+                      <strong className="text-[#141b2b] tabular-nums">{group.members.length}</strong>
+                      <span className="truncate">Karyawan Anggota</span>
                     </span>
-                    <span className="text-[#012d1d] font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      <span className="material-symbols-outlined text-[15px]">settings</span>
+                    <span className="text-[#012d1d] font-bold inline-flex items-center gap-1 shrink-0 whitespace-nowrap ml-auto group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform">
+                      <span className="material-symbols-outlined text-[14px] sm:text-[15px] shrink-0">settings</span>
                       <span>Kelola Halaqah</span>
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      <span className="material-symbols-outlined text-[15px] sm:text-[16px] shrink-0">arrow_forward</span>
                     </span>
                   </div>
                 </div>
@@ -1794,11 +1795,19 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   const createdBy = (dir as any).createdBy || 'Ustadz Pembimbing';
                   const isRecitation = (dir as any).isRecitationTest;
                   const isExceeding = dir.xp > 30;
+                  const isEffectivelyActive = isDirectiveCurrentlyActive(dir);
+                  const isExpired = isDirectiveExpired(dir);
+                  const isRecurringTask = dir.isRecurring === true;
+                  const remainingLabel = formatDirectiveRemainingTime(dir);
 
                   return (
                     <div
                       key={dir.id}
-                      className="p-4 rounded-2xl bg-white border border-[#1b4332]/10 shadow-xs flex flex-col justify-between gap-3"
+                      className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between gap-3 transition-all ${
+                        isEffectivelyActive
+                          ? 'bg-white border-[#1b4332]/10'
+                          : 'bg-[#f8f9fc]/80 border-slate-200 opacity-85'
+                      }`}
                     >
                       <div className="space-y-2">
                         <div className="flex items-start justify-between gap-2">
@@ -1810,11 +1819,28 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                               <span className="px-2 py-0.5 rounded-full bg-[#f1f3ff] text-[#414844] text-[10px] font-semibold">
                                 {dir.type === 'yaumiyah' ? 'Yaumiyah (1 Hari)' : 'Usbu\'iyah (1 Pekan)'}
                               </span>
-                              {dir.isRecurring !== false && (
-                                <span className="px-1.5 py-0.2 rounded-full bg-[#fed488]/40 text-[#775a19] text-[9px] font-bold">
-                                  Berulang
-                                </span>
-                              )}
+                              <span
+                                className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+                                  isRecurringTask
+                                    ? 'bg-[#c1ecd4]/60 text-[#012d1d]'
+                                    : 'bg-[#fed488]/40 text-[#775a19]'
+                                }`}
+                              >
+                                {isRecurringTask ? 'Berulang Otomatis' : 'Otomatis Nonaktif'}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+                                  isEffectivelyActive
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {isEffectivelyActive
+                                  ? `Aktif • ${remainingLabel}`
+                                  : dir.autoDeactivated || (!isRecurringTask && isExpired)
+                                  ? 'Nonaktif (Kedaluwarsa)'
+                                  : 'Nonaktif'}
+                              </span>
                             </div>
                             <h4 className="font-bold text-sm text-[#141b2b] mt-1">
                               {dir.title}
@@ -2275,21 +2301,21 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Modal: Edit Aturan Amalan Paten */}
       {editingPaten && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-[#1b4332]/10 my-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <div>
-                <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold uppercase tracking-wider">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-4 border border-[#1b4332]/10 my-auto max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-start sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f3ff]">
+              <div className="min-w-0 flex-1">
+                <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold uppercase tracking-wider inline-block">
                   Dept HX Editor
                 </span>
-                <h3 className="font-bold text-base text-[#141b2b] mt-0.5">
+                <h3 className="font-bold text-sm sm:text-base text-[#141b2b] mt-0.5 truncate">
                   Edit Aturan Amalan
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingPaten(null)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer shrink-0"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -2428,21 +2454,21 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Modal: Tambah Amalan Paten Baru */}
       {showAddPatenModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-[#1b4332]/10 my-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <div>
-                <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold uppercase tracking-wider">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-4 border border-[#1b4332]/10 my-auto max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-start sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f3ff]">
+              <div className="min-w-0 flex-1">
+                <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold uppercase tracking-wider inline-block">
                   Dept HX Otoritas
                 </span>
-                <h3 className="font-bold text-base text-[#141b2b] mt-0.5">
+                <h3 className="font-bold text-sm sm:text-base text-[#141b2b] mt-0.5 truncate">
                   Tambah Amalan Baru
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddPatenModal(false)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer shrink-0"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -2535,25 +2561,25 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Add Reciter Modal — Pendaftaran Resmi Dept HX */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-[#1b4332]/10 my-auto animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-4 border border-[#1b4332]/10 my-auto max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <div>
+            <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#f1f3ff]">
+              <div className="min-w-0 flex-1">
                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#785a1a] text-[10px] font-bold uppercase tracking-wider mb-1">
-                  <span className="material-symbols-outlined text-[12px]">verified</span>
+                  <span className="material-symbols-outlined text-[12px] shrink-0">verified</span>
                   <span>Registrasi Resmi Dept HX</span>
                 </div>
-                <h3 className="font-bold text-base text-[#012d1d]">
+                <h3 className="font-bold text-sm sm:text-base text-[#012d1d] leading-snug">
                   Pendaftaran Karyawan Baru
                 </h3>
-                <p className="text-xs text-[#414844]">
+                <p className="text-[11px] sm:text-xs text-[#414844] leading-snug mt-0.5">
                   Tetapkan halaqah binaan dan terbitkan akses masuk karyawan
                 </p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e9edff] flex items-center justify-center text-[#414844] cursor-pointer transition-colors"
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e9edff] flex items-center justify-center text-[#414844] cursor-pointer transition-colors shrink-0"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -2644,7 +2670,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Broadcast Alert Modal */}
       {showBroadcastModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff]">
               <div>
@@ -2710,82 +2736,82 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         });
 
         return (
-          <div className="fixed inset-0 z-50 bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150 overflow-y-auto">
-            <div className="w-full max-w-2xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-[#1b4332]/15 my-auto">
+          <div className="fixed inset-0 z-[60] bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 animate-in fade-in duration-150 overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-[#1b4332]/15 my-auto">
               
               {/* Header Kelola Halaqah */}
-              <div className="pb-3 border-b border-[#f1f3ff] space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+              <div className="pb-2.5 sm:pb-3 border-b border-[#f1f3ff] space-y-2">
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[13px]">admin_panel_settings</span>
+                      <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 whitespace-nowrap">
+                        <span className="material-symbols-outlined text-[12px] sm:text-[13px] shrink-0">admin_panel_settings</span>
                         <span>Pusat Kendali Halaqah Dept HX</span>
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-mono font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-mono font-bold whitespace-nowrap">
                         {groupObj.code}
                       </span>
                     </div>
-                    <h3 className="text-xl font-extrabold text-[#141b2b] mt-1 flex items-center gap-2">
-                      <span>{groupObj.halaqahName}</span>
+                    <h3 className="text-base sm:text-xl font-extrabold text-[#141b2b] mt-1 leading-snug break-words">
+                      {groupObj.halaqahName}
                     </h3>
                   </div>
                   <button
                     onClick={() => setSelectedHalaqahGroup(null)}
-                    className="w-9 h-9 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer shrink-0"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer shrink-0"
                     title="Tutup Panel"
                   >
-                    <span className="material-symbols-outlined text-[20px]">close</span>
+                    <span className="material-symbols-outlined text-[18px] sm:text-[20px]">close</span>
                   </button>
                 </div>
 
                 {/* Info Bar / Chips */}
-                <div className="flex items-center gap-2 text-xs text-[#414844] flex-wrap bg-[#f9f9ff] p-2.5 rounded-xl border border-[#1b4332]/10">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[15px] text-[#012d1d]">person</span>
-                    <span>Pembimbing: <strong className="text-[#141b2b]">{groupObj.supervisor}</strong></span>
+                <div className="flex items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-[#414844] flex-wrap bg-[#f9f9ff] p-2 sm:p-2.5 rounded-xl border border-[#1b4332]/10">
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <span className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#012d1d] shrink-0">person</span>
+                    <span className="truncate">Pembimbing: <strong className="text-[#141b2b]">{groupObj.supervisor}</strong></span>
                   </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[15px] text-[#775a19]">schedule</span>
-                    <span>{groupObj.schedule}</span>
+                  <span className="hidden sm:inline text-[#717973]/50">•</span>
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <span className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#775a19] shrink-0">schedule</span>
+                    <span className="truncate">{groupObj.schedule}</span>
                   </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[15px] text-[#00452c]">mosque</span>
-                    <span>{groupObj.location}</span>
+                  <span className="hidden sm:inline text-[#717973]/50">•</span>
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <span className="material-symbols-outlined text-[14px] sm:text-[15px] text-[#00452c] shrink-0">mosque</span>
+                    <span className="truncate">{groupObj.location}</span>
                   </span>
-                  <span>•</span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold">
+                  <span className="hidden sm:inline text-[#717973]/50">•</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#fed488]/40 text-[#775a19] text-[10px] font-bold whitespace-nowrap">
                     👥 {groupObj.members.length} Anggota
                   </span>
                 </div>
 
                 {/* Sub-navigation Menu Tabs */}
-                <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 pt-0.5 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     onClick={() => setHalaqahActiveTab('members')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    className={`py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                       halaqahActiveTab === 'members'
                         ? 'bg-[#012d1d] text-white shadow-sm'
                         : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">groups</span>
+                    <span className="material-symbols-outlined text-[15px] sm:text-[16px]">groups</span>
                     <span>Daftar Anggota ({groupObj.members.length})</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setHalaqahActiveTab('add')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    className={`py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                       halaqahActiveTab === 'add'
                         ? 'bg-[#012d1d] text-white shadow-sm'
                         : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">person_add</span>
+                    <span className="material-symbols-outlined text-[15px] sm:text-[16px]">person_add</span>
                     <span>Tambah Anggota</span>
                   </button>
 
@@ -2801,36 +2827,36 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                       setEditHalaqahLocation(preset?.location || groupObj.location);
                       setEditHalaqahDept(preset?.dept || 'Dept HX');
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    className={`py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                       halaqahActiveTab === 'edit'
                         ? 'bg-[#012d1d] text-white shadow-sm'
                         : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                    <span className="material-symbols-outlined text-[15px] sm:text-[16px]">edit</span>
                     <span>Edit Info Halaqah</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setHalaqahActiveTab('broadcast')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    className={`py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                       halaqahActiveTab === 'broadcast'
                         ? 'bg-[#012d1d] text-white shadow-sm'
                         : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">campaign</span>
+                    <span className="material-symbols-outlined text-[15px] sm:text-[16px]">campaign</span>
                     <span>Siaran &amp; Maklumat</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDeleteHalaqah(groupObj.halaqahName)}
-                    className="py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/70 shadow-2xs active:scale-95"
+                    className="py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/70 shadow-2xs active:scale-95"
                     title={`Hapus Halaqah ${groupObj.halaqahName}`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span className="material-symbols-outlined text-[15px] sm:text-[16px]">delete</span>
                     <span>Hapus Halaqah</span>
                   </button>
                 </div>
@@ -2838,17 +2864,17 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
               {/* Tab 1: Daftar Anggota */}
               {halaqahActiveTab === 'members' && (
-                <div className="flex-1 flex flex-col min-h-0 py-3 space-y-3">
+                <div className="flex-1 flex flex-col min-h-0 py-2.5 sm:py-3 space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="relative flex-1">
+                    <div className="relative flex-1 min-w-0">
                       <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#717973]">
-                        <span className="material-symbols-outlined text-[18px]">search</span>
+                        <span className="material-symbols-outlined text-[17px] sm:text-[18px]">search</span>
                       </span>
                       <input
                         type="text"
                         value={memberSearchInsideHalaqah}
                         onChange={(e) => setMemberSearchInsideHalaqah(e.target.value)}
-                        placeholder="Cari nama karyawan dalam halaqah ini..."
+                        placeholder="Cari nama karyawan dalam halaqah..."
                         className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/10 text-xs text-[#141b2b] placeholder-[#717973] focus:outline-none focus:ring-1 focus:ring-[#012d1d]"
                       />
                     </div>
@@ -2856,7 +2882,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                       <button
                         type="button"
                         onClick={() => handleExportHalaqahCSV(groupObj)}
-                        className="px-3 py-2 rounded-xl bg-white hover:bg-[#f1f3ff] text-[#012d1d] text-xs font-bold border border-[#1b4332]/10 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                        className="px-2.5 sm:px-3 py-2 rounded-xl bg-white hover:bg-[#f1f3ff] text-[#012d1d] text-xs font-bold border border-[#1b4332]/10 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                         title="Ekspor CSV Anggota"
                       >
                         <span className="material-symbols-outlined text-[16px]">download</span>
@@ -2866,10 +2892,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   </div>
 
                   {/* Members List */}
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
                     {displayMembers.length === 0 ? (
-                      <div className="p-8 text-center bg-[#f9f9ff] rounded-2xl border border-dashed border-[#1b4332]/20 space-y-2">
-                        <span className="material-symbols-outlined text-[36px] text-[#717973]">group_off</span>
+                      <div className="p-6 sm:p-8 text-center bg-[#f9f9ff] rounded-2xl border border-dashed border-[#1b4332]/20 space-y-2">
+                        <span className="material-symbols-outlined text-[32px] sm:text-[36px] text-[#717973]">group_off</span>
                         <p className="text-sm font-bold text-[#141b2b]">Belum Ada Anggota di Halaqah Ini</p>
                         <p className="text-xs text-[#717973] max-w-sm mx-auto">
                           Kelompok halaqah ini belum memiliki karyawan terdaftar. Silakan gunakan tab menu &quot;Tambah Anggota&quot; di atas untuk mendaftarkan atau memindahkan anggota ke halaqah ini.
@@ -2879,26 +2905,26 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                       displayMembers.map((member: any) => (
                         <div
                           key={member.id}
-                          className="p-3 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/20 border border-[#1b4332]/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                          className="p-2.5 sm:p-3 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/20 border border-[#1b4332]/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 overflow-hidden"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                             <img
                               src={member.avatar}
                               alt={member.name}
-                              className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow-xs shrink-0"
+                              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-white shadow-xs shrink-0"
                             />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate">
                                 {member.name}
                               </h4>
                               <div className="flex items-center gap-1.5 flex-wrap mt-0.5 text-[10px]">
-                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold whitespace-nowrap">
                                   🔥 {member.streakDays || 5} hari
                                 </span>
-                                <span className="px-1.5 py-0.2 rounded bg-[#e9edff] text-[#012d1d] font-bold">
+                                <span className="px-1.5 py-0.2 rounded bg-[#e9edff] text-[#012d1d] font-bold whitespace-nowrap">
                                   {member.totalXp} XP
                                 </span>
-                                <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold">
+                                <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold whitespace-nowrap">
                                   {member.tajweedAcc || 94}% Tajwid
                                 </span>
                               </div>
@@ -2906,18 +2932,18 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                           </div>
 
                           {/* Member Actions */}
-                          <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                          <div className="flex items-center justify-between sm:justify-end gap-1 sm:gap-1.5 w-full sm:w-auto max-w-full shrink-0 flex-nowrap pt-2 sm:pt-0 border-t border-[#f1f3ff] sm:border-t-0">
                             {/* Detail Profile Button */}
                             <button
                               type="button"
                               onClick={() => {
                                 setSelectedStudentDetail(member);
                               }}
-                              className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#e9edff] text-[#012d1d] text-xs font-semibold border border-[#1b4332]/10 transition-colors flex items-center gap-1 cursor-pointer"
+                              className="h-7 sm:h-8 flex-auto sm:flex-initial min-w-0 px-1.5 sm:px-2.5 rounded-xl bg-white hover:bg-[#e9edff] text-[#012d1d] text-[10px] sm:text-xs font-semibold border border-[#1b4332]/10 transition-colors inline-flex items-center justify-center gap-0.5 sm:gap-1 cursor-pointer whitespace-nowrap"
                               title="Lihat Profil Santri"
                             >
-                              <span className="material-symbols-outlined text-[14px]">visibility</span>
-                              <span className="hidden sm:inline">Detail</span>
+                              <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">visibility</span>
+                              <span>Detail</span>
                             </button>
 
                             {/* Pindahkan Halaqah Button */}
@@ -2930,10 +2956,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                   targetHalaqah: otherHalaqahs[0]?.name || ''
                                 });
                               }}
-                              className="px-2.5 py-1.5 rounded-xl bg-[#e9edff] hover:bg-[#d5dcfa] text-[#012d1d] text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                              className="h-7 sm:h-8 flex-auto sm:flex-initial min-w-0 px-1.5 sm:px-2.5 rounded-xl bg-[#e9edff] hover:bg-[#d5dcfa] text-[#012d1d] text-[10px] sm:text-xs font-semibold transition-colors inline-flex items-center justify-center gap-0.5 sm:gap-1 cursor-pointer whitespace-nowrap"
                               title="Pindahkan ke Halaqah Lain"
                             >
-                              <span className="material-symbols-outlined text-[14px]">swap_horiz</span>
+                              <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">swap_horiz</span>
                               <span>Pindah</span>
                             </button>
 
@@ -2947,10 +2973,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                   halaqahName: groupObj.halaqahName
                                 });
                               }}
-                              className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-amber-200"
+                              className="h-7 sm:h-8 flex-auto sm:flex-initial min-w-0 px-1.5 sm:px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] sm:text-xs font-bold transition-colors inline-flex items-center justify-center gap-0.5 sm:gap-1 cursor-pointer border border-amber-200 whitespace-nowrap"
                               title="Keluarkan Karyawan dari Halaqah Ini"
                             >
-                              <span className="material-symbols-outlined text-[14px]">person_remove</span>
+                              <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">person_remove</span>
                               <span>Keluarkan</span>
                             </button>
 
@@ -2960,10 +2986,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                               onClick={() => {
                                 handleDeleteStudent(member);
                               }}
-                              className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors inline-flex items-center justify-center cursor-pointer shrink-0"
                               title="Hapus Karyawan Permanen dari Sistem"
                             >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">delete</span>
                             </button>
                           </div>
                         </div>
@@ -3018,15 +3044,15 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                           return (
                             <div
                               key={cand.id}
-                              className="p-2.5 rounded-xl bg-white border border-[#1b4332]/5 flex items-center justify-between gap-2 shadow-2xs"
+                              className="p-2.5 rounded-xl bg-white border border-[#1b4332]/5 flex items-center justify-between flex-wrap sm:flex-nowrap gap-2 shadow-2xs"
                             >
-                              <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <img
                                   src={cand.avatar}
                                   alt={cand.name}
                                   className="w-8 h-8 rounded-full object-cover shrink-0"
                                 />
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <span className="text-xs font-bold text-[#141b2b] truncate block">
                                     {cand.name}
                                   </span>
@@ -3040,7 +3066,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleAddExistingStudentToHalaqah(cand, groupObj.halaqahName, groupObj.code)}
-                                  className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer shrink-0"
+                                  className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ml-auto"
                                   title={`Karyawan sudah terdaftar di ${currentH}. Klik untuk info pemindahan.`}
                                 >
                                   <span className="material-symbols-outlined text-[13px]">lock</span>
@@ -3050,7 +3076,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleAddExistingStudentToHalaqah(cand, groupObj.halaqahName, groupObj.code)}
-                                  className="px-3 py-1.5 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
+                                  className="px-3 py-1.5 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ml-auto active:scale-95"
                                 >
                                   <span className="material-symbols-outlined text-[14px] text-[#fed488]">add</span>
                                   <span>Masukkan</span>
@@ -3295,7 +3321,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Student Detail Modal */}
       {selectedStudentDetail && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div>
@@ -3368,25 +3394,25 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Modal Daftar Halaqah Baru */}
       {showAddHalaqahModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-[#012d1d] text-[#fed488] flex items-center justify-center font-bold shadow-xs">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col space-y-3.5 sm:space-y-4 border border-[#1b4332]/10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f3ff]">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="w-9 h-9 rounded-xl bg-[#012d1d] text-[#fed488] flex items-center justify-center font-bold shadow-xs shrink-0">
                   <span className="material-symbols-outlined text-[20px]">group_add</span>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#141b2b]">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm sm:text-base font-bold text-[#141b2b] truncate">
                     Daftar Halaqah Baru
                   </h3>
-                  <p className="text-xs text-[#414844]">
+                  <p className="text-[11px] sm:text-xs text-[#414844] truncate">
                     Registrasi kelompok halaqah binaan resmi Dept HX
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowAddHalaqahModal(false)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer shrink-0"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -3519,7 +3545,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Pop Up Konfirmasi Kurangi / Keluarkan Anggota dari Halaqah */}
       {removingMemberTarget && (
-        <div className="fixed inset-0 z-60 bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-amber-200 text-center">
             <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
               <span className="material-symbols-outlined text-[30px]">person_remove</span>
@@ -3541,16 +3567,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setRemovingMemberTarget(null)}
-                className="flex-1 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 sm:flex-1 min-h-[40px] py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap inline-flex items-center justify-center shrink-0"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={confirmRemoveMember}
-                className="flex-1 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-[16px]">check</span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">check</span>
                 <span>Ya, Keluarkan</span>
               </button>
             </div>
@@ -3560,7 +3586,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Pop Up Pindahkan Anggota ke Halaqah Lain */}
       {transferringMemberTarget && (
-        <div className="fixed inset-0 z-60 bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/65 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-[#1b4332]/15">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-[#e9edff] text-[#012d1d] flex items-center justify-center shrink-0">
@@ -3612,16 +3638,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setTransferringMemberTarget(null)}
-                className="flex-1 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 sm:flex-1 min-h-[40px] py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap inline-flex items-center justify-center shrink-0"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={confirmTransferMember}
-                className="flex-1 py-2.5 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-[16px] text-[#fed488]">check</span>
+                <span className="material-symbols-outlined text-[15px] sm:text-[16px] text-[#fed488] shrink-0">check</span>
                 <span>Pindahkan Sekarang</span>
               </button>
             </div>
@@ -3631,7 +3657,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Pop Up Konfirmasi Hapus Halaqah */}
       {deletingHalaqahTarget && (
-        <div className="fixed inset-0 z-60 bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-red-100 text-center">
             <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
               <span className="material-symbols-outlined text-[30px]">warning</span>
@@ -3647,16 +3673,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setDeletingHalaqahTarget(null)}
-                className="flex-1 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap inline-flex items-center justify-center"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteHalaqah}
-                className="flex-1 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">delete</span>
                 <span>Ya, Hapus</span>
               </button>
             </div>
@@ -3666,7 +3692,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
       {/* Pop Up Konfirmasi Hapus Karyawan */}
       {deletingStudentTarget && (
-        <div className="fixed inset-0 z-60 bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-red-100 text-center">
             <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
               <span className="material-symbols-outlined text-[30px]">person_remove</span>
@@ -3682,16 +3708,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setDeletingStudentTarget(null)}
-                className="flex-1 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap inline-flex items-center justify-center"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteStudent}
-                className="flex-1 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                className="flex-1 min-h-[40px] px-3.5 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">delete</span>
                 <span>Ya, Hapus</span>
               </button>
             </div>
@@ -3700,11 +3726,11 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       )}
       {/* Modal: Lembar Presensi Lengkap Sesi (Dept HX) */}
       {selectedAttendanceSessionDetail && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-          <div className="w-full max-w-2xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-[#1b4332]/10 my-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-[#1b4332]/10 my-auto animate-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-start justify-between pb-3.5 border-b border-[#f1f3ff] gap-2">
-              <div className="min-w-0">
+            <div className="flex items-start justify-between pb-3 border-b border-[#f1f3ff] gap-2">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
                     {selectedAttendanceSessionDetail.halaqahName}
@@ -3718,12 +3744,12 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     {selectedAttendanceSessionDetail.date} • {selectedAttendanceSessionDetail.timeStr}
                   </span>
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-[#141b2b] mt-1.5 truncate">
+                <h3 className="text-sm sm:text-lg font-bold text-[#141b2b] mt-1.5 break-words">
                   {selectedAttendanceSessionDetail.sessionTitle}
                 </h3>
-                <p className="text-xs text-[#717973] flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px]">location_on</span>
-                  <span>{selectedAttendanceSessionDetail.location}</span>
+                <p className="text-[11px] sm:text-xs text-[#717973] flex items-center gap-1 mt-0.5">
+                  <span className="material-symbols-outlined text-[14px] shrink-0">location_on</span>
+                  <span className="truncate">{selectedAttendanceSessionDetail.location}</span>
                 </p>
               </div>
 
@@ -3737,15 +3763,15 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1">
+            <div className="flex-1 overflow-y-auto py-3 space-y-3.5 sm:space-y-4 pr-0.5 sm:pr-1">
               {/* Presensi Ustadz */}
-              <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
-                <div className="flex items-center justify-between">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-1.5">
                   <span className="text-[10px] font-bold text-[#717973] uppercase tracking-wider">
                     Presensi Ustadz Pembimbing
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
                       selectedAttendanceSessionDetail.ustadzStatus === 'hadir'
                         ? 'bg-[#c1ecd4] text-[#002114]'
                         : selectedAttendanceSessionDetail.ustadzStatus === 'pengganti'
@@ -3765,23 +3791,23 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {selectedAttendanceSessionDetail.ustadzAvatar ? (
                     <img
                       src={selectedAttendanceSessionDetail.ustadzAvatar}
                       alt={selectedAttendanceSessionDetail.ustadzName}
-                      className="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-xs"
+                      className="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-xs shrink-0"
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full bg-[#012d1d] text-[#fed488] flex items-center justify-center font-bold text-xs">
+                    <div className="w-9 h-9 rounded-full bg-[#012d1d] text-[#fed488] flex items-center justify-center font-bold text-xs shrink-0">
                       {selectedAttendanceSessionDetail.ustadzName[0]}
                     </div>
                   )}
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-[#141b2b]">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate">
                       {selectedAttendanceSessionDetail.ustadzName}
                     </h4>
-                    <p className="text-[11px] text-[#717973]">
+                    <p className="text-[11px] text-[#717973] truncate">
                       Pengampu Resmi {selectedAttendanceSessionDetail.halaqahName}
                     </p>
                   </div>
@@ -3812,28 +3838,28 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               {selectedAttendanceSessionDetail.ustadzStatus !== 'izin' && selectedAttendanceSessionDetail.ustadzStatus !== 'sakit' && (
                 <>
                   {/* Attendance Breakdown Stat Strip */}
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/60">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/60">
                       <span className="text-[10px] font-bold text-emerald-800 uppercase block">Hadir</span>
-                      <span className="text-base font-extrabold text-emerald-950">
+                      <span className="text-base font-extrabold text-emerald-950 tabular-nums">
                         {selectedAttendanceSessionDetail.presentCount}
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/60">
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-amber-50 border border-amber-200/60">
                       <span className="text-[10px] font-bold text-amber-800 uppercase block">Izin</span>
-                      <span className="text-base font-extrabold text-amber-950">
+                      <span className="text-base font-extrabold text-amber-950 tabular-nums">
                         {selectedAttendanceSessionDetail.members.filter((m) => m.status === 'izin').length}
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200/60">
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-blue-50 border border-blue-200/60">
                       <span className="text-[10px] font-bold text-blue-800 uppercase block">Sakit</span>
-                      <span className="text-base font-extrabold text-blue-950">
+                      <span className="text-base font-extrabold text-blue-950 tabular-nums">
                         {selectedAttendanceSessionDetail.members.filter((m) => m.status === 'sakit').length}
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200/60">
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-rose-50 border border-rose-200/60">
                       <span className="text-[10px] font-bold text-rose-800 uppercase block">Alpa</span>
-                      <span className="text-base font-extrabold text-rose-950">
+                      <span className="text-base font-extrabold text-rose-950 tabular-nums">
                         {selectedAttendanceSessionDetail.members.filter((m) => m.status === 'alpa').length}
                       </span>
                     </div>
@@ -3841,8 +3867,8 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
                   {/* Members Attendance Table */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[#141b2b] uppercase tracking-wider">
+                    <div className="flex items-center justify-between flex-wrap gap-1.5">
+                      <h4 className="text-[11px] sm:text-xs font-bold text-[#141b2b] uppercase tracking-wider">
                         Lembar Kehadiran Anggota ({selectedAttendanceSessionDetail.members.length} Karyawan)
                       </h4>
                       <span className="text-[11px] font-bold text-[#00452c]">
@@ -3854,9 +3880,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                       {selectedAttendanceSessionDetail.members.map((member, idx) => (
                         <div
                           key={member.userId || idx}
-                          className="p-2.5 sm:p-3 rounded-xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 transition-all flex items-center justify-between gap-2.5"
+                          className="p-2.5 sm:p-3 rounded-xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 transition-all flex items-center justify-between gap-2"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                             <span className="w-5 text-center text-xs font-bold text-[#717973] shrink-0">
                               {idx + 1}.
                             </span>
@@ -3871,7 +3897,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                 {member.userName[0]}
                               </div>
                             )}
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <h5 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate">
                                 {member.userName}
                               </h5>
@@ -3880,21 +3906,21 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                   Catatan: {member.notes}
                                 </p>
                               ) : (
-                                <p className="text-[10px] text-[#717973]">
+                                <p className="text-[10px] text-[#717973] truncate">
                                   Karyawan Binaan
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                             {member.status === 'hadir' && (
-                              <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold whitespace-nowrap">
                                 +15 XP
                               </span>
                             )}
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
                                 member.status === 'hadir'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : member.status === 'izin'
@@ -3922,11 +3948,11 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="pt-3 border-t border-[#f1f3ff] flex items-center justify-between gap-2">
+            <div className="pt-3 border-t border-[#f1f3ff] flex items-center justify-between flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => handleExportSingleSessionCSV(selectedAttendanceSessionDetail)}
-                className="px-4 py-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#012d1d] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#012d1d] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">download</span>
                 <span>Unduh Sesi Ini (.xlsx)</span>
@@ -3934,7 +3960,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedAttendanceSessionDetail(null)}
-                className="px-5 py-2.5 rounded-xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                className="px-5 py-2 sm:py-2.5 rounded-xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer ml-auto"
               >
                 Tutup
               </button>
@@ -3944,7 +3970,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       )}
       {/* Modal Konfirmasi Hapus Sesi Presensi (Dept HX) */}
       {sessionToDelete && (
-        <div className="fixed inset-0 z-[60] bg-[#0c1322]/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] bg-[#0c1322]/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-rose-100 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-sm">

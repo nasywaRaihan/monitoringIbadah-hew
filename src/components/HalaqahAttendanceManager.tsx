@@ -269,64 +269,64 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
   return (
     <div className="space-y-4">
       {/* Top Halaqah Context Card */}
-      <div className="p-4 rounded-3xl bg-gradient-to-br from-[#012d1d] via-[#1b4332] to-[#012d1d] text-white shadow-lg border border-[#c1ecd4]/20 relative overflow-hidden">
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-br from-[#012d1d] via-[#1b4332] to-[#012d1d] text-white shadow-lg border border-[#c1ecd4]/20 relative overflow-hidden">
         <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-[#00452c]/50 blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-[#92f7c3]/40 flex items-center justify-center text-[#92f7c3] shrink-0 shadow-inner">
-              <span className="material-symbols-outlined text-[26px]">fact_check</span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/10 border border-[#92f7c3]/40 flex items-center justify-center text-[#92f7c3] shrink-0 shadow-inner">
+              <span className="material-symbols-outlined text-[22px] sm:text-[26px]">fact_check</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-extrabold uppercase tracking-wider">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9.5px] sm:text-[10px] font-extrabold uppercase tracking-wider whitespace-nowrap">
                   Presensi Resmi Ustadz
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-[#92f7c3] font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#92f7c3] animate-ping" />
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-[#92f7c3] font-bold whitespace-nowrap">
+                  <span className="w-2 h-2 rounded-full bg-[#92f7c3] animate-ping shrink-0" />
                   <span>Sinkron Dept HX ✓</span>
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white mt-0.5">
+              <h2 className="text-base sm:text-xl font-extrabold tracking-tight text-white mt-1 sm:mt-0.5 leading-snug">
                 Presensi {targetHalaqah}
               </h2>
-              <p className="text-xs text-[#86af99] mt-0.5">
+              <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug break-words">
                 Ustadz Pembimbing: <strong>{activeUser.name}</strong> • Kode: <span className="font-mono text-[#fed488] font-bold">{activeUser.halaqahCode || 'HF-4092'}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2 w-full md:w-auto shrink-0">
             <button
               type="button"
               onClick={() => setActiveSubTab('create')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs ${
+              className={`flex-1 sm:flex-initial px-3 sm:px-3.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs whitespace-nowrap ${
                 activeSubTab === 'create'
                   ? 'bg-[#92f7c3] text-[#002114] font-extrabold'
                   : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">edit_calendar</span>
               <span>Input Presensi</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveSubTab('history')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs ${
+              className={`flex-1 sm:flex-initial px-3 sm:px-3.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs whitespace-nowrap ${
                 activeSubTab === 'history'
                   ? 'bg-[#92f7c3] text-[#002114] font-extrabold'
                   : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">history</span>
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">history</span>
               <span>Riwayat ({halaqahHistory.length})</span>
             </button>
             {editingSessionId && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="w-full sm:w-auto px-3 sm:px-3.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
               >
-                <span className="material-symbols-outlined text-[16px]">close</span>
+                <span className="material-symbols-outlined text-[15px] sm:text-[16px]">close</span>
                 <span>Batal Edit</span>
               </button>
             )}
@@ -802,7 +802,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
 
       {/* Modal Detail Lembar Presensi Lengkap */}
       {selectedHistorySession && (
-        <div className="fixed inset-0 z-50 bg-[#0c1322]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[60] bg-[#0c1322]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-xl w-full p-5 shadow-2xl text-[#141b2b] space-y-4 my-auto relative border border-[#c1ecd4]">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
@@ -930,7 +930,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
       )}
       {/* Modal Konfirmasi Hapus Sesi Presensi */}
       {sessionToDelete && (
-        <div className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] bg-[#0c1322]/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-rose-100 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">

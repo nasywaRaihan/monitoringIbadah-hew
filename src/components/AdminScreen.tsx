@@ -11,6 +11,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import {
+  formatDirectiveRemainingTime,
+  isDirectiveCurrentlyActive,
+  isDirectiveExpired
+} from '../services/directiveLifecycle';
+import { findConflictingStandardAmalan } from '../services/amalanPaten';
+import {
   DailyTask,
   ActiveUser,
   IbadahDirective,
@@ -129,11 +135,11 @@ export default function AdminScreen({
 
   // Form State for New Ibadah Task
   const [newIbadahType, setNewIbadahType] = useState<'yaumiyah' | 'usbu\'iyah'>('yaumiyah');
-  const [newIbadahTitle, setNewIbadahTitle] = useState('Shalat Fardhu 5 Waktu Berjamaah');
-  const [newIbadahCategory, setNewIbadahCategory] = useState('Shalat Wajib');
-  const [newIbadahTarget, setNewIbadahTarget] = useState('Wajib berjamaah di masjid tepat waktu');
+  const [newIbadahTitle, setNewIbadahTitle] = useState('Shalat Sunnah Rawatib 12 Rakaat');
+  const [newIbadahCategory, setNewIbadahCategory] = useState('Shalat Sunnah');
+  const [newIbadahTarget, setNewIbadahTarget] = useState('Qabliyah & Ba’diyah shalat fardhu');
   const [newIbadahXp, setNewIbadahXp] = useState(15);
-  const [newIbadahIsRecurring, setNewIbadahIsRecurring] = useState<boolean>(true);
+  const [newIbadahIsRecurring, setNewIbadahIsRecurring] = useState<boolean>(false);
 
   // Form State for Setoran Ayat / Recitation Task
   const [recitationSurah, setRecitationSurah] = useState('Surah Al-Mulk (Tabarak)');
@@ -143,7 +149,7 @@ export default function AdminScreen({
   const [recitationPassingScore, setRecitationPassingScore] = useState(90);
   const [recitationXp, setRecitationXp] = useState(15);
   const [recitationType, setRecitationType] = useState<'yaumiyah' | 'usbu\'iyah'>("usbu'iyah");
-  const [recitationIsRecurring, setRecitationIsRecurring] = useState<boolean>(true);
+  const [recitationIsRecurring, setRecitationIsRecurring] = useState<boolean>(false);
 
   // Broadcast State
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -204,7 +210,7 @@ export default function AdminScreen({
     setEditXp(task.xp);
     setEditType(task.type);
     setEditStatus(task.status);
-    setEditIsRecurring(task.isRecurring ?? true);
+    setEditIsRecurring(task.isRecurring ?? false);
   };
 
   const handleSaveEdit = async () => {
@@ -212,6 +218,14 @@ export default function AdminScreen({
     const title = editTitle.trim() || editingDirective.title;
     const target = editTarget.trim() || editingDirective.target;
     const isYaumiyah = editType === 'yaumiyah';
+
+    const conflictingStandard = findConflictingStandardAmalan(title);
+    if (conflictingStandard) {
+      onShowToast(
+        `Amalan "${title}" sudah ada pada Amalan Pasti Dept HX ("${conflictingStandard.title}"). Gunakan amalan lain di luar daftar Dept HX.`
+      );
+      return;
+    }
 
     // Strict 30 XP daily quota applies ONLY to Yaumiyah (Harian) tasks
     if (isYaumiyah) {
@@ -223,7 +237,7 @@ export default function AdminScreen({
       }
 
       const otherYaumiyahTasks = (ibadahDirectives || []).filter(
-        (d) => d.id !== editingDirective.id && d.status === 'Aktif' && d.type === 'yaumiyah'
+        (d) => d.id !== editingDirective.id && isDirectiveCurrentlyActive(d) && d.type === 'yaumiyah'
       );
       const otherYaumiyahXp = otherYaumiyahTasks.reduce((sum, d) => sum + (d.xp || 0), 0);
 
@@ -250,7 +264,8 @@ export default function AdminScreen({
         status: editStatus,
         isRecurring: editIsRecurring,
         validityDays,
-        expiresAt: expDate.toISOString()
+        expiresAt: expDate.toISOString(),
+        autoDeactivated: editStatus === 'Aktif' ? false : (editingDirective.autoDeactivated ?? false)
       });
       setEditingDirective(null);
       onShowToast(`Tugas ibadah "${title}" berhasil diperbarui di Firestore`);
@@ -266,7 +281,7 @@ export default function AdminScreen({
       if (selectedTaskForSubmissions?.id === id) {
         setSelectedTaskForSubmissions(null);
       }
-      onShowToast(`Tugas ibadah "${title}" telah dihapus dari Firestore`);
+      onShowToast(`Tugas "${title}" berhasil dihapus`);
     } catch (e) {
       console.error('Error deleting directive:', e);
       onShowToast('Gagal menghapus tugas');
@@ -438,7 +453,7 @@ export default function AdminScreen({
 
       const activeYaumiyahTasks = (ibadahDirectives || []).filter(
         (d) =>
-          d.status === 'Aktif' &&
+          isDirectiveCurrentlyActive(d) &&
           d.type === 'yaumiyah' &&
           ((d as any).targetHalaqah === halaqahTarget ||
             (d as any).targetHalaqah === 'Semua Halaqah' ||
@@ -541,6 +556,14 @@ export default function AdminScreen({
     const directiveId = `ibadah-${Date.now()}`;
     const halaqahTarget = activeUser?.halaqah || 'Halaqah Al-Fajr';
 
+    const conflictingStandard = findConflictingStandardAmalan(title);
+    if (conflictingStandard) {
+      onShowToast(
+        `Amalan "${title}" sudah diberikan oleh Dept HX sebagai Amalan Pasti ("${conflictingStandard.title}"). Silakan tambahkan amalan lain.`
+      );
+      return;
+    }
+
     const isYaumiyah = newIbadahType === 'yaumiyah';
 
     // Strict 30 XP daily quota applies ONLY to Yaumiyah (Harian) tasks
@@ -554,7 +577,7 @@ export default function AdminScreen({
 
       const activeYaumiyahTasks = (ibadahDirectives || []).filter(
         (d) =>
-          d.status === 'Aktif' &&
+          isDirectiveCurrentlyActive(d) &&
           d.type === 'yaumiyah' &&
           ((d as any).targetHalaqah === halaqahTarget ||
             (d as any).targetHalaqah === 'Semua Halaqah' ||
@@ -649,58 +672,58 @@ export default function AdminScreen({
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-3 space-y-4 max-w-4xl mx-auto pb-28">
       {/* Top Stat Pulse Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#012d1d] text-white p-5 shadow-md">
+      <div className="relative overflow-hidden rounded-2xl bg-[#012d1d] text-white p-3.5 sm:p-5 shadow-md">
         <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-[#00452c]/40 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 w-36 h-36 rounded-full bg-[#fed488]/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 text-[#ffdea5]">
-                <span className="material-symbols-outlined text-[18px]">verified_user</span>
+        <div className="relative z-10 flex flex-col gap-2.5 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/15 text-[#ffdea5] shrink-0">
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">verified_user</span>
               </span>
-              <span className="text-xs uppercase tracking-wider text-[#86af99] font-bold">
+              <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#86af99] font-bold truncate">
                 Konsol Pengawas Ustadz
               </span>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-[#92f7c3] animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/10 text-white text-[10px] sm:text-xs font-semibold backdrop-blur-md shrink-0 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#92f7c3] animate-pulse shrink-0" />
               Sinkronisasi Langsung
             </span>
           </div>
 
           <div className="flex flex-col">
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
               Halaqah Al-Fajr • Panel Ustadz
             </h2>
-            <p className="text-xs text-[#86af99] mt-0.5">
+            <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
               Pemantauan mutaba'ah ibadah yaumiyah/usbu'iyah &amp; diagnostik tajwid karyawan
             </p>
           </div>
 
           {/* Metric Trio Grid */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Karyawan Aktif</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-white">38</span>
-                <span className="text-xs text-[#92f7c3] font-semibold">Aktif</span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Aktif</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">38</span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Aktif</span>
               </div>
             </div>
 
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Binaan Resmi</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-white">18</span>
-                <span className="text-xs text-[#92f7c3] font-semibold">Grup</span>
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Binaan Resmi</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">18</span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Grup</span>
               </div>
             </div>
 
-            <div className="flex flex-col p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-              <span className="text-[11px] text-[#86af99] font-medium">Mutaba'ah Ibadah</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-bold text-white">88%</span>
-                <span className="text-xs text-[#92f7c3] font-semibold">Tuntas</span>
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Mutaba'ah Ibadah</span>
+              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">88%</span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Tuntas</span>
               </div>
             </div>
           </div>
@@ -711,27 +734,27 @@ export default function AdminScreen({
       <div className="grid grid-cols-3 gap-1 p-1 bg-white rounded-2xl shadow-xs border border-[#1b4332]/10">
         <button
           onClick={() => setDashboardTab('halaqah')}
-          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
+          className={`min-w-0 py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
             dashboardTab === 'halaqah'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">checklist_rtl</span>
-          <span className="truncate">Tugas</span>
+          <span className="material-symbols-outlined text-[18px] shrink-0">checklist_rtl</span>
+          <span className="truncate max-w-full">Tugas</span>
         </button>
 
         <button
           onClick={() => setDashboardTab('presensi')}
-          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 relative ${
+          className={`min-w-0 py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 relative ${
             dashboardTab === 'presensi'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px] text-[#92f7c3]">how_to_reg</span>
-          <span className="truncate">Presensi</span>
-          <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+          <span className="material-symbols-outlined text-[18px] text-[#92f7c3] shrink-0">how_to_reg</span>
+          <span className="truncate max-w-full">Presensi</span>
+          <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-bold shrink-0 ${
             dashboardTab === 'presensi' ? 'bg-[#92f7c3] text-[#002114]' : 'bg-[#c1ecd4] text-[#002114]'
           }`}>
             HX
@@ -740,14 +763,14 @@ export default function AdminScreen({
 
         <button
           onClick={() => setDashboardTab('students')}
-          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
+          className={`min-w-0 py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer min-h-[44px] active:scale-95 ${
             dashboardTab === 'students'
               ? 'bg-[#012d1d] text-white shadow-xs'
               : 'text-[#414844] hover:bg-[#f1f3ff]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">groups</span>
-          <span className="truncate">Binaan ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
+          <span className="material-symbols-outlined text-[18px] shrink-0">groups</span>
+          <span className="truncate max-w-full">Binaan ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
         </button>
       </div>
 
@@ -770,17 +793,17 @@ export default function AdminScreen({
       {/* TAB 2: DATA BINAAN */}
       {dashboardTab === 'students' && (
         <div className="space-y-3.5">
-          <div className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/10 space-y-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/10 space-y-3 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#f1f3ff]">
-              <div>
-                <h3 className="text-sm font-bold text-[#141b2b]">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-[#141b2b] leading-snug">
                   Daftar Karyawan Binaan {activeUser.halaqah || 'Halaqah Al-Fajr'}
                 </h3>
-                <p className="text-xs text-[#414844]">
+                <p className="text-[11px] sm:text-xs text-[#414844] mt-0.5">
                   Total {allStudentsList.filter(s => !activeUser.halaqah || s.halaqah === activeUser.halaqah).length} karyawan resmi di bawah bimbingan Anda
                 </p>
               </div>
-              <div className="relative w-full sm:w-60">
+              <div className="relative w-full sm:w-60 shrink-0">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-[#717973]">
                   search
                 </span>
@@ -801,24 +824,24 @@ export default function AdminScreen({
                   <div
                     key={member.id}
                     onClick={() => setSelectedStudentDetail(member)}
-                    className="p-3.5 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/40 border border-[#1b4332]/10 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/40 border border-[#1b4332]/10 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group min-w-0"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                       <img
                         src={member.avatar}
                         alt={member.name}
                         className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-xs shrink-0"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate group-hover:text-[#012d1d]">
                           {member.name}
                         </h4>
-                        <p className="text-[11px] text-[#414844] mt-0.5">
+                        <p className="text-[11px] text-[#414844] mt-0.5 truncate">
                           Streak: <span className="font-semibold text-emerald-700">{member.streakDays || 5} hari</span> • XP: <span className="font-semibold text-[#012d1d]">{member.totalXp} XP</span>
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-[#012d1d] group-hover:underline flex items-center gap-0.5 shrink-0">
+                    <span className="text-xs font-bold text-[#012d1d] group-hover:underline flex items-center gap-0.5 shrink-0 whitespace-nowrap">
                       <span>Detail</span>
                       <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                     </span>
@@ -834,11 +857,11 @@ export default function AdminScreen({
         <>
           {/* Rapid Directives */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-sm font-bold text-[#141b2b]">Instruksi Cepat Ustadz</span>
               <button
                 onClick={() => onShowToast(`${ibadahDirectives.length} tugas ibadah halaqah sedang aktif`)}
-                className="text-xs text-[#012d1d] font-semibold hover:underline cursor-pointer"
+                className="text-xs text-[#012d1d] font-semibold hover:underline cursor-pointer shrink-0 whitespace-nowrap"
               >
                 Kelola Tugas
               </button>
@@ -916,7 +939,7 @@ export default function AdminScreen({
         const groupObj = halaqahGroups.find(g => g.halaqahName === selectedHalaqahGroup);
         if (!groupObj) return null;
         return (
-          <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
             <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-[#1b4332]/10">
               <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
                 <div>
@@ -986,7 +1009,7 @@ export default function AdminScreen({
 
       {/* Student Detail Modal */}
       {selectedStudentDetail && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div>
@@ -1063,22 +1086,22 @@ export default function AdminScreen({
 
       {/* Active Ibadah Usbu'iyah & Yaumiyah Directives */}
       <div className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#f1f3ff]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#c1ecd4] flex items-center justify-center text-[#012d1d] shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#f1f3ff]">
+          <div className="flex items-start sm:items-center gap-2.5 min-w-0 w-full">
+            <div className="w-9 h-9 rounded-xl bg-[#c1ecd4] flex items-center justify-center text-[#012d1d] shrink-0 mt-0.5 sm:mt-0">
               <span className="material-symbols-outlined text-[20px]">checklist_rtl</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-[#141b2b]">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                <span className="text-sm font-bold text-[#141b2b] leading-snug">
                   Tugas Ibadah Usbu'iyah &amp; Yaumiyah
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-bold shrink-0 whitespace-nowrap inline-flex items-center">
                   {ibadahDirectives.length} Target
                 </span>
               </div>
-              <span className="text-[11px] text-[#414844]">
-                Target mutaba'ah amalan harian &amp; mingguan Halaqah Al-Fajr
+              <span className="text-[11px] text-[#414844] block mt-0.5 leading-snug">
+                Target mutaba'ah amalan harian &amp; mingguan {activeUser?.halaqah || 'Halaqah Al-Fajr'}
               </span>
             </div>
           </div>
@@ -1122,6 +1145,10 @@ export default function AdminScreen({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           {filteredIbadahDirectives.map((task) => {
             const isWeekly = task.type === "usbu'iyah";
+            const isEffectivelyActive = isDirectiveCurrentlyActive(task);
+            const isExpired = isDirectiveExpired(task);
+            const isRecurringTask = task.isRecurring === true;
+            const remainingLabel = formatDirectiveRemainingTime(task);
             const submissions = task.submissions || [];
             const completedList = submissions.filter((s) => s.isCompleted);
             const pendingList = submissions.filter((s) => !s.isCompleted);
@@ -1132,7 +1159,11 @@ export default function AdminScreen({
             return (
               <div
                 key={task.id}
-                className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/8 flex flex-col justify-between gap-3 hover:border-[#1b4332]/25 hover:shadow-xs transition-all"
+                className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
+                  isEffectivelyActive
+                    ? 'bg-[#f9f9ff] border-[#1b4332]/8 hover:border-[#1b4332]/25 hover:shadow-xs'
+                    : 'bg-[#f8f9fc]/75 border-slate-200/80 opacity-85'
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -1148,24 +1179,28 @@ export default function AdminScreen({
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          task.isRecurring !== false
+                          isRecurringTask
                             ? 'bg-[#c1ecd4]/50 text-[#012d1d]'
                             : 'bg-amber-100 text-amber-900 border border-amber-300'
                         }`}
                       >
-                        {task.isRecurring !== false ? 'Berulang' : '1x Selesai'}
+                        {isRecurringTask ? 'Berulang Otomatis' : 'Otomatis Nonaktif'}
                       </span>
                       <span className="text-[10px] text-[#717973] font-medium">
                         • {task.category}
                       </span>
                       <span
                         className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                          task.status === 'Aktif'
+                          isEffectivelyActive
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-200 text-slate-700'
                         }`}
                       >
-                        {task.status}
+                        {isEffectivelyActive
+                          ? `Aktif • ${remainingLabel}`
+                          : task.autoDeactivated || (!isRecurringTask && isExpired)
+                          ? 'Nonaktif (Kedaluwarsa)'
+                          : 'Nonaktif'}
                       </span>
                     </div>
                     <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] mt-1 leading-snug">
@@ -1269,9 +1304,8 @@ export default function AdminScreen({
 
       {/* Directives Modal / Slide Tray */}
       {drawerType && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
-            <div className="w-10 h-1 bg-[#dce2f7] rounded-full mx-auto mb-3 sm:hidden" />
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-[#1b4332]/10 flex flex-col max-h-[85vh] overflow-y-auto my-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#f1f3ff]">
               <div>
                 <h3 className="text-base font-bold text-[#141b2b]">
@@ -1346,9 +1380,26 @@ export default function AdminScreen({
                 {/* Pilihan Pengulangan Tugas */}
                 <div>
                   <label className="text-xs font-bold text-[#141b2b] mb-1.5 block">
-                    Pengulangan Tugas
+                    Masa Berlaku Setelah {recitationType === 'yaumiyah' ? '1 Hari' : '1 Pekan'}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecitationIsRecurring(false)}
+                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                        !recitationIsRecurring
+                          ? 'bg-[#fed488]/50 border-[#775a19] text-[#775a19] shadow-2xs'
+                          : 'bg-[#f1f3ff] border-transparent text-[#414844] hover:bg-[#e9edff]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <span className="material-symbols-outlined text-[16px]">event_busy</span>
+                        <span>Nonaktif Otomatis</span>
+                      </div>
+                      <span className="text-[10px] text-[#414844] block mt-0.5">
+                        Otomatis nonaktif setelah {recitationType === 'yaumiyah' ? '1 hari' : '1 pekan'}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setRecitationIsRecurring(true)}
@@ -1363,24 +1414,7 @@ export default function AdminScreen({
                         <span>Berulang Otomatis</span>
                       </div>
                       <span className="text-[10px] text-[#414844] block mt-0.5">
-                        Tugas terus aktif diulang tiap {recitationType === 'yaumiyah' ? 'hari' : 'pekan'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecitationIsRecurring(false)}
-                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                        !recitationIsRecurring
-                          ? 'bg-[#fed488]/50 border-[#775a19] text-[#775a19] shadow-2xs'
-                          : 'bg-[#f1f3ff] border-transparent text-[#414844] hover:bg-[#e9edff]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-bold text-xs">
-                        <span className="material-symbols-outlined text-[16px]">event_busy</span>
-                        <span>Tidak Berulang (1x)</span>
-                      </div>
-                      <span className="text-[10px] text-[#414844] block mt-0.5">
-                        Hanya 1x selesai selama {recitationType === 'yaumiyah' ? '1 hari' : '1 pekan'}
+                        Diulang &amp; di-reset tiap {recitationType === 'yaumiyah' ? 'hari' : 'pekan'}
                       </span>
                     </button>
                   </div>
@@ -1540,10 +1574,10 @@ export default function AdminScreen({
                       type="button"
                       onClick={() => {
                         setNewIbadahType('yaumiyah');
-                        setNewIbadahTitle('Shalat Fardhu 5 Waktu Berjamaah');
-                        setNewIbadahCategory('Shalat Wajib');
-                        setNewIbadahTarget('Wajib berjamaah di masjid utama tepat waktu');
-                        setNewIbadahXp(100);
+                        setNewIbadahTitle('Shalat Sunnah Rawatib 12 Rakaat');
+                        setNewIbadahCategory('Shalat Sunnah');
+                        setNewIbadahTarget('Qabliyah & Ba’diyah shalat fardhu');
+                        setNewIbadahXp(15);
                       }}
                       className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
                         newIbadahType === 'yaumiyah'
@@ -1564,10 +1598,10 @@ export default function AdminScreen({
                       type="button"
                       onClick={() => {
                         setNewIbadahType("usbu'iyah");
-                        setNewIbadahTitle('Qiyamul Lail / Shalat Tahajjud');
-                        setNewIbadahCategory('Shalat Sunnah');
-                        setNewIbadahTarget('Minimal 3 malam per pekan (min 8 rakaat + witir)');
-                        setNewIbadahXp(150);
+                        setNewIbadahTitle('Membaca Surah Al-Kahfi');
+                        setNewIbadahCategory('Al-Qur’an');
+                        setNewIbadahTarget('Malam Jumat atau hari Jumat sebelum Maghrib');
+                        setNewIbadahXp(30);
                       }}
                       className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
                         newIbadahType === "usbu'iyah"
@@ -1589,9 +1623,26 @@ export default function AdminScreen({
                 {/* Pilihan Pengulangan Tugas */}
                 <div>
                   <label className="text-xs font-bold text-[#141b2b] mb-1.5 block">
-                    Pengulangan Tugas
+                    Masa Berlaku Setelah {newIbadahType === 'yaumiyah' ? '1 Hari' : '1 Pekan'}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewIbadahIsRecurring(false)}
+                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                        !newIbadahIsRecurring
+                          ? 'bg-[#fed488]/50 border-[#775a19] text-[#775a19] shadow-2xs'
+                          : 'bg-[#f1f3ff] border-transparent text-[#414844] hover:bg-[#e9edff]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <span className="material-symbols-outlined text-[16px]">event_busy</span>
+                        <span>Nonaktif Otomatis</span>
+                      </div>
+                      <span className="text-[10px] text-[#414844] block mt-0.5">
+                        Otomatis nonaktif setelah {newIbadahType === 'yaumiyah' ? '1 hari' : '1 pekan'}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setNewIbadahIsRecurring(true)}
@@ -1606,33 +1657,24 @@ export default function AdminScreen({
                         <span>Berulang Otomatis</span>
                       </div>
                       <span className="text-[10px] text-[#414844] block mt-0.5">
-                        Tugas terus aktif berulang tiap {newIbadahType === 'yaumiyah' ? 'hari' : 'pekan'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewIbadahIsRecurring(false)}
-                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                        !newIbadahIsRecurring
-                          ? 'bg-[#fed488]/50 border-[#775a19] text-[#775a19] shadow-2xs'
-                          : 'bg-[#f1f3ff] border-transparent text-[#414844] hover:bg-[#e9edff]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-bold text-xs">
-                        <span className="material-symbols-outlined text-[16px]">event_busy</span>
-                        <span>Tidak Berulang (1x)</span>
-                      </div>
-                      <span className="text-[10px] text-[#414844] block mt-0.5">
-                        Hanya 1x selesai selama {newIbadahType === 'yaumiyah' ? '1 hari' : '1 pekan'}
+                        Diulang &amp; di-reset tiap {newIbadahType === 'yaumiyah' ? 'hari' : 'pekan'}
                       </span>
                     </button>
                   </div>
                 </div>
 
-                {/* Preset Amalan Cepat */}
+                {/* Info Aturan Non-Duplikat Dept HX */}
+                <div className="p-2.5 rounded-xl bg-[#f1f3ff] border border-[#1b4332]/10 text-[11px] text-[#414844] flex items-start gap-2 leading-snug">
+                  <span className="material-symbols-outlined text-[15px] text-[#00452c] shrink-0 mt-0.5">info</span>
+                  <span>
+                    Tambahkan amalan khusus di luar <strong>Amalan Pasti Dept HX</strong> (Sholat 5 Waktu, Dzikir Pagi/Petang, Dhuha, Qiyamullail, Puasa Sunnah, &amp; Olahraga).
+                  </span>
+                </div>
+
+                {/* Preset Amalan Cepat (Di luar Amalan Pasti Dept HX) */}
                 <div>
                   <label className="text-xs font-bold text-[#141b2b] mb-1.5 block">
-                    Pilihan Preset Amalan Cepat
+                    Pilihan Preset Amalan Tambahan Cepat
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {newIbadahType === 'yaumiyah' ? (
@@ -1640,46 +1682,10 @@ export default function AdminScreen({
                         <button
                           type="button"
                           onClick={() => {
-                            setNewIbadahTitle('Shalat Fardhu 5 Waktu Berjamaah');
-                            setNewIbadahCategory('Shalat Wajib');
-                            setNewIbadahTarget('Wajib berjamaah di masjid utama tepat waktu');
-                            setNewIbadahXp(100);
-                          }}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
-                        >
-                          🕌 Shalat 5 Waktu di Masjid
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewIbadahTitle("Dzikir Pagi & Petang Al-Ma'tsurat");
-                            setNewIbadahCategory('Dzikir & Doa');
-                            setNewIbadahTarget('Ba’da Subuh & Ba’da Ashar secara tartil');
-                            setNewIbadahXp(50);
-                          }}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
-                        >
-                          📿 Dzikir Al-Ma'tsurat
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewIbadahTitle('Tilawah Al-Qur’an (One Day One Juz)');
-                            setNewIbadahCategory('Al-Qur’an');
-                            setNewIbadahTarget('Target tuntas 1 Juz per hari');
-                            setNewIbadahXp(120);
-                          }}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
-                        >
-                          📖 Tilawah 1 Juz
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
                             setNewIbadahTitle('Shalat Sunnah Rawatib 12 Rakaat');
                             setNewIbadahCategory('Shalat Sunnah');
                             setNewIbadahTarget('Qabliyah & Ba’diyah shalat fardhu');
-                            setNewIbadahXp(80);
+                            setNewIbadahXp(15);
                           }}
                           className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
                         >
@@ -1688,14 +1694,50 @@ export default function AdminScreen({
                         <button
                           type="button"
                           onClick={() => {
-                            setNewIbadahTitle('Shalat Dhuha Minimal 4 Rakaat');
-                            setNewIbadahCategory('Shalat Sunnah');
-                            setNewIbadahTarget('Pukul 08:00 - 10:30 WIB');
-                            setNewIbadahXp(60);
+                            setNewIbadahTitle('Tilawah Al-Qur’an (One Day One Juz)');
+                            setNewIbadahCategory('Al-Qur’an');
+                            setNewIbadahTarget('Target tuntas 1 Juz per hari');
+                            setNewIbadahXp(20);
                           }}
                           className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
                         >
-                          ☀️ Shalat Dhuha
+                          📖 Tilawah 1 Juz
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewIbadahTitle('Infaq & Sedekah Subuh Harian');
+                            setNewIbadahCategory('Infaq & Sedekah');
+                            setNewIbadahTarget('Sedekah rutin setiap pagi sebelum bekerja');
+                            setNewIbadahXp(10);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
+                        >
+                          🪙 Sedekah Subuh
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewIbadahTitle('Istighfar & Shalawat Nabi 100x');
+                            setNewIbadahCategory('Dzikir & Doa');
+                            setNewIbadahTarget('Membaca istighfar dan shalawat minimal 100 kali');
+                            setNewIbadahXp(10);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
+                        >
+                          📿 Istighfar &amp; Shalawat 100x
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewIbadahTitle("Muraja'ah Hafalan Juz 30");
+                            setNewIbadahCategory('Al-Qur’an');
+                            setNewIbadahTarget('Mengulang hafalan minimal 1 halaman hari ini');
+                            setNewIbadahXp(15);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#c1ecd4] text-[#141b2b] transition-colors cursor-pointer"
+                        >
+                          🧠 Muraja&apos;ah Juz 30
                         </button>
                       </>
                     ) : (
@@ -1703,34 +1745,10 @@ export default function AdminScreen({
                         <button
                           type="button"
                           onClick={() => {
-                            setNewIbadahTitle('Qiyamul Lail / Shalat Tahajjud');
-                            setNewIbadahCategory('Shalat Sunnah');
-                            setNewIbadahTarget('Minimal 3 malam per pekan (8 rakaat + witir)');
-                            setNewIbadahXp(150);
-                          }}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
-                        >
-                          🌌 Qiyamul Lail 3x/pekan
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewIbadahTitle('Puasa Sunnah Senin & Kamis');
-                            setNewIbadahCategory('Shaum Sunnah');
-                            setNewIbadahTarget('Puasa sunnah Senin atau Kamis sepekan');
-                            setNewIbadahXp(150);
-                          }}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
-                        >
-                          🌿 Puasa Senin & Kamis
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
                             setNewIbadahTitle('Membaca Surah Al-Kahfi');
                             setNewIbadahCategory('Al-Qur’an');
                             setNewIbadahTarget('Malam Jumat atau hari Jumat sebelum Maghrib');
-                            setNewIbadahXp(100);
+                            setNewIbadahXp(30);
                           }}
                           className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
                         >
@@ -1739,14 +1757,38 @@ export default function AdminScreen({
                         <button
                           type="button"
                           onClick={() => {
-                            setNewIbadahTitle('Infaq & Sedekah Subuh Pekanan');
+                            setNewIbadahTitle('Infaq & Sedekah Jumat Pekanan');
                             setNewIbadahCategory('Infaq & Sedekah');
                             setNewIbadahTarget('Kotak infaq masjid / karyawan dhuafa');
-                            setNewIbadahXp(80);
+                            setNewIbadahXp(25);
                           }}
                           className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
                         >
-                          🪙 Sedekah Subuh
+                          🪙 Sedekah Jumat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewIbadahTitle('Menghadiri Kajian & Taklim Pekanan');
+                            setNewIbadahCategory('Lain-lain');
+                            setNewIbadahTarget('Ikut kajian pekannya dan rangkum faedah ilmu');
+                            setNewIbadahXp(30);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
+                        >
+                          📚 Kajian Pekanan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewIbadahTitle('Silaturahmi & Birrul Walidain');
+                            setNewIbadahCategory('Lain-lain');
+                            setNewIbadahTarget('Menghubungi atau mengunjungi orang tua pekan ini');
+                            setNewIbadahXp(25);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f1f3ff] hover:bg-[#fed488]/40 text-[#141b2b] transition-colors cursor-pointer"
+                        >
+                          🤝 Silaturahmi Orang Tua
                         </button>
                       </>
                     )}
@@ -1762,9 +1804,21 @@ export default function AdminScreen({
                     type="text"
                     value={newIbadahTitle}
                     onChange={(e) => setNewIbadahTitle(e.target.value)}
-                    placeholder="Contoh: Shalat Berjamaah di Masjid"
+                    placeholder="Contoh: Shalat Sunnah Rawatib 12 Rakaat"
                     className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:border-[#012d1d] focus:bg-white focus:outline-none"
                   />
+                  {(() => {
+                    const conflict = findConflictingStandardAmalan(newIbadahTitle);
+                    if (!conflict) return null;
+                    return (
+                      <div className="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800 flex items-start gap-1.5 leading-snug">
+                        <span className="material-symbols-outlined text-[15px] text-rose-600 shrink-0 mt-0.5">error</span>
+                        <span>
+                          Amalan ini sama dengan Amalan Pasti Dept HX (<strong>{conflict.title}</strong>). Silakan pilih amalan lain.
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1854,8 +1908,8 @@ export default function AdminScreen({
 
       {/* Edit Directive Modal */}
       {editingDirective && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3.5 border border-[#1b4332]/10 max-h-[88vh] overflow-y-auto my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff]">
               <div>
                 <h3 className="font-bold text-sm text-[#141b2b]">
@@ -1912,23 +1966,9 @@ export default function AdminScreen({
 
               <div>
                 <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                  Pengulangan Tugas
+                  Masa Berlaku Setelah {editType === 'yaumiyah' ? '1 Hari' : '1 Pekan'}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditIsRecurring(true)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                      editIsRecurring
-                        ? 'bg-[#c1ecd4]/50 border-[#012d1d] text-[#012d1d]'
-                        : 'bg-[#f1f3ff] border-transparent text-[#414844]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1 justify-center">
-                      <span className="material-symbols-outlined text-[15px]">sync</span>
-                      <span>Berulang</span>
-                    </div>
-                  </button>
                   <button
                     type="button"
                     onClick={() => setEditIsRecurring(false)}
@@ -1940,7 +1980,21 @@ export default function AdminScreen({
                   >
                     <div className="flex items-center gap-1 justify-center">
                       <span className="material-symbols-outlined text-[15px]">event_busy</span>
-                      <span>1x Selesai</span>
+                      <span>Nonaktif Otomatis</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditIsRecurring(true)}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      editIsRecurring
+                        ? 'bg-[#c1ecd4]/50 border-[#012d1d] text-[#012d1d]'
+                        : 'bg-[#f1f3ff] border-transparent text-[#414844]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1 justify-center">
+                      <span className="material-symbols-outlined text-[15px]">sync</span>
+                      <span>Berulang Otomatis</span>
                     </div>
                   </button>
                 </div>
@@ -1956,6 +2010,18 @@ export default function AdminScreen({
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:border-[#012d1d] focus:bg-white focus:outline-none"
                 />
+                {(() => {
+                  const conflict = findConflictingStandardAmalan(editTitle);
+                  if (!conflict) return null;
+                  return (
+                    <div className="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800 flex items-start gap-1.5 leading-snug">
+                      <span className="material-symbols-outlined text-[15px] text-rose-600 shrink-0 mt-0.5">error</span>
+                      <span>
+                        Amalan ini sama dengan Amalan Pasti Dept HX (<strong>{conflict.title}</strong>). Silakan gunakan nama amalan lain.
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2019,7 +2085,7 @@ export default function AdminScreen({
                   className="w-full px-3 py-2 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:border-[#012d1d] focus:outline-none"
                 >
                   <option value="Aktif">Aktif</option>
-                  <option value="Selesai">Selesai</option>
+                  <option value="Selesai">Nonaktif / Selesai</option>
                 </select>
               </div>
             </div>
@@ -2063,7 +2129,7 @@ export default function AdminScreen({
         });
 
         return (
-          <div className="fixed inset-0 z-50 bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
             <div className="w-full max-w-xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-[#1b4332]/10">
               {/* Header */}
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f3ff]">
@@ -2302,27 +2368,27 @@ export default function AdminScreen({
 
       {/* Modal Konfirmasi Hapus Tugas Ibadah Ustadz */}
       {taskToDelete && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-[#1b4332]/10">
-            <div className="flex items-center gap-3 pb-3 border-b border-[#f1f3ff]">
-              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">warning</span>
+        <div className="fixed inset-0 z-[70] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3 border border-[#1b4332]/10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#f1f3ff]">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">warning</span>
               </div>
-              <div>
-                <h3 className="font-bold text-base text-[#141b2b]">
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm sm:text-base text-[#141b2b] leading-snug">
                   Konfirmasi Hapus Tugas Ibadah
                 </h3>
-                <p className="text-xs text-[#414844]">
+                <p className="text-[11px] sm:text-xs text-[#414844]">
                   Tindakan ini memerlukan kepastian ustadz pembimbing
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-[#141b2b] leading-relaxed">
+            <p className="text-xs text-[#141b2b] leading-snug">
               Apakah Anda yakin ingin menghapus amalan/tugas berikut dari daftar mutaba&apos;ah karyawan halaqah?
             </p>
 
-            <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-1">
+            <div className="p-3 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 text-[10px] font-bold">
                   Akan Dihapus
@@ -2338,17 +2404,17 @@ export default function AdminScreen({
                   </span>
                 )}
               </div>
-              <h4 className="text-sm font-bold text-[#141b2b] mt-1">
+              <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] mt-0.5 leading-snug">
                 {taskToDelete.title}
               </h4>
             </div>
 
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
-              <span className="material-symbols-outlined text-[16px] text-amber-700 shrink-0 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2 leading-snug">
+              <span className="material-symbols-outlined text-[15px] text-amber-700 shrink-0 mt-0.5">
                 info
               </span>
               <span>
-                Tugas yang dihapus tidak dapat dikembalikan dan akan otomatis terhapus dari lembar mutaba&apos;ah karyawan.
+                Tugas yang dihapus tidak dapat dikembalikan dan otomatis terhapus dari lembar mutaba&apos;ah karyawan.
               </span>
             </div>
 
@@ -2356,7 +2422,7 @@ export default function AdminScreen({
               <button
                 type="button"
                 onClick={() => setTaskToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] font-bold text-xs cursor-pointer transition-colors"
+                className="flex-1 py-2 rounded-xl bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] font-bold text-xs cursor-pointer transition-colors"
               >
                 Batal
               </button>
@@ -2366,7 +2432,7 @@ export default function AdminScreen({
                   handleDeleteDirective(taskToDelete.id, taskToDelete.title);
                   setTaskToDelete(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
                 <span>Ya, Hapus Tugas</span>
@@ -2377,7 +2443,7 @@ export default function AdminScreen({
       )}
       {/* Broadcast Announcement Modal */}
       {showBroadcastModal && (
-        <div className="fixed inset-0 z-50 bg-[#141b2b]/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff]">
               <div>

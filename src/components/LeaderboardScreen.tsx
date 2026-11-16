@@ -440,46 +440,46 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-4 space-y-5 max-w-4xl mx-auto pb-28">
       {/* Sub-header & Motivational Greeting */}
-      <div className="flex items-center justify-between pt-1">
-        <div>
-          <div className="flex items-center gap-1.5">
+      <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-4 pt-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
             <span
-              className="material-symbols-outlined text-[#775a19] text-[20px]"
+              className="material-symbols-outlined text-[#775a19] text-[18px] sm:text-[20px] shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               stars
             </span>
-            <h2 className="text-xl font-bold text-[#012d1d] tracking-tight">
+            <h2 className="text-[15px] sm:text-xl font-bold text-[#012d1d] tracking-tight leading-snug truncate">
               Papan Peringkat Karyawan
             </h2>
           </div>
-          <p className="text-xs text-[#414844] mt-0.5">
+          <p className="text-[11px] sm:text-xs text-[#414844] mt-0.5 leading-snug">
             Berlomba-lomba dalam amal kebaikan (Fastabiqul Khairat)
           </p>
         </div>
 
         {/* Mini Timer Chip */}
-        <div className="flex items-center gap-1 bg-[#e9edff] px-3 py-1 rounded-full shadow-sm shrink-0">
-          <span className="material-symbols-outlined text-[15px] text-[#775a19]">schedule</span>
-          <span className="text-xs text-[#141b2b] font-semibold">Reset Ahad</span>
+        <div className="flex items-center gap-1 bg-[#e9edff] px-2 sm:px-3 py-1 rounded-full shadow-sm shrink-0 whitespace-nowrap">
+          <span className="material-symbols-outlined text-[13px] sm:text-[15px] text-[#775a19] shrink-0">schedule</span>
+          <span className="text-[10px] sm:text-xs text-[#141b2b] font-semibold">Reset Ahad</span>
         </div>
       </div>
 
       {/* Floating Active User Sticky Ranking Card or Supervisor Monitoring Banner (Placed directly below 'berlomba-lomba' and above Scope Buttons) */}
       {isDeptHX || activeUser?.role === 'admin' ? (
-        <div className="w-full bg-[#012d1d] text-white rounded-2xl p-4 flex items-center justify-between border border-[#c1ecd4]/30 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-xs shrink-0">
-              <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+        <div className="w-full bg-[#012d1d] text-white rounded-2xl p-3.5 sm:p-4 flex items-start sm:items-center justify-between gap-2.5 sm:gap-3 border border-[#c1ecd4]/30 shadow-sm overflow-hidden">
+          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[18px] sm:text-[20px]">admin_panel_settings</span>
             </div>
-            <div>
-              <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-                <span>Mode Monitoring {activeUser?.role === 'admin' ? 'Ustadz' : 'Dept HX'}</span>
-                <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.2 rounded-full font-bold">
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs sm:text-sm font-bold text-white flex items-center flex-wrap gap-1.5">
+                <span className="whitespace-nowrap">Mode Monitoring {activeUser?.role === 'admin' ? 'Ustadz' : 'Dept HX'}</span>
+                <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                   {scope === 'group' ? 'Monitoring Per Halaqah' : 'Monitoring Akumulasi Nasional'}
                 </span>
               </h4>
-              <p className="text-[11px] text-[#c1ecd4]/90">
+              <p className="text-[11px] text-[#c1ecd4]/90 mt-1 sm:mt-0.5 leading-snug">
                 {isDeptHX
                   ? scope === 'group'
                     ? 'Memantau kompetisi sehat antar santri di tiap kelompok halaqah binaan secara terpisah.'
@@ -488,34 +488,34 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold text-[#fed488] shrink-0 bg-white/10 px-3 py-1 rounded-full border border-white/20 hidden sm:inline-block">
+          <span className="text-xs font-bold text-[#fed488] shrink-0 bg-white/10 px-3 py-1 rounded-full border border-white/20 hidden md:inline-block whitespace-nowrap">
             Pengawas Klasemen
           </span>
         </div>
       ) : (
-        <div className="w-full bg-[#f1f3ff] rounded-2xl p-4 flex items-center justify-between border-2 border-[#1b4332]/20 shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex flex-col items-center justify-center w-8 h-8 rounded-full bg-[#1b4332] text-white font-bold text-xs shrink-0 shadow-sm">
+        <div className="w-full bg-[#f1f3ff] rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3 border-2 border-[#1b4332]/20 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1b4332] text-white font-bold text-[11px] sm:text-xs shrink-0 shadow-sm">
               #{currentList.findIndex((u) => u.isCurrentUser) >= 0 ? currentList.findIndex((u) => u.isCurrentUser) + 1 : 4}
             </div>
             <img
               alt={activeUser?.name || 'Karyawan'}
-              className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-[#1b4332]/20 shadow-sm"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover shrink-0 ring-2 ring-[#1b4332]/20 shadow-sm"
               src={activeUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog'}
             />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate">{activeUser?.name}</h4>
-              <span className="text-[10px] text-[#00452c] font-semibold">{activeUser?.halaqah}</span>
+              <span className="text-[10px] text-[#00452c] font-semibold block truncate">{activeUser?.halaqah}</span>
             </div>
           </div>
 
           {/* XP Stats Block */}
           <div className="text-right shrink-0">
-            <div className="text-base font-bold text-[#012d1d]">
-              {userXp.toLocaleString()} <span className="text-xs text-[#414844] font-normal">XP</span>
+            <div className="text-sm sm:text-base font-bold text-[#012d1d] tabular-nums">
+              {userXp.toLocaleString()} <span className="text-[11px] sm:text-xs text-[#414844] font-normal">XP</span>
             </div>
-            <div className="flex items-center justify-end gap-0.5 text-xs text-[#00452c] font-semibold">
-              <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
+            <div className="flex items-center justify-end gap-0.5 text-[11px] sm:text-xs text-[#00452c] font-semibold whitespace-nowrap">
+              <span className="material-symbols-outlined text-[13px] sm:text-[14px]">arrow_upward</span>
               <span>Peringkat Aktif</span>
             </div>
           </div>
@@ -571,31 +571,31 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
       {/* SPECIAL DEPT HX FILTER BAR FOR PER-HALAQAH VIEW (Placed under Scope Buttons) */}
       {isDeptHX && scope === 'group' && (
-        <div className="w-full bg-white rounded-2xl p-3.5 border border-[#1b4332]/10 shadow-sm space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d]">
-              <span className="material-symbols-outlined text-[18px] text-[#00452c]">hub</span>
-              <span>Pilih Tampilan Peringkat Halaqah Binaan</span>
+        <div className="w-full bg-white rounded-2xl p-3 sm:p-3.5 border border-[#1b4332]/10 shadow-sm space-y-2.5 overflow-hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d] min-w-0 flex-1">
+              <span className="material-symbols-outlined text-[18px] text-[#00452c] shrink-0">hub</span>
+              <span className="leading-snug">Pilih Tampilan Peringkat Halaqah Binaan</span>
             </div>
-            <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold shrink-0 whitespace-nowrap">
               {allHalaqahNames.length} Halaqah Aktif
             </span>
           </div>
 
           {/* Halaqah Filter Chips */}
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 no-scrollbar">
             <button
               onClick={() => {
                 setSelectedHalaqahFilter('all');
                 onShowToast('Menampilkan peringkat setiap halaqah secara terpisah');
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
                 selectedHalaqahFilter === 'all'
                   ? 'bg-[#012d1d] text-white shadow-sm'
                   : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
               }`}
             >
-              <span className="material-symbols-outlined text-[15px]">view_agenda</span>
+              <span className="material-symbols-outlined text-[15px] shrink-0">view_agenda</span>
               <span>Semua Halaqah (Terpisah)</span>
             </button>
 
@@ -609,7 +609,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                     setSelectedHalaqahFilter(halName);
                     onShowToast(`Melihat peringkat internal ${halName}`);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
                     isSelected
                       ? 'bg-[#012d1d] text-white shadow-sm'
                       : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e4e7ff]'
@@ -617,7 +617,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 >
                   <span>{halName}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full shrink-0 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-[#e1e8fd] text-[#141b2b]'
                     }`}
                   >
@@ -633,17 +633,17 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
       {/* VIEW BRANCH 1: DEPT HX "ALL HALAQAHS" SEPARATED OVERVIEW */}
       {isDeptHX && scope === 'group' && selectedHalaqahFilter === 'all' ? (
         <div className="w-full space-y-6">
-          <div className="flex items-center justify-between pb-1 border-b border-[#1b4332]/10">
-            <div>
-              <h3 className="text-base font-bold text-[#012d1d] flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[20px] text-[#00452c]">format_list_bulleted</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#1b4332]/10">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm sm:text-base font-bold text-[#012d1d] flex items-start sm:items-center gap-1.5 leading-snug">
+                <span className="material-symbols-outlined text-[19px] sm:text-[20px] text-[#00452c] shrink-0 mt-0.5 sm:mt-0">format_list_bulleted</span>
                 <span>Peringkat Setiap Halaqah (Terpisah Antar Halaqah)</span>
               </h3>
-              <p className="text-xs text-[#414844] mt-0.5">
+              <p className="text-[11px] sm:text-xs text-[#414844] mt-0.5 leading-snug">
                 Masing-masing halaqah memiliki klasemen internal sendiri berdasarkan total XP anggota.
               </p>
             </div>
-            <span className="text-xs font-semibold text-[#00452c] bg-[#c1ecd4]/60 px-3 py-1 rounded-full shrink-0 hidden sm:inline-block">
+            <span className="text-[11px] sm:text-xs font-semibold text-[#00452c] bg-[#c1ecd4]/70 px-3 py-1 rounded-full shrink-0 whitespace-nowrap self-start sm:self-auto">
               {halaqahBreakdowns.length} Kelompok Terdata
             </span>
           </div>
@@ -656,32 +656,32 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 className="w-full bg-white rounded-2xl border border-[#1b4332]/10 shadow-sm overflow-hidden transition-all hover:border-[#1b4332]/25"
               >
                 {/* Halaqah Card Header */}
-                <div className="bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#fed488] shrink-0 border border-white/15">
-                      <span className="material-symbols-outlined text-[22px]">mosque</span>
+                <div className="bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#fed488] shrink-0 border border-white/15 mt-0.5 sm:mt-0">
+                      <span className="material-symbols-outlined text-[20px] sm:text-[22px]">mosque</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-base font-bold text-white">{hGroup.name}</h4>
-                        <span className="px-2 py-0.5 bg-[#fed488] text-[#785a1a] text-[10px] font-bold rounded-full">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                        <h4 className="text-sm sm:text-base font-bold text-white leading-snug">{hGroup.name}</h4>
+                        <span className="px-2 py-0.5 bg-[#fed488] text-[#785a1a] text-[10px] font-bold rounded-full shrink-0 whitespace-nowrap">
                           {hGroup.code}
                         </span>
                       </div>
-                      <p className="text-xs text-[#c1ecd4] mt-0.5 flex items-center gap-2">
+                      <p className="text-[11px] sm:text-xs text-[#c1ecd4] mt-1 flex items-center flex-wrap gap-x-1.5 gap-y-0.5 leading-snug">
                         <span>Pembimbing: {hGroup.supervisor}</span>
-                        <span>•</span>
+                        <span className="opacity-60">•</span>
                         <span>{hGroup.dept}</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-auto">
-                    <div className="text-right mr-1">
-                      <div className="text-sm font-bold text-[#fed488]">
+                  <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-white/10 sm:border-t-0 shrink-0">
+                    <div className="text-left sm:text-right min-w-0">
+                      <div className="text-sm font-bold text-[#fed488] tabular-nums leading-tight">
                         {hGroup.totalXp.toLocaleString()} XP
                       </div>
-                      <div className="text-[10px] text-[#c1ecd4]">
+                      <div className="text-[10px] sm:text-[11px] text-[#c1ecd4] leading-snug mt-0.5">
                         {hGroup.memberCount} Anggota • Rata-rata {hGroup.avgAcc}% Tajwid
                       </div>
                     </div>
@@ -690,9 +690,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                         setSelectedHalaqahFilter(hGroup.name);
                         onShowToast(`Membuka fokus podium ${hGroup.name}`);
                       }}
-                      className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                      className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
                     >
-                      <span className="material-symbols-outlined text-[15px]">podium</span>
+                      <span className="material-symbols-outlined text-[15px] shrink-0">podium</span>
                       <span>Fokus</span>
                     </button>
                   </div>
@@ -789,18 +789,18 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         /* VIEW BRANCH 2: PODIUM + RANKING LIST (For Single Halaqah OR National Global) */
         <div className="w-full space-y-5">
           {/* Active Scope Label Info */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#00452c] text-[20px]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
+              <span className="material-symbols-outlined text-[#00452c] text-[20px] shrink-0 mt-0.5 sm:mt-0">
                 {scope === 'global' ? 'public' : 'workspace_premium'}
               </span>
-              <div>
-                <h3 className="text-sm font-bold text-[#141b2b]">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-[#141b2b] leading-snug">
                   {scope === 'global'
                     ? 'Klasemen Nasional (Akumulasi Seluruh Karyawan)'
                     : `Klasemen Internal: ${activeHalaqahTarget}`}
                 </h3>
-                <p className="text-[11px] text-[#717973]">
+                <p className="text-[11px] text-[#717973] leading-snug mt-0.5">
                   {scope === 'global'
                     ? `Menampilkan total ${nationalLeaderboard.length} karyawan terakumulasi dari seluruh halaqah se-Indonesia`
                     : `Menampilkan ${singleHalaqahLeaderboard.length} santri aktif terdaftar pada ${activeHalaqahTarget}`}
@@ -814,16 +814,16 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                   setSelectedHalaqahFilter('all');
                   onShowToast('Kembali ke tampilan semua halaqah terpisah');
                 }}
-                className="text-xs text-[#00452c] font-bold hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-[#e9edff] hover:bg-[#dce2f7] text-[#012d1d] border border-[#1b4332]/15 text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap self-start sm:self-auto shadow-2xs"
               >
-                <span className="material-symbols-outlined text-[15px]">arrow_back</span>
+                <span className="material-symbols-outlined text-[15px] shrink-0">arrow_back</span>
                 <span>Lihat Semua Halaqah</span>
               </button>
             )}
           </div>
 
           {/* Top 3 Podium Showcase Card */}
-          <div className="w-full bg-gradient-to-b from-[#1b4332] via-[#1b4332] to-[#012d1d] text-white rounded-2xl p-4 sm:p-5 shadow-md relative overflow-hidden">
+          <div className="w-full bg-gradient-to-b from-[#1b4332] via-[#1b4332] to-[#012d1d] text-white rounded-2xl p-3.5 sm:p-5 shadow-md relative overflow-hidden">
             {/* Ambient Geometry */}
             <svg
               className="absolute -right-6 -bottom-6 w-40 h-40 opacity-10 text-white pointer-events-none"
@@ -834,39 +834,39 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               <polygon points="50,15 61,38 86,41 68,59 73,85 50,72 27,85 32,59 14,41 39,38" />
             </svg>
 
-            <div className="flex items-center justify-between pb-3">
-              <span className="text-xs uppercase tracking-wider text-[#ffdea5] font-bold">
+            <div className="relative z-10 flex items-center justify-between flex-wrap gap-2 pb-4 sm:pb-3">
+              <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#ffdea5] font-bold min-w-0 truncate">
                 {scope === 'global'
                   ? 'Podium Nasional Pekan Ini'
                   : `Qari Terbaik: ${activeHalaqahTarget}`}
               </span>
-              <span className="text-xs bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[#e9c176] font-medium">
+              <span className="text-[10px] sm:text-xs bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[#e9c176] font-medium shrink-0 whitespace-nowrap">
                 Pekan ke-34
               </span>
             </div>
 
             {/* Podium Layout */}
-            <div className="grid grid-cols-3 gap-2 items-end pt-2 pb-1 text-center">
+            <div className="relative z-10 grid grid-cols-3 gap-1.5 sm:gap-2 items-end pt-4 sm:pt-3 pb-1 text-center">
               {/* 2nd Place */}
               {top2 ? (
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center min-w-0">
                   <div className="relative mb-2">
-                    <div className="w-14 h-14 rounded-full p-0.5 bg-[#dce2f7]/70 shadow-sm flex items-center justify-center">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-[#dce2f7]/70 shadow-sm flex items-center justify-center">
                       <img
                         className="w-full h-full object-cover rounded-full"
                         alt={top2.name}
                         src={top2.avatar}
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#dce2f7] text-[#141b2b] text-[11px] font-bold rounded-full flex items-center justify-center shadow">
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#dce2f7] text-[#141b2b] text-[10px] sm:text-[11px] font-bold rounded-full flex items-center justify-center shadow">
                       2
                     </span>
                   </div>
-                  <h4 className="text-xs font-bold truncate max-w-full text-white">{top2.name}</h4>
-                  <span className="text-[10px] text-[#ffdea5] font-semibold">
+                  <h4 className="text-[11px] sm:text-xs font-bold truncate max-w-full px-0.5 text-white">{top2.name}</h4>
+                  <span className="text-[10px] text-[#ffdea5] font-semibold tabular-nums">
                     {top2.xp.toLocaleString()} XP
                   </span>
-                  <span className="text-[9px] text-[#86af99] truncate max-w-full">
+                  <span className="text-[9px] text-[#86af99] truncate max-w-full px-0.5">
                     {top2.roleOrCircle || `${top2.tajweedAcc}% Tajwid`}
                   </span>
                 </div>
@@ -876,26 +876,26 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
               {/* 1st Place */}
               {top1 ? (
-                <div className="flex flex-col items-center -translate-y-2">
+                <div className="flex flex-col items-center -translate-y-1.5 sm:-translate-y-2 min-w-0">
                   <div className="relative mb-2">
                     {/* Crown Icon */}
-                    <span className="material-symbols-outlined text-[24px] text-[#fed488] absolute -top-5 left-1/2 -translate-x-1/2 drop-shadow animate-bounce">
+                    <span className="material-symbols-outlined text-[20px] sm:text-[24px] text-[#fed488] absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 drop-shadow animate-bounce">
                       crown
                     </span>
-                    <div className="w-18 h-18 rounded-full p-1 bg-gradient-to-tr from-[#fed488] to-[#ffdea5] shadow-lg flex items-center justify-center ring-2 ring-[#fed488]/50">
+                    <div className="w-15 h-15 sm:w-18 sm:h-18 rounded-full p-1 bg-gradient-to-tr from-[#fed488] to-[#ffdea5] shadow-lg flex items-center justify-center ring-2 ring-[#fed488]/50">
                       <img
                         className="w-full h-full object-cover rounded-full"
                         alt={top1.name}
                         src={top1.avatar}
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#fed488] text-[#785a1a] text-xs font-bold rounded-full flex items-center justify-center shadow">
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-[#fed488] text-[#785a1a] text-[11px] sm:text-xs font-bold rounded-full flex items-center justify-center shadow">
                       1
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold truncate max-w-full text-[#ffdea5]">{top1.name}</h4>
-                  <span className="text-xs font-bold text-white">{top1.xp.toLocaleString()} XP</span>
-                  <span className="text-[10px] text-[#92f7c3] font-semibold truncate max-w-full">
+                  <h4 className="text-xs sm:text-sm font-bold truncate max-w-full px-0.5 text-[#ffdea5]">{top1.name}</h4>
+                  <span className="text-[11px] sm:text-xs font-bold text-white tabular-nums">{top1.xp.toLocaleString()} XP</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-[#92f7c3] font-semibold truncate max-w-full px-0.5">
                     {top1.roleOrCircle || 'Peringkat Utama'}
                   </span>
                 </div>
@@ -905,24 +905,24 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
               {/* 3rd Place */}
               {top3 ? (
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center min-w-0">
                   <div className="relative mb-2">
-                    <div className="w-14 h-14 rounded-full p-0.5 bg-[#fed488]/40 shadow-sm flex items-center justify-center">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-[#fed488]/40 shadow-sm flex items-center justify-center">
                       <img
                         className="w-full h-full object-cover rounded-full"
                         alt={top3.name}
                         src={top3.avatar}
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#e9c176] text-[#261900] text-[11px] font-bold rounded-full flex items-center justify-center shadow">
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#e9c176] text-[#261900] text-[10px] sm:text-[11px] font-bold rounded-full flex items-center justify-center shadow">
                       3
                     </span>
                   </div>
-                  <h4 className="text-xs font-bold truncate max-w-full text-white">{top3.name}</h4>
-                  <span className="text-[10px] text-[#ffdea5] font-semibold">
+                  <h4 className="text-[11px] sm:text-xs font-bold truncate max-w-full px-0.5 text-white">{top3.name}</h4>
+                  <span className="text-[10px] text-[#ffdea5] font-semibold tabular-nums">
                     {top3.xp.toLocaleString()} XP
                   </span>
-                  <span className="text-[9px] text-[#86af99] truncate max-w-full">
+                  <span className="text-[9px] text-[#86af99] truncate max-w-full px-0.5">
                     {top3.roleOrCircle || `${top3.tajweedAcc}% Tajwid`}
                   </span>
                 </div>

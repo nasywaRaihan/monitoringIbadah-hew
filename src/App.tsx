@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User } from 'firebase/auth';
 import {
   collection,
@@ -15,6 +15,12 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from './services/firebase';
+import {
+  getDirectiveDurationMs,
+  getDirectiveExpiresAtMs,
+  isDirectiveCurrentlyActive,
+  isDirectiveExpired
+} from './services/directiveLifecycle';
 import {
   initAuth,
   googleSignIn,
@@ -59,7 +65,7 @@ import { AuthModal } from './components/AuthModal';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { ImportedReciterRecord, downloadPerColumnCSV } from './services/csvExport';
 import { DeptHXPasscodeModal } from './components/DeptHXPasscodeModal';
-import { getStoredStandardAmalan } from './services/amalanPaten';
+import { getStoredStandardAmalan, findConflictingStandardAmalan } from './services/amalanPaten';
 import { recordDailyActivityStreak, evaluateStreakOnLoad } from './services/streakService';
 
 export default function App() {
@@ -359,6 +365,65 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  const [directiveClockMs, setDirectiveClockMs] = useState<number>(() => Date.now());
+  const processedExpirationKeysRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDirectiveClockMs(Date.now());
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Automatically deactivate expired non-recurring Yaumiyah (1d) / Usbu'iyah (7d) directives,
+  // or roll forward recurring directives to their next period in Firestore.
+  useEffect(() => {
+    if (ibadahDirectives.length === 0) return;
+
+    ibadahDirectives.forEach(async (d) => {
+      if (d.status !== 'Aktif') return;
+      if (!isDirectiveExpired(d, directiveClockMs)) return;
+
+      const expiryKey = `${d.id}_${d.expiresAt || d.createdAt || ''}`;
+      if (processedExpirationKeysRef.current.has(expiryKey)) return;
+      processedExpirationKeysRef.current.add(expiryKey);
+
+      try {
+        if (d.isRecurring === true) {
+          const durationMs = getDirectiveDurationMs(d);
+          let nextExpMs = (getDirectiveExpiresAtMs(d) || directiveClockMs) + durationMs;
+          while (nextExpMs <= directiveClockMs) {
+            nextExpMs += durationMs;
+          }
+
+          await updateDoc(doc(db, 'ibadahDirectives', d.id), {
+            expiresAt: new Date(nextExpMs).toISOString(),
+            compliancePercent: 0,
+            lastResetAt: new Date(directiveClockMs).toISOString()
+          });
+
+          const subSnap = await getDocs(collection(db, `ibadahDirectives/${d.id}/submissions`));
+          for (const subDoc of subSnap.docs) {
+            await updateDoc(subDoc.ref, {
+              isCompleted: false,
+              completedAt: '',
+              notes: 'Periode baru dimulai otomatis'
+            });
+          }
+        } else {
+          await updateDoc(doc(db, 'ibadahDirectives', d.id), {
+            status: 'Selesai',
+            autoDeactivated: true,
+            deactivatedAt: new Date(directiveClockMs).toISOString()
+          });
+        }
+      } catch (e) {
+        console.error('Error processing directive expiration:', e);
+        processedExpirationKeysRef.current.delete(expiryKey);
+      }
+    });
+  }, [ibadahDirectives, directiveClockMs]);
+
   // Listen for submissions for each directive to maintain compliance stats
   useEffect(() => {
     if (ibadahDirectives.length === 0) return;
@@ -416,9 +481,10 @@ export default function App() {
       };
     });
 
-    // 2. Ustadz Directives for activeUser's halaqah
+    // 2. Ustadz Directives for activeUser's halaqah (exclude expired non-recurring tasks and duplicates of Dept HX Amalan Pasti)
     const ustadzTasks: DailyTask[] = ibadahDirectives
-      .filter((d) => d.status === 'Aktif')
+      .filter((d) => isDirectiveCurrentlyActive(d, directiveClockMs))
+      .filter((d) => !findConflictingStandardAmalan(d.title, patenItems))
       .filter((d) => {
         const target = (d as any).targetHalaqah;
         return !target || target === 'Semua Halaqah' || target === 'Semua' || target === activeUser.halaqah;
@@ -427,7 +493,8 @@ export default function App() {
         const taskId = `task-directive-${d.id}`;
         const submission = d.submissions?.find((s) => s.studentId === activeUser.id);
         const comp = userCompletions[taskId];
-        const isDone = submission?.isCompleted || comp?.completed || false;
+        const resetAfterMidnight = d.lastResetAt && Date.parse(d.lastResetAt) > new Date(todayStr).getTime();
+        const isDone = submission?.isCompleted || (!resetAfterMidnight && comp?.completed) || false;
         const validityDays = d.type === 'yaumiyah' ? 1 : 7;
 
         return {
@@ -439,17 +506,17 @@ export default function App() {
           completed: isDone,
           isAssigned: true,
           isRecitationTest: (d as any).isRecitationTest || false,
-          isRecurring: d.isRecurring ?? true,
+          isRecurring: d.isRecurring ?? false,
           type: d.type,
           validityDays: d.validityDays || validityDays,
-          expiresAt: d.expiresAt,
+          expiresAt: d.expiresAt || (getDirectiveExpiresAtMs(d) ? new Date(getDirectiveExpiresAtMs(d)!).toISOString() : undefined),
           note: comp?.note || d.target,
           targetHalaqah: (d as any).targetHalaqah || activeUser.halaqah
         };
       });
 
     setTasks([...patenTasks, ...ustadzTasks]);
-  }, [ibadahDirectives, activeUser?.id, activeUser?.halaqah]);
+  }, [ibadahDirectives, activeUser?.id, activeUser?.halaqah, directiveClockMs]);
 
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
@@ -1034,6 +1101,14 @@ export default function App() {
   };
 
   const handleAddTask = async (newTask: DailyTask) => {
+    const conflictingStandard = findConflictingStandardAmalan(newTask.title);
+    if (conflictingStandard) {
+      showToast(
+        `Amalan "${newTask.title}" sudah ada di Amalan Pasti Dept HX ("${conflictingStandard.title}"). Gunakan amalan lain.`
+      );
+      return;
+    }
+
     const targetHalaqah = newTask.targetHalaqah || activeUser?.halaqah || 'Halaqah Al-Fajr';
     const directiveId = newTask.directiveId || `ibadah-${Date.now()}`;
 
@@ -1048,18 +1123,26 @@ export default function App() {
     setTasks((prev) => [taskWithDirective, ...prev]);
 
     try {
+      const taskType = newTask.type || 'yaumiyah';
+      const validityDays = taskType === 'yaumiyah' ? 1 : 7;
+      const now = new Date();
+      const expDate = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000);
+
       const newDirective = {
         id: directiveId,
-        type: 'yaumiyah',
+        type: taskType,
         title: newTask.title,
         target: newTask.note || 'Target amalan dari Ustadz',
-        xp: newTask.xp || 50,
+        xp: newTask.xp || 15,
         compliancePercent: 0,
         status: 'Aktif',
         category: newTask.category || 'Sunnah Harian',
+        isRecurring: newTask.isRecurring ?? false,
+        validityDays,
+        expiresAt: newTask.expiresAt || expDate.toISOString(),
         targetHalaqah: targetHalaqah,
         createdBy: activeUser?.name || 'Ustadz Pembimbing',
-        createdAt: newTask.createdAt || new Date().toISOString()
+        createdAt: newTask.createdAt || now.toISOString()
       };
 
       await setDoc(doc(db, 'ibadahDirectives', directiveId), newDirective, { merge: true });
@@ -1210,9 +1293,9 @@ export default function App() {
       <>
         <AuthScreen registeredUsers={registeredUsers} onLoginSuccess={(user: ActiveUser) => handleSelectUser(user)} onRegisterNewUser={async (userData: any) => { await handleRegisterUser(userData); showToast(`Ahlan wa Sahlan, ${userData.name}! Pendaftaran berhasil.`); }} onShowToast={showToast} />
         {toastMessage && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#293040] text-[#edf0ff] px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-sm text-center">
-            <span className="material-symbols-outlined text-[18px] text-[#92f7c3] shrink-0">check_circle</span>
-            <span className="text-xs font-semibold">{toastMessage}</span>
+          <div className="fixed bottom-6 inset-x-4 mx-auto w-fit max-w-md z-[90] bg-[#293040] text-[#edf0ff] px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <span className="material-symbols-outlined text-[17px] text-[#92f7c3] shrink-0">check_circle</span>
+            <span className="text-xs font-semibold leading-snug line-clamp-2">{toastMessage}</span>
           </div>
         )}
       </>
@@ -1223,7 +1306,7 @@ export default function App() {
     <div className="min-h-screen bg-[#f9f9ff] text-[#141b2b] flex flex-col font-sans selection:bg-[#c1ecd4] selection:text-[#012d1d]">
       <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={2} currentRole={currentRole} activeUser={activeUser} />
       <main className="flex-1 flex flex-col w-full">
-        {currentTab === 'worship' && <WorshipScreen tasks={tasks} onToggleTask={handleToggleTask} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} totalXp={totalXp} streakDays={streakDays} onNavigateToRecitation={() => setCurrentTab('recitation')} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} />}
+        {currentTab === 'worship' && <WorshipScreen tasks={tasks} onToggleTask={handleToggleTask} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} totalXp={totalXp} streakDays={streakDays} onNavigateToRecitation={() => setCurrentTab('recitation')} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} attendanceSessions={attendanceSessions} />}
         {currentTab === 'recitation' && <RecitationScreen onBack={() => { if (currentRole === 'admin') setCurrentTab('admin'); else if (currentRole === 'dept-hx' || currentRole === 'hq-admin') setCurrentTab('dept-hx'); else setCurrentTab('worship'); }} onSubmitRecitation={handleSubmitRecitation} onShowToast={showToast} currentRole={currentRole} activeUser={activeUser} registeredUsers={registeredUsers} googleToken={googleToken} spreadsheetId={spreadsheet?.id} />}
         {currentTab === 'leaderboard' && <LeaderboardScreen userXp={totalXp} userStreak={streakDays} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} registeredUsers={registeredUsers} />}
         {currentTab === 'admin' && <AdminScreen onShowToast={showToast} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} onOpenAuth={() => setIsAuthOpen(true)} onAddHalaqahTask={handleAddTask} activeUser={activeUser} registeredUsers={registeredUsers} ibadahDirectives={ibadahDirectives} setIbadahDirectives={setIbadahDirectives} attendanceSessions={attendanceSessions} onSaveAttendanceSession={handleSaveAttendanceSession} onDeleteAttendanceSession={handleDeleteAttendanceSession} />}
@@ -1242,9 +1325,9 @@ export default function App() {
       <GoogleSheetsModal isOpen={isSheetsModalOpen} onClose={() => setIsSheetsModalOpen(false)} user={googleUser} spreadsheet={spreadsheet} onConnectGoogle={handleConnectGoogle} onDisconnectGoogle={handleDisconnectGoogle} isConnecting={isConnectingGoogle} accessToken={googleToken} onShowToast={showToast} onImportReciters={handleImportReciters} onExportAll={handleExportAllReciters} />
       <DeptHXPasscodeModal isOpen={isDeptHXPinModalOpen} onClose={() => { setIsDeptHXPinModalOpen(false); if (!isDeptHXUnlocked && (currentTab === 'dept-hx' || currentTab === 'hq-admin')) { setCurrentTab(currentRole === 'admin' ? 'admin' : 'worship'); } }} onSuccess={() => { setIsDeptHXUnlocked(true); setCurrentTab('dept-hx'); }} onShowToast={showToast} />
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#293040] text-[#edf0ff] px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-sm text-center">
-          <span className="material-symbols-outlined text-[18px] text-[#92f7c3] shrink-0">check_circle</span>
-          <span className="text-xs font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-20 inset-x-4 mx-auto w-fit max-w-md z-[90] bg-[#293040] text-[#edf0ff] px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <span className="material-symbols-outlined text-[17px] text-[#92f7c3] shrink-0">check_circle</span>
+          <span className="text-xs font-semibold leading-snug line-clamp-2">{toastMessage}</span>
         </div>
       )}
     </div>
