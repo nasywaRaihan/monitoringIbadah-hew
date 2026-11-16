@@ -62,18 +62,18 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenSplash}
             title="Klik untuk melihat Splash Screen"
             className="p-1 -ml-1 rounded-xl hover:bg-[#1b4332]/5 active:scale-95 transition-all cursor-pointer shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Logo NoorWorship"
+            aria-label="Logo JejakTaqwa"
           >
             <img
-              alt="Logo"
-              className="h-8 w-auto object-contain shrink-0"
+              alt="Logo JejakTaqwa"
+              className="h-9 w-9 rounded-xl object-contain shrink-0 shadow-xs ring-1 ring-[#00452c]/10"
               src={BRAND_ASSETS.logo}
             />
           </button>
 
           <div className="flex flex-col min-w-0">
             <span className="font-extrabold text-base sm:text-lg text-[#012d1d] tracking-tight leading-tight truncate">
-              NoorWorship
+              JejakTaqwa
             </span>
             <span className="text-[11px] text-[#414844] truncate font-medium">
               {getSubhead()}

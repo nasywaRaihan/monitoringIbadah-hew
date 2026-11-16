@@ -25,6 +25,7 @@ interface WorshipScreenProps {
   totalXp: number;
   streakDays: number;
   onNavigateToRecitation: () => void;
+  onNavigateToLeaderboard?: () => void;
   onShowToast: (msg: string) => void;
   activeUser: ActiveUser;
   onOpenAuth: () => void;
@@ -39,6 +40,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   totalXp,
   streakDays,
   onNavigateToRecitation,
+  onNavigateToLeaderboard,
   onShowToast,
   activeUser,
   onOpenAuth,
@@ -51,15 +53,20 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   // Attendance records for the active employee in their halaqah
   const employeeAttendanceRecords = useMemo(() => {
     if (!attendanceSessions || attendanceSessions.length === 0) return [];
+    const userHalaqah = (activeUser.halaqah || 'Halaqah Al-Fajr').toLowerCase();
+    const userName = (activeUser.name || '').toLowerCase();
     return attendanceSessions
       .filter((session) => {
-        const isSameHalaqah = session.halaqahName.toLowerCase() === activeUser.halaqah.toLowerCase();
-        const hasUserInMembers = session.members.some((m) => m.userId === activeUser.id || m.userName.toLowerCase() === activeUser.name.toLowerCase());
+        const sessionHalaqah = (session.halaqahName || '').toLowerCase();
+        const isSameHalaqah = sessionHalaqah === userHalaqah;
+        const hasUserInMembers = (session.members || []).some(
+          (m) => m.userId === activeUser.id || (m.userName || '').toLowerCase() === userName
+        );
         return isSameHalaqah || hasUserInMembers;
       })
       .map((session) => {
-        const memberRecord = session.members.find(
-          (m) => m.userId === activeUser.id || m.userName.toLowerCase() === activeUser.name.toLowerCase()
+        const memberRecord = (session.members || []).find(
+          (m) => m.userId === activeUser.id || (m.userName || '').toLowerCase() === userName
         );
         return {
           session,
@@ -654,45 +661,75 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
           )}
         </button>
 
-        <div className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center min-w-0">
+        <button
+          type="button"
+          onClick={() => setShowHistoryModal(true)}
+          className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#012d1d]/40 hover:shadow-md transition-all active:scale-95 text-center cursor-pointer relative group min-w-0"
+          title="Klik untuk melihat riwayat amalan & perolehan XP"
+        >
           <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#012d1d]">
-            <span className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0">bolt</span>
+            <span className="material-symbols-outlined text-[18px] sm:text-[20px] group-hover:scale-110 transition-transform shrink-0">bolt</span>
             <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight truncate">
               {totalXp.toLocaleString()}
             </span>
           </div>
-          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full">Total XP</span>
-        </div>
+          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full flex items-center justify-center gap-0.5">
+            <span className="truncate">Total XP</span>
+            <span className="material-symbols-outlined text-[11px] sm:text-[13px] text-[#717973] shrink-0">info</span>
+          </span>
+          <span className="absolute -top-2 right-1 sm:-top-1.5 sm:-right-1 px-1.5 py-0.5 rounded-full bg-[#e9fbf2] text-[#00452c] text-[8.5px] sm:text-[9px] font-bold border border-[#92f7c3]/60 leading-none shadow-2xs">
+            Riwayat
+          </span>
+        </button>
 
-        <div className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 text-center min-w-0">
+        <button
+          type="button"
+          onClick={() => {
+            if (onNavigateToLeaderboard) {
+              onNavigateToLeaderboard();
+            } else {
+              onShowToast('Membuka peringkat halaqah...');
+            }
+          }}
+          className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#775a19]/40 hover:shadow-md transition-all active:scale-95 text-center cursor-pointer relative group min-w-0"
+          title="Klik untuk membuka klasemen peringkat halaqah"
+        >
           <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#775a19]">
             <span
-              className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0"
+              className="material-symbols-outlined text-[18px] sm:text-[20px] group-hover:scale-110 transition-transform shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               workspace_premium
             </span>
             <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight">#3</span>
           </div>
-          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full">Peringkat Halaqah</span>
-        </div>
+          <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full flex items-center justify-center gap-0.5">
+            <span className="truncate">Peringkat</span>
+            <span className="material-symbols-outlined text-[11px] sm:text-[13px] text-[#717973] shrink-0">chevron_right</span>
+          </span>
+          <span className="absolute -top-2 right-1 sm:-top-1.5 sm:-right-1 px-1.5 py-0.5 rounded-full bg-[#fff8e1] text-[#785a1a] text-[8.5px] sm:text-[9px] font-bold border border-[#ffe082] leading-none shadow-2xs">
+            Klasemen
+          </span>
+        </button>
       </div>
 
       {/* Ringkasan Kehadiran Halaqah (Animated Summary Card) */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsAttendanceModalOpen(true)}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#012d1d] via-[#00452c] to-[#012d1d] p-4 text-white shadow-md border border-[#c1ecd4]/20 cursor-pointer hover:shadow-lg transition-all group active:scale-[0.99]"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#012d1d] via-[#00452c] to-[#012d1d] p-4 text-white shadow-md border border-[#c1ecd4]/20 cursor-pointer hover:shadow-lg transition-all group active:scale-[0.99] select-none"
       >
         <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-[#fed488]/15 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform" />
         <div className="flex items-center justify-between gap-3 relative z-10">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-11 h-11 rounded-2xl bg-[#fed488] text-[#785a1a] flex items-center justify-center font-bold shadow-sm shrink-0 group-hover:rotate-6 transition-transform">
               <span className="material-symbols-outlined text-[24px]">how_to_reg</span>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#c1ecd4]">
-                  Presensi Halaqah • {activeUser.halaqah}
+                  Presensi Sesi Halaqah • {activeUser.halaqah}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold shadow-2xs border border-[#92f7c3]/60 animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-[#00452c]" />
@@ -700,18 +737,30 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight mt-0.5 truncate">
-                {attendanceStats.hadir} dari {attendanceStats.total} Sesi Pertemuan
+                {attendanceStats.hadir} dari {attendanceStats.total} Pertemuan Halaqah
               </h3>
               <p className="text-[11px] text-[#c1ecd4]/80 truncate mt-0.5">
-                Klik untuk melihat detail riwayat absen yang direkap oleh Ustadz ➔
+                Rekap absensi resmi oleh Ustadz • Klik untuk lihat riwayat lengkap ➔
               </p>
             </div>
           </div>
 
-          <div className="hidden sm:flex flex-col items-end shrink-0 text-right">
-            <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center font-mono font-bold text-sm text-[#fed488]">
-              {attendanceStats.rate}%
-            </div>
+          <div className="flex flex-col items-end shrink-0 text-right gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAttendanceModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Buka Lembar Detail Presensi Sesi Halaqah"
+            >
+              <span>Detail</span>
+              <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+            </button>
+            <span className="hidden sm:inline-block text-[10px] text-[#c1ecd4]/70 font-mono">
+              {attendanceStats.hadir}/{attendanceStats.total} Pertemuan
+            </span>
           </div>
         </div>
 
@@ -1019,36 +1068,86 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* History Modal */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-[60] bg-[#141b2b]/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+        <div
+          onClick={() => setShowHistoryModal(false)}
+          className="fixed inset-0 z-[60] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#1b4332]/10 space-y-4 my-auto max-h-[85vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <h3 className="font-bold text-base text-[#141b2b]">Riwayat Amalan Ibadah</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#012d1d] text-[#fed488] flex items-center justify-center shadow-xs">
+                  <span className="material-symbols-outlined text-[22px]">bolt</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#141b2b]">Riwayat Amalan & Poin XP</h3>
+                  <p className="text-xs text-[#414844]">{activeUser.name} • {activeUser.halaqah}</p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowHistoryModal(false)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e9edff] flex items-center justify-center text-[#414844] cursor-pointer transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
-            <div className="py-4 space-y-2 text-xs text-[#414844]">
-              <div className="flex justify-between py-1.5 border-b border-[#f1f3ff]">
-                <span>Kemarin (13 Ramadan)</span>
-                <span className="font-semibold text-[#012d1d]">4/4 Selesai • 350 XP</span>
+
+            {/* Total XP Highlight */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white flex items-center justify-between shadow-sm">
+              <div>
+                <span className="text-[11px] text-[#92f7c3] font-medium block">Total Akumulasi XP</span>
+                <span className="text-2xl font-extrabold text-[#fed488] tabular-nums">{totalXp.toLocaleString()} XP</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-[#f1f3ff]">
-                <span>12 Ramadan</span>
-                <span className="font-semibold text-[#012d1d]">3/4 Selesai • 250 XP</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#f1f3ff]">
-                <span>11 Ramadan</span>
-                <span className="font-semibold text-[#012d1d]">4/4 Selesai • 350 XP</span>
+              <div className="text-right">
+                <span className="px-2.5 py-1 rounded-full bg-white/15 text-white text-[10px] font-bold border border-white/20">
+                  {streakDays} Hari Istiqamah 🔥
+                </span>
               </div>
             </div>
+
+            <div className="space-y-2 text-xs">
+              <span className="font-bold text-[#141b2b] block">Komponen Perolehan XP:</span>
+              <div className="p-3 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/5 space-y-2">
+                <div className="flex justify-between items-center py-1 border-b border-[#f1f3ff]">
+                  <span className="flex items-center gap-1.5 text-[#414844]">
+                    <span className="material-symbols-outlined text-[15px] text-[#00452c]">mosque</span>
+                    Shalat Fardhu Berjamaah Masjid
+                  </span>
+                  <span className="font-bold text-[#00452c]">+70 XP / shalat</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#f1f3ff]">
+                  <span className="flex items-center gap-1.5 text-[#414844]">
+                    <span className="material-symbols-outlined text-[15px] text-[#012d1d]">menu_book</span>
+                    Rawatib & Dzikir Pagi Petang
+                  </span>
+                  <span className="font-bold text-[#012d1d]">+25 - 40 XP</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#f1f3ff]">
+                  <span className="flex items-center gap-1.5 text-[#414844]">
+                    <span className="material-symbols-outlined text-[15px] text-[#ba1a1a]">mic</span>
+                    Setoran Tilawah & Diagnostik AI
+                  </span>
+                  <span className="font-bold text-[#ba1a1a]">+80 - 100 XP</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="flex items-center gap-1.5 text-[#414844]">
+                    <span className="material-symbols-outlined text-[15px] text-[#785a1a]">groups</span>
+                    Kehadiran Sesi Halaqah Ustadz
+                  </span>
+                  <span className="font-bold text-[#785a1a]">+50 XP / sesi</span>
+                </div>
+              </div>
+            </div>
+
             <button
+              type="button"
               onClick={() => setShowHistoryModal(false)}
-              className="w-full py-2.5 rounded-full bg-[#1b4332] text-white text-xs font-semibold cursor-pointer"
+              className="w-full py-2.5 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              Tutup
+              Tutup Riwayat
             </button>
           </div>
         </div>
@@ -1056,8 +1155,14 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
       {/* Attendance Detail Modal */}
       {isAttendanceModalOpen && (
-        <div className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-5 shadow-2xl text-[#141b2b] space-y-3.5 my-auto relative border border-[#c1ecd4] max-h-[85vh] overflow-y-auto">
+        <div
+          onClick={() => setIsAttendanceModalOpen(false)}
+          className="fixed inset-0 z-[60] bg-[#0c1322]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-5 shadow-2xl text-[#141b2b] space-y-3.5 my-auto relative border border-[#c1ecd4] max-h-[85vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-[#012d1d] text-[#fed488] flex items-center justify-center shadow-xs">

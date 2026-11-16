@@ -189,10 +189,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Brand Logo Container */}
           <div className="relative mb-2.5">
-            <div className="w-16 h-16 rounded-full bg-[#1b4332] p-1 shadow-lg shadow-[#012d1d]/10 flex items-center justify-center overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-[#012d1d] p-1.5 shadow-lg shadow-[#012d1d]/10 flex items-center justify-center overflow-hidden ring-2 ring-[#c1ecd4]/50">
               <img
-                alt="NoorWorship Brand Emblem"
-                className="w-full h-full object-cover rounded-full"
+                alt="Logo JejakTaqwa"
+                className="w-full h-full object-contain rounded-xl"
                 src={BRAND_ASSETS.logo}
               />
             </div>

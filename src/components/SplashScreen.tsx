@@ -13,7 +13,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   activeUserName
 }) => {
   const [progress, setProgress] = useState(15);
-  const [loadingText, setLoadingText] = useState('Memulai sistem NoorWorship...');
+  const [loadingText, setLoadingText] = useState('Memulai sistem JejakTaqwa...');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
@@ -86,11 +86,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Ambient Ring & Logo */}
         <div className="relative mb-6">
           <div className="absolute -inset-4 rounded-full bg-[#53b889]/20 blur-xl animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-white/20 to-white/5 border border-white/20 backdrop-blur-md flex items-center justify-center p-4 shadow-2xl">
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-2xl overflow-hidden ring-4 ring-[#fed488]/20">
             <img
               src={BRAND_ASSETS.logo}
-              alt="NoorWorship Logo"
-              className="w-full h-full object-contain filter drop-shadow-md"
+              alt="Logo JejakTaqwa"
+              className="w-full h-full object-contain filter drop-shadow-md rounded-2xl"
             />
           </div>
         </div>
@@ -102,12 +102,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
         {/* App Title */}
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-1.5">
-          NoorWorship
+          JejakTaqwa
         </h1>
 
         {/* Subtitle */}
-        <p className="text-xs sm:text-sm text-[#c1ecd4] leading-relaxed max-w-xs font-normal">
-          Sistem Terpadu Presensi Halaqah, Mutaba&apos;ah Ibadah &amp; Pengukuran Tilawah Quran
+        <p className="text-xs sm:text-sm text-[#c1ecd4] leading-relaxed max-w-sm font-normal">
+          Aplikasi monitoring ibadah karyawan PT Herba Emas Wahidatama
         </p>
       </div>
 

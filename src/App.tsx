@@ -865,7 +865,7 @@ export default function App() {
       u.totalXp,
       u.halaqahCode || '-'
     ]);
-    downloadPerColumnCSV('Data_Karyawan_NoorWorship_Lokal', headers, rows, 'Karyawan');
+    downloadPerColumnCSV('Data_Karyawan_JejakTaqwa_Lokal', headers, rows, 'Karyawan');
     showToast('Alhamdulillah! Seluruh data karyawan berhasil diekspor ke file Excel (.xlsx).');
   };
 
@@ -959,7 +959,7 @@ export default function App() {
         const sheetInfo = await findOrCreateSpreadsheet(res.accessToken);
         setSpreadsheet(sheetInfo);
         await syncRosterToSheets(res.accessToken, sheetInfo.id, ALL_RECITERS_DIRECTORY);
-        showToast(`Terhubung! Spreadsheet "NoorWorship - Database & Rekap Halaqah" siap.`);
+        showToast(`Terhubung! Spreadsheet "JejakTaqwa - Database & Rekap Halaqah" siap.`);
       }
     } catch (err: any) {
       console.error(err);
@@ -1306,7 +1306,22 @@ export default function App() {
     <div className="min-h-screen bg-[#f9f9ff] text-[#141b2b] flex flex-col font-sans selection:bg-[#c1ecd4] selection:text-[#012d1d]">
       <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={2} currentRole={currentRole} activeUser={activeUser} />
       <main className="flex-1 flex flex-col w-full">
-        {currentTab === 'worship' && <WorshipScreen tasks={tasks} onToggleTask={handleToggleTask} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} totalXp={totalXp} streakDays={streakDays} onNavigateToRecitation={() => setCurrentTab('recitation')} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} attendanceSessions={attendanceSessions} />}
+        {currentTab === 'worship' && (
+          <WorshipScreen
+            tasks={tasks}
+            onToggleTask={handleToggleTask}
+            onAddTask={handleAddTask}
+            onDeleteTask={handleDeleteTask}
+            totalXp={totalXp}
+            streakDays={streakDays}
+            onNavigateToRecitation={() => setCurrentTab('recitation')}
+            onNavigateToLeaderboard={() => setCurrentTab('leaderboard')}
+            onShowToast={showToast}
+            activeUser={activeUser}
+            onOpenAuth={() => setIsAuthOpen(true)}
+            attendanceSessions={attendanceSessions}
+          />
+        )}
         {currentTab === 'recitation' && <RecitationScreen onBack={() => { if (currentRole === 'admin') setCurrentTab('admin'); else if (currentRole === 'dept-hx' || currentRole === 'hq-admin') setCurrentTab('dept-hx'); else setCurrentTab('worship'); }} onSubmitRecitation={handleSubmitRecitation} onShowToast={showToast} currentRole={currentRole} activeUser={activeUser} registeredUsers={registeredUsers} googleToken={googleToken} spreadsheetId={spreadsheet?.id} />}
         {currentTab === 'leaderboard' && <LeaderboardScreen userXp={totalXp} userStreak={streakDays} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} registeredUsers={registeredUsers} />}
         {currentTab === 'admin' && <AdminScreen onShowToast={showToast} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} onOpenAuth={() => setIsAuthOpen(true)} onAddHalaqahTask={handleAddTask} activeUser={activeUser} registeredUsers={registeredUsers} ibadahDirectives={ibadahDirectives} setIbadahDirectives={setIbadahDirectives} attendanceSessions={attendanceSessions} onSaveAttendanceSession={handleSaveAttendanceSession} onDeleteAttendanceSession={handleDeleteAttendanceSession} />}

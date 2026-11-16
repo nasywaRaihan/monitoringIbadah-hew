@@ -687,7 +687,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       }
     });
 
-    const filename = `NoorWorship_Rekap_Presensi_DeptHX_${new Date().toISOString().slice(0, 10)}`;
+    const filename = `JejakTaqwa_Rekap_Presensi_DeptHX_${new Date().toISOString().slice(0, 10)}`;
     downloadPerColumnCSV(filename, headers, rows);
     onShowToast('File Excel Rekap Presensi (.xlsx) berhasil diunduh (terformat rapi per kolom A-L)');
   };
@@ -989,7 +989,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       r.totalXp,
       r.status
     ]);
-    const filename = `NoorWorship_Rekap_Karyawan_${new Date().toISOString().slice(0, 10)}`;
+    const filename = `JejakTaqwa_Rekap_Karyawan_${new Date().toISOString().slice(0, 10)}`;
     downloadPerColumnCSV(filename, headers, rows);
     onShowToast('File Excel Sheet (.xlsx) berhasil diunduh (terformat rapi per kolom A, B, C...)');
   };

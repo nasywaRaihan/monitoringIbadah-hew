@@ -1,6 +1,6 @@
 import { ReciterProfile } from '../types';
 
-export const SPREADSHEET_TITLE = 'NoorWorship - Database & Rekap Halaqah';
+export const SPREADSHEET_TITLE = 'JejakTaqwa - Database & Rekap Halaqah';
 
 export interface SpreadsheetInfo {
   id: string;

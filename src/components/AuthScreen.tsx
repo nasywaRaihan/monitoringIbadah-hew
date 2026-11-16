@@ -276,11 +276,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       <div className="relative z-10 w-full max-w-md">
         {/* Brand Top Emblem & Identity */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#012d1d] to-[#1b4332] p-3 shadow-lg ring-4 ring-[#c1ecd4]/50 mb-3">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#012d1d] p-1.5 shadow-xl ring-4 ring-[#c1ecd4]/50 mb-3 overflow-hidden">
             <img
               src={BRAND_ASSETS.logo}
-              alt="NoorWorship Logo"
-              className="w-full h-full object-contain filter drop-shadow"
+              alt="Logo JejakTaqwa"
+              className="w-full h-full object-contain filter drop-shadow rounded-2xl"
             />
           </div>
 
@@ -288,10 +288,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
           </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#012d1d] tracking-tight">
-            NoorWorship
+            JejakTaqwa
           </h1>
           <p className="text-xs text-[#414844] mt-1">
-            Sistem Halaqah Qur&apos;ani • Mutaba&apos;ah Ibadah &amp; Evaluasi Tartil
+            Aplikasi monitoring ibadah karyawan PT Herba Emas Wahidatama
           </p>
         </div>
 
@@ -838,7 +838,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
         {/* Footer Note */}
         <p className="text-center text-xs text-[#717973] mt-4">
-          NoorWorship • Mutaba&apos;ah Ibadah &amp; Pengukuran Tilawah Tartil
+          JejakTaqwa • Aplikasi monitoring ibadah karyawan PT Herba Emas Wahidatama
         </p>
       </div>
     </div>
