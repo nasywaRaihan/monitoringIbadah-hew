@@ -93,7 +93,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
         await onImportReciters(parsedData);
       } else {
         // Fallback save to localStorage if prop not passed
-        const existingRaw = localStorage.getItem('noorworship_registered_users_v1');
+        const existingRaw = localStorage.getItem('noorworship_registered_users_prod_v1');
         const existing = existingRaw ? JSON.parse(existingRaw) : [];
         const newOnes = parsedData.map((item, idx) => ({
           id: `user-import-${Date.now()}-${idx}`,
@@ -105,15 +105,15 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           avatar:
             'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
           role: 'member',
-          totalXp: 150,
-          streakDays: 1,
+          totalXp: 0,
+          streakDays: 0,
           assignedHalaqahBy: 'Import Dept HX',
           hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
           hxStatus: 'Resmi Dept HX',
           supervisor: item.supervisor || 'Ustadz Pembimbing'
         }));
         localStorage.setItem(
-          'noorworship_registered_users_v1',
+          'noorworship_registered_users_prod_v1',
           JSON.stringify([...newOnes, ...existing])
         );
         window.dispatchEvent(new Event('noorworship_halaqah_updated'));

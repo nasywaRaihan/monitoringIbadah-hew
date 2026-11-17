@@ -73,85 +73,25 @@ export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState<boolean>(true);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_is_logged_in');
+      const saved = localStorage.getItem('noorworship_is_logged_in_prod_v1');
       return saved === 'true';
     } catch {
       return false;
     }
   });
 
-  // Registered Users Directory with pre-assigned halaqah by Dept HX
+  // Official Bootstrap Account for Direktorat Dept HX (No dummy employees)
   const DEFAULT_USERS: ActiveUser[] = [
-    {
-      id: 'user-zubair',
-      name: 'Zubair Ahmed',
-      halaqah: 'Halaqah Al-Fajr',
-      halaqahCode: 'HF-4092',
-      passcode: '1234',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-      role: 'member',
-      totalXp: 1420,
-      streakDays: 7,
-      supervisor: 'Ustadz Farhan',
-      assignedHalaqahBy: 'Dept HX',
-      hxAssignmentId: 'HX-2026-081',
-      hxStatus: 'Resmi Dept HX'
-    },
-    {
-      id: 'user-farhan',
-      name: 'Ustadz Farhan',
-      halaqah: 'Halaqah Al-Fajr',
-      halaqahCode: 'HF-4092',
-      passcode: '1234',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByNNGi_lD7Io3zG-zuX1aVUKDmzjOoc5-OcbzMeGp_VokoCj0ecHRfr2rPFeoV-YkFob6LvNNTHtptfMgKsKgthT1j38bvvTncB9crVDK12gZ75nLsO6m-Bu-El2MGndKztg11ZOCqNWZizJ9bXROCHpppamkoNS1TKKo2NsFPVYqbfcBOWFHTiykrTC70Ubm-xxgZwE9emuyiY1s3kbTQOIuH8ryqG7XWp6Ni31JxpRbEz8d69w6Pmw',
-      role: 'admin',
-      totalXp: 3420,
-      streakDays: 30,
-      supervisor: 'Direktorat Dept HX',
-      assignedHalaqahBy: 'Dept HX',
-      hxAssignmentId: 'HX-2026-001',
-      hxStatus: 'Resmi Dept HX'
-    },
-    {
-      id: 'user-tariq',
-      name: 'Tariq Mansoor',
-      halaqah: 'Hafiz Circle',
-      halaqahCode: 'HC-1108',
-      passcode: '1234',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBk9LWZ-0dEg9IaUBzxXTxLUfqZoGy8Q_Gyq5eDi0id422l1gTQRXmu7w2IRUuHKnuIIKDQfz0IqBGjhZolSIVvibJWwQh9isFTPI1q30Rtimj2C28zuAiMh9aejCr8Mrm22bx69cIaYiDngzNd-7HRJwZMIdc1HT_JjbH1nfrbjhcqmM4hG6bGivGECaOerT1I6Qr9T25Ia-I4lI1Bm2PPZWQ4GhNd14lU0olP2lEoLJjkI3TVKVwjYg',
-      role: 'admin',
-      totalXp: 2850,
-      streakDays: 28,
-      supervisor: 'Direktorat Dept HX',
-      assignedHalaqahBy: 'Dept HX',
-      hxAssignmentId: 'HX-2026-004',
-      hxStatus: 'Resmi Dept HX'
-    },
-    {
-      id: 'user-zayd',
-      name: 'Zayd Al-Amin',
-      halaqah: 'Halaqah Al-Fajr',
-      halaqahCode: 'HF-4092',
-      passcode: '1234',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-      role: 'member',
-      totalXp: 2410,
-      streakDays: 12,
-      supervisor: 'Ustadz Farhan',
-      assignedHalaqahBy: 'Dept HX',
-      hxAssignmentId: 'HX-2026-092',
-      hxStatus: 'Resmi Dept HX'
-    },
     {
       id: 'user-dept-hx',
       name: 'Direktorat Dept HX',
       halaqah: 'Dept HX Pusat',
       halaqahCode: 'HX-HQ-01',
-      passcode: '1234',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
+      passcode: 'hx2026',
+      avatar: BRAND_ASSETS.currentUserAvatar,
       role: 'dept-hx',
-      totalXp: 9990,
-      streakDays: 45,
+      totalXp: 0,
+      streakDays: 0,
       supervisor: 'Direktorat Dept HX Pusat',
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: 'HX-2026-HQ',
@@ -159,12 +99,32 @@ export default function App() {
     }
   ];
 
+  const LEGACY_DEMO_USER_IDS = new Set([
+    'user-zubair',
+    'user-farhan',
+    'user-tariq',
+    'user-zayd',
+    'user-bilal',
+    'user-hamza',
+    'user-luqman',
+    'user-omar',
+    'user-faris',
+    'user-salman',
+    'user-rayyan',
+    'user-khalid'
+  ]);
+
+  const LEGACY_DEMO_SESSION_IDS = new Set(['att-session-1', 'att-session-2']);
+  const LEGACY_DEMO_DIRECTIVE_IDS = new Set(['ibadah-1', 'ibadah-2', 'ibadah-3', 'ibadah-4']);
+
   const [registeredUsers, setRegisteredUsers] = useState<ActiveUser[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_registered_users_v2');
+      const saved = localStorage.getItem('noorworship_registered_users_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter((u: ActiveUser) => !LEGACY_DEMO_USER_IDS.has(u.id));
+        }
       }
     } catch (e) {
       console.warn('Could not load saved users from localStorage', e);
@@ -174,10 +134,10 @@ export default function App() {
 
   const [activeUser, setActiveUser] = useState<ActiveUser>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_active_user_v2');
+      const saved = localStorage.getItem('noorworship_active_user_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id) return parsed;
+        if (parsed && parsed.id && !LEGACY_DEMO_USER_IDS.has(parsed.id)) return parsed;
       }
     } catch (e) {
       console.warn('Could not load active user from localStorage', e);
@@ -221,23 +181,25 @@ export default function App() {
 
   const [ibadahDirectives, setIbadahDirectives] = useState<IbadahDirective[]>([]);
 
-  // Real-time listener for Firestore users
+  // Real-time listener for Firestore users (automatically purges legacy demo accounts)
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       const firestoreUsers: ActiveUser[] = [];
       snapshot.forEach((docSnap) => {
+        if (LEGACY_DEMO_USER_IDS.has(docSnap.id)) {
+          deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
+          return;
+        }
         firestoreUsers.push({ id: docSnap.id, ...docSnap.data() } as ActiveUser);
       });
 
-      if (firestoreUsers.length > 0) {
-        setRegisteredUsers((prev) => {
-          const userMap = new Map<string, ActiveUser>();
-          DEFAULT_USERS.forEach((u) => userMap.set(u.id, u));
-          prev.forEach((u) => userMap.set(u.id, u));
-          firestoreUsers.forEach((u) => userMap.set(u.id, u));
-          return Array.from(userMap.values());
-        });
-      }
+      setRegisteredUsers((prev) => {
+        const userMap = new Map<string, ActiveUser>();
+        DEFAULT_USERS.forEach((u) => userMap.set(u.id, u));
+        prev.filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id)).forEach((u) => userMap.set(u.id, u));
+        firestoreUsers.forEach((u) => userMap.set(u.id, u));
+        return Array.from(userMap.values());
+      });
     });
     return () => unsub();
   }, []);
@@ -245,10 +207,10 @@ export default function App() {
   // Halaqah Attendance Sessions (Ustadz & Dept HX unified real-time sync)
   const [attendanceSessions, setAttendanceSessions] = useState<HalaqahAttendanceSession[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_attendance_sessions_v1');
+      const saved = localStorage.getItem('noorworship_attendance_sessions_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn('Failed loading attendance sessions from localStorage', e);
@@ -261,17 +223,19 @@ export default function App() {
     const unsub = onSnapshot(
       collection(db, 'halaqahAttendanceSessions'),
       (snap) => {
-        if (!snap.empty) {
-          const sessions: HalaqahAttendanceSession[] = [];
-          snap.forEach((d) => {
-            sessions.push({ id: d.id, ...d.data() } as HalaqahAttendanceSession);
-          });
-          sessions.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
-          setAttendanceSessions(sessions);
-          try {
-            localStorage.setItem('noorworship_attendance_sessions_v1', JSON.stringify(sessions));
-          } catch (e) {}
-        }
+        const sessions: HalaqahAttendanceSession[] = [];
+        snap.forEach((d) => {
+          if (LEGACY_DEMO_SESSION_IDS.has(d.id)) {
+            deleteDoc(doc(db, 'halaqahAttendanceSessions', d.id)).catch(() => {});
+            return;
+          }
+          sessions.push({ id: d.id, ...d.data() } as HalaqahAttendanceSession);
+        });
+        sessions.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+        setAttendanceSessions(sessions);
+        try {
+          localStorage.setItem('noorworship_attendance_sessions_prod_v1', JSON.stringify(sessions));
+        } catch (e) {}
       },
       (err) => {
         console.warn('Firestore attendanceSessions snapshot listener error (fallback to local):', err);
@@ -293,7 +257,7 @@ export default function App() {
         updated = [session, ...prev];
       }
       try {
-        localStorage.setItem('noorworship_attendance_sessions_v1', JSON.stringify(updated));
+        localStorage.setItem('noorworship_attendance_sessions_prod_v1', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -338,7 +302,7 @@ export default function App() {
     setAttendanceSessions((prev) => {
       const updated = prev.filter((s) => s.id !== sessionId);
       try {
-        localStorage.setItem('noorworship_attendance_sessions_v1', JSON.stringify(updated));
+        localStorage.setItem('noorworship_attendance_sessions_prod_v1', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -358,6 +322,10 @@ export default function App() {
     const unsub = onSnapshot(collection(db, 'ibadahDirectives'), (snapshot) => {
       const directives: IbadahDirective[] = [];
       snapshot.forEach((docSnap) => {
+        if (LEGACY_DEMO_DIRECTIVE_IDS.has(docSnap.id)) {
+          deleteDoc(doc(db, 'ibadahDirectives', docSnap.id)).catch(() => {});
+          return;
+        }
         directives.push({ id: docSnap.id, ...docSnap.data() } as IbadahDirective);
       });
       setIbadahDirectives(directives);
@@ -537,7 +505,7 @@ export default function App() {
   // Sync to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_registered_users_v2', JSON.stringify(registeredUsers));
+      localStorage.setItem('noorworship_registered_users_prod_v1', JSON.stringify(registeredUsers));
     } catch (e) {
       console.warn('Failed saving users to localStorage', e);
     }
@@ -545,7 +513,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_active_user_v2', JSON.stringify(activeUser));
+      localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(activeUser));
     } catch (e) {
       console.warn('Failed saving active user to localStorage', e);
     }
@@ -660,8 +628,8 @@ export default function App() {
     setCurrentRole(newUser.role);
     setIsLoggedIn(true);
     try {
-      localStorage.setItem('noorworship_is_logged_in', 'true');
-      localStorage.setItem('noorworship_active_user_v2', JSON.stringify(newUser));
+      localStorage.setItem('noorworship_is_logged_in_prod_v1', 'true');
+      localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(newUser));
     } catch (e) {
       console.warn(e);
     }
@@ -750,7 +718,7 @@ export default function App() {
 
     let currentHalaqahs: any[] = [];
     try {
-      const saved = localStorage.getItem('noorworship_unified_halaqahs_v2');
+      const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
       if (saved) currentHalaqahs = JSON.parse(saved);
       else currentHalaqahs = [...DEFAULT_BASE_HALAQAHS];
     } catch {
@@ -763,11 +731,11 @@ export default function App() {
     for (const record of records) {
       if (!record.name || !record.name.trim()) continue;
       const cleanName = record.name.trim();
-      const cleanHalaqah = (record.halaqah || 'Halaqah Al-Fajr').trim();
+      const cleanHalaqah = (record.halaqah || 'Halaqah Utama').trim();
       const cleanSupervisor = (record.supervisor || 'Ustadz Pembimbing').trim();
       const cleanPasscode = (record.passcode || '1234').trim();
 
-      let halaqahCode = 'HF-4092';
+      let halaqahCode = 'HL-1001';
       const existingHalaqah = currentHalaqahs.find(
         (h) => h.name.toLowerCase() === cleanHalaqah.toLowerCase()
       );
@@ -788,13 +756,46 @@ export default function App() {
           code: randomCode,
           supervisor: cleanSupervisor,
           schedule: 'Senin & Kamis 05:30 WIB',
-          location: 'Masjid Al-Ikhlas',
+          location: 'Masjid Perusahaan',
           department: 'Dept HX',
           description: `Halaqah binaan ${cleanSupervisor}`,
           targetJuz: 'Juz 30 & Tahsin'
         });
         if (!newHalaqahNames.includes(cleanHalaqah)) {
           newHalaqahNames.push(cleanHalaqah);
+        }
+      }
+
+      // Ensure Ustadz Pembimbing account is also registered if not yet present
+      const ustadzExists =
+        registeredUsers.some(
+          (u) => u.role === 'admin' && u.halaqah.toLowerCase() === cleanHalaqah.toLowerCase()
+        ) ||
+        createdUsers.some(
+          (u) => u.role === 'admin' && u.halaqah.toLowerCase() === cleanHalaqah.toLowerCase()
+        );
+
+      if (!ustadzExists && cleanSupervisor) {
+        const ustadzUser: ActiveUser = {
+          id: `user-ustadz-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: cleanSupervisor,
+          halaqah: cleanHalaqah,
+          halaqahCode: halaqahCode,
+          passcode: '1234',
+          avatar: BRAND_ASSETS.currentUserAvatar,
+          role: 'admin',
+          totalXp: 0,
+          streakDays: 0,
+          assignedHalaqahBy: 'SK Dept HX',
+          hxAssignmentId: `HX-UST-${Date.now().toString().slice(-4)}`,
+          hxStatus: 'Resmi Dept HX',
+          supervisor: 'Direktorat Dept HX'
+        };
+        createdUsers.push(ustadzUser);
+        try {
+          await setDoc(doc(db, 'users', ustadzUser.id), ustadzUser);
+        } catch (err) {
+          console.warn('Firestore ustadz save notice:', err);
         }
       }
 
@@ -807,8 +808,8 @@ export default function App() {
         phone: record.phone || '',
         avatar: BRAND_ASSETS.currentUserAvatar,
         role: 'member',
-        totalXp: 150,
-        streakDays: 1,
+        totalXp: 0,
+        streakDays: 0,
         assignedHalaqahBy: 'Import Dept HX',
         hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
         hxStatus: 'Resmi Dept HX',
@@ -827,7 +828,7 @@ export default function App() {
       setRegisteredUsers((prev) => [...createdUsers, ...prev]);
       try {
         localStorage.setItem(
-          'noorworship_unified_halaqahs_v2',
+          'noorworship_unified_halaqahs_prod_v1',
           JSON.stringify(currentHalaqahs)
         );
       } catch (e) {
@@ -835,7 +836,7 @@ export default function App() {
       }
       window.dispatchEvent(new Event('noorworship_halaqah_updated'));
       showToast(
-        `Alhamdulillah! Berhasil mengimpor ${createdUsers.length} data karyawan${
+        `Alhamdulillah! Berhasil mengimpor ${records.length} data karyawan${
           newHalaqahNames.length > 0
             ? ` dan mendaftarkan ${newHalaqahNames.length} halaqah baru`
             : ''
@@ -923,8 +924,8 @@ export default function App() {
     setCurrentRole(selected.role);
     setIsLoggedIn(true);
     try {
-      localStorage.setItem('noorworship_is_logged_in', 'true');
-      localStorage.setItem('noorworship_active_user_v2', JSON.stringify(selected));
+      localStorage.setItem('noorworship_is_logged_in_prod_v1', 'true');
+      localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(selected));
     } catch (e) {
       console.warn(e);
     }
@@ -941,7 +942,7 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     try {
-      localStorage.removeItem('noorworship_is_logged_in');
+      localStorage.removeItem('noorworship_is_logged_in_prod_v1');
     } catch (e) {
       console.warn(e);
     }
@@ -1060,7 +1061,7 @@ export default function App() {
         },
         { merge: true }
       );
-      localStorage.setItem('noorworship_active_user_v2', JSON.stringify(updatedUser));
+      localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(updatedUser));
     } catch (e) {
       console.error('Error syncing user XP & Streak:', e);
     }
@@ -1240,7 +1241,7 @@ export default function App() {
 
       try {
         await setDoc(doc(db, 'users', activeUser.id), updatedUser, { merge: true });
-        localStorage.setItem('noorworship_active_user_v2', JSON.stringify(updatedUser));
+        localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(updatedUser));
       } catch (e) {}
 
       if (streakResult.isNewDayStreak) {
@@ -1304,7 +1305,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f9f9ff] text-[#141b2b] flex flex-col font-sans selection:bg-[#c1ecd4] selection:text-[#012d1d]">
-      <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={2} currentRole={currentRole} activeUser={activeUser} />
+      <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={0} currentRole={currentRole} activeUser={activeUser} />
       <main className="flex-1 flex flex-col w-full">
         {currentTab === 'worship' && (
           <WorshipScreen

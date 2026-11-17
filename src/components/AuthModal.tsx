@@ -46,13 +46,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showAdminPasscode, setShowAdminPasscode] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
 
-  const existingHalaqahs = [
-    { name: 'Halaqah Al-Fajr', code: 'HF-4092', pin: '4092' },
-    { name: 'Hafiz Circle', code: 'HC-1108', pin: '1108' },
-    { name: 'Youth Tajweed', code: 'YT-7721', pin: '7721' },
-    { name: 'Madinah Memorization Circle', code: 'MC-9901', pin: '9901' },
-    { name: 'Noor Al-Huda Tajweed Circle', code: 'NH-3382', pin: '3382' }
-  ];
+  const existingHalaqahs: { name: string; code: string; pin: string }[] = React.useMemo(() => {
+    try {
+      const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((h: any) => ({
+            name: h.name,
+            code: h.code || 'HL-1001',
+            pin: h.pin || '1234'
+          }));
+        }
+      }
+    } catch {}
+    return [];
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -318,7 +327,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               )}
                             </div>
                             <span className="text-[11px] text-[#414844] truncate block mt-0.5">
-                              {u.halaqah} • {u.totalXp} XP • Passcode: <span className="font-mono font-bold text-[#012d1d]">{u.passcode}</span>
+                              {u.halaqah} • {u.totalXp} XP
                             </span>
                           </div>
                         </div>
@@ -349,11 +358,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {userToUnlock.halaqah} • Kode: {userToUnlock.halaqahCode}
                     </p>
                   </div>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-[#fed488]/30 border border-[#fed488] text-[11px] text-[#785a1a] flex items-center justify-between">
-                  <span>💡 Passcode akun ini: <strong>{userToUnlock.passcode}</strong></span>
-                  <span className="text-[10px] uppercase font-bold">Tersimpan</span>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -489,38 +493,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
             </div>
 
-            {/* List of active halaqah codes and PINs for testing */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[11px] font-bold text-[#141b2b] block">
-                Pilih Halaqah untuk Otomatis Isi Kode &amp; PIN Uji Coba:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {existingHalaqahs.map((h) => (
-                  <button
-                    key={h.code}
-                    type="button"
-                    onClick={() => {
-                      setJoinHalaqahCode(h.code);
-                      setJoinHalaqahPasscode(h.pin);
-                      setJoinHalaqahError(null);
-                    }}
-                    className="p-2 rounded-xl bg-[#f1f3ff] hover:bg-[#c1ecd4] text-left text-xs transition-colors flex items-center justify-between group"
-                  >
-                    <span className="truncate text-[#141b2b] font-medium text-[11px]">
-                      {h.name}
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="font-mono font-bold text-[10px] text-[#012d1d] bg-white px-1.5 py-0.5 rounded shadow-2xs">
+            {existingHalaqahs.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] font-bold text-[#141b2b] block">
+                  Daftar Halaqah Terdaftar Dept HX:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {existingHalaqahs.map((h) => (
+                    <button
+                      key={h.code}
+                      type="button"
+                      onClick={() => {
+                        setJoinHalaqahCode(h.code);
+                        setJoinHalaqahError(null);
+                      }}
+                      className="p-2 rounded-xl bg-[#f1f3ff] hover:bg-[#c1ecd4] text-left text-xs transition-colors flex items-center justify-between group"
+                    >
+                      <span className="truncate text-[#141b2b] font-medium text-[11px]">
+                        {h.name}
+                      </span>
+                      <span className="font-mono font-bold text-[10px] text-[#012d1d] bg-white px-1.5 py-0.5 rounded shadow-2xs shrink-0">
                         {h.code}
                       </span>
-                      <span className="font-mono text-[9px] text-[#785a1a] bg-[#fed488]/40 px-1 py-0.5 rounded">
-                        PIN: {h.pin}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"

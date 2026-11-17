@@ -17,6 +17,40 @@ export interface StandardAmalanHX {
   order: number;
 }
 
+export const FIVE_FARDHU_PRAYER_IDS = new Set(['subuh', 'zhuhur', 'ashar', 'maghrib', 'isya']);
+
+export function isFiveDailyFardhuPrayer(item?: {
+  id?: string;
+  prayerId?: string;
+  title?: string;
+  hasJamaahOption?: boolean;
+} | null): boolean {
+  if (!item) return false;
+  if (item.prayerId && FIVE_FARDHU_PRAYER_IDS.has(item.prayerId)) {
+    return true;
+  }
+  const cleanId = (item.id || '').toLowerCase();
+  if (
+    cleanId.includes('sholat-subuh') ||
+    cleanId.includes('sholat-dzuhur') ||
+    cleanId.includes('sholat-zhuhur') ||
+    cleanId.includes('sholat-ashar') ||
+    cleanId.includes('sholat-maghrib') ||
+    cleanId.includes('sholat-isya')
+  ) {
+    return true;
+  }
+  const normTitle = (item.title || '').toLowerCase();
+  if (
+    /\b(sh?olat|shalat)\s+(subuh|dzuhur|zhuhur|zuhur|ashar|asar|maghrib|magrib|isya'?)\b/i.test(
+      normTitle
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
   {
     id: 'paten-sholat-subuh',
@@ -469,24 +503,36 @@ export function checkFastingMatch(
 
 const STORAGE_KEY_PATEN = 'noorworship_standard_amalan_hx_v1';
 
+function sanitizeStandardAmalanItems(items: StandardAmalanHX[]): StandardAmalanHX[] {
+  return items.map((item) => {
+    const isFardhu5 = isFiveDailyFardhuPrayer(item);
+    return {
+      ...item,
+      hasJamaahOption: isFardhu5 ? true : false,
+      jamaahBonusXp: isFardhu5 ? (item.jamaahBonusXp ?? 5) : undefined
+    };
+  });
+}
+
 export function getStoredStandardAmalan(): StandardAmalanHX[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PATEN);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return sanitizeStandardAmalanItems(parsed);
       }
     }
   } catch (e) {
     console.warn('Could not read stored standard amalan', e);
   }
-  return DEFAULT_STANDARD_AMALAN_HX;
+  return sanitizeStandardAmalanItems(DEFAULT_STANDARD_AMALAN_HX);
 }
 
 export function saveStoredStandardAmalan(items: StandardAmalanHX[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_PATEN, JSON.stringify(items));
+    const sanitized = sanitizeStandardAmalanItems(items);
+    localStorage.setItem(STORAGE_KEY_PATEN, JSON.stringify(sanitized));
     window.dispatchEvent(new Event('noorworship_standard_amalan_updated'));
   } catch (e) {
     console.warn('Could not save standard amalan', e);

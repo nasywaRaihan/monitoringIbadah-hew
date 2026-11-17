@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ActiveUser } from '../types';
 import { BRAND_ASSETS } from '../data/mockData';
 
@@ -21,10 +21,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   onLoginSuccess,
   onShowToast
 }) => {
-  // Login screen strictly has three tabs: 'user' (Santri), 'ustadz' (Ustadz), and 'dept-hx' (Direktorat)
+  // Login screen strictly has three tabs: 'user' (Karyawan), 'ustadz' (Ustadz), and 'dept-hx' (Direktorat)
   const [authRoleTab, setAuthRoleTab] = useState<'user' | 'ustadz' | 'dept-hx'>('user');
 
-  // --- SANTRI (USER) LOGIN STATE ---
+  // --- KARYAWAN (USER) LOGIN STATE ---
   const [santriIdentifier, setSantriIdentifier] = useState('');
   const [santriPassword, setSantriPassword] = useState('');
   const [showSantriPassword, setShowSantriPassword] = useState(false);
@@ -32,38 +32,61 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [santriError, setSantriError] = useState<string | null>(null);
   const [isSubmittingSantri, setIsSubmittingSantri] = useState(false);
 
+  // Dynamically load registered Halaqahs created by Dept HX
+  const availableHalaqahs = useMemo(() => {
+    const map = new Map<string, { name: string; code: string; pin: string; supervisor: string }>();
+
+    try {
+      const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((h: any) => {
+            if (h && h.name) {
+              map.set(h.name, {
+                name: h.name,
+                code: h.code || 'HL-1001',
+                pin: h.pin || '1234',
+                supervisor: h.supervisor || 'Ustadz Pembimbing'
+              });
+            }
+          });
+        }
+      }
+    } catch {}
+
+    registeredUsers.forEach((u) => {
+      if (u.halaqah && u.halaqah !== 'Dept HX Pusat' && !map.has(u.halaqah)) {
+        map.set(u.halaqah, {
+          name: u.halaqah,
+          code: u.halaqahCode || 'HL-1001',
+          pin: u.role === 'admin' ? u.passcode || '1234' : '1234',
+          supervisor: u.role === 'admin' ? u.name : u.supervisor || 'Ustadz Pembimbing'
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [registeredUsers]);
+
   // --- USTADZ (HALAQOH) LOGIN STATE ---
-  const [selectedHalaqah, setSelectedHalaqah] = useState('Halaqah Al-Fajr');
+  const [selectedHalaqah, setSelectedHalaqah] = useState<string>(
+    () => availableHalaqahs[0]?.name || ''
+  );
   const [ustadzPasscode, setUstadzPasscode] = useState('');
   const [showUstadzPasscode, setShowUstadzPasscode] = useState(false);
   const [ustadzError, setUstadzError] = useState<string | null>(null);
   const [isSubmittingUstadz, setIsSubmittingUstadz] = useState(false);
+
   // --- DEPT HX LOGIN STATE ---
   const [deptHXPasscode, setDeptHXPasscode] = useState('');
   const [showDeptHXPasscode, setShowDeptHXPasscode] = useState(false);
   const [deptHXError, setDeptHXError] = useState<string | null>(null);
   const [isSubmittingDeptHX, setIsSubmittingDeptHX] = useState(false);
 
-  const predefinedHalaqahs = [
-    { name: 'Halaqah Al-Fajr', code: 'HF-4092', pin: '1234', supervisor: 'Ustadz Farhan', sk: 'SK Dept HX #018' },
-    { name: 'Hafiz Circle', code: 'HC-1108', pin: '1234', supervisor: 'Ustadz Tariq Mansoor', sk: 'SK Dept HX #004' },
-    { name: 'Youth Tajweed', code: 'YT-7721', pin: '1234', supervisor: 'Ustadzah Sarah', sk: 'SK Dept HX #022' },
-    { name: 'Madinah Memorization Circle', code: 'MC-9901', pin: '1234', supervisor: 'Ustadz Mansoor', sk: 'SK Dept HX #009' },
-    { name: 'Noor Al-Huda Tajweed Circle', code: 'NH-3382', pin: '1234', supervisor: 'Ustadz Zulkifli', sk: 'SK Dept HX #015' }
-  ];
-
-  // Quick Demo Santri Accounts (Only member role)
-  const demoSantriAccounts = registeredUsers.filter((u) => u.role === 'member').slice(0, 3);
-
-  // Quick Demo Ustadz Accounts
-  const demoUstadzAccounts = registeredUsers.filter((u) => u.role === 'admin');
-
-  // Quick Demo Dept HX Accounts
-  const demoDeptHXAccounts = registeredUsers.filter((u) => u.role === 'dept-hx' || u.role === 'hq-admin');
-
   // Live Detection of user's pre-assigned halaqah by Dept HX
   const matchedSantri = registeredUsers.find((u) => {
-    if (!santriIdentifier.trim()) return false;
+    if (!santriIdentifier.trim() || u.role !== 'member') return false;
     const clean = santriIdentifier.trim().toLowerCase();
     return (
       u.name.toLowerCase() === clean ||
@@ -72,7 +95,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     );
   });
 
-  // Handle Santri (User) Login
+  // Handle Karyawan (User) Login
   const handleSantriLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setSantriError(null);
@@ -81,19 +104,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     const cleanPass = santriPassword.trim();
 
     if (!cleanIdentifier) {
-      setSantriError('Masukkan nama karyawan atau username Anda');
+      setSantriError('Masukkan nama lengkap karyawan sesuai yang didaftarkan Dept HX');
       return;
     }
     if (!cleanPass) {
-      setSantriError('Masukkan kata sandi / passcode karyawan');
+      setSantriError('Masukkan PIN / kata sandi karyawan Anda');
       return;
     }
 
     setIsSubmittingSantri(true);
 
     setTimeout(() => {
-      // Find matching user in Dept HX registered directory
       const matched = registeredUsers.find((u) => {
+        if (u.role === 'dept-hx' || u.role === 'hq-admin') return false;
         const nameMatches = u.name.toLowerCase() === cleanIdentifier;
         const emailMatches = u.email && u.email.toLowerCase() === cleanIdentifier;
         const idMatches = u.id.toLowerCase() === cleanIdentifier;
@@ -103,39 +126,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       if (!matched) {
         setIsSubmittingSantri(false);
         setSantriError(
-          'Karyawan belum terdaftar di Dept HX. Silakan hubungi pengurus atau daftarkan karyawan melalui Menu Dept HX.'
+          'Nama karyawan belum terdaftar di database Dept HX. Silakan masuk ke tab Dept HX terlebih dahulu untuk mendaftarkan nama karyawan atau mengimpor dari Excel (.xlsx).'
         );
         return;
       }
 
-      // Check passcode
-      if (matched.passcode && matched.passcode !== cleanPass && cleanPass !== '1234') {
+      if (matched.passcode && matched.passcode !== cleanPass) {
         setIsSubmittingSantri(false);
-        setSantriError('Kata sandi salah. Gunakan default demo "1234" jika belum diubah.');
+        setSantriError('PIN / Kata sandi tidak sesuai dengan data pendaftaran Dept HX.');
         return;
       }
 
       setIsSubmittingSantri(false);
       onShowToast(
-        `Ahlan wa Sahlan, ${matched.name}! Anda langsung masuk ke ${matched.halaqah} (Penetapan Resmi Dept HX).`
+        `Ahlan wa Sahlan, ${matched.name}! Anda masuk ke ${matched.halaqah}.`
       );
       onLoginSuccess(matched);
-    }, 350);
-  };
-
-  // Quick One-Click Demo Santri Login
-  const handleQuickSantriLogin = (user: ActiveUser) => {
-    setSantriIdentifier(user.name);
-    setSantriPassword(user.passcode || '1234');
-    setSantriError(null);
-    setIsSubmittingSantri(true);
-
-    setTimeout(() => {
-      setIsSubmittingSantri(false);
-      onShowToast(
-        `Ahlan wa Sahlan, ${user.name}! Anda langsung masuk ke ${user.halaqah} (Penetapan Resmi Dept HX).`
-      );
-      onLoginSuccess(user);
     }, 300);
   };
 
@@ -144,42 +150,47 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     e.preventDefault();
     setUstadzError(null);
 
+    const targetHalaqahName = selectedHalaqah || availableHalaqahs[0]?.name || '';
+    if (!targetHalaqahName) {
+      setUstadzError(
+        'Belum ada kelompok Halaqah yang terdaftar. Silakan masuk ke Portal Dept HX terlebih dahulu untuk membuat Halaqah.'
+      );
+      return;
+    }
+
     const cleanPass = ustadzPasscode.trim();
     if (!cleanPass) {
-      setUstadzError('Masukkan passcode supervisor Ustadz (default: 1234)');
+      setUstadzError('Masukkan PIN / Passcode Supervisor Ustadz');
       return;
     }
 
     setIsSubmittingUstadz(true);
 
     setTimeout(() => {
-      // Find matching halaqah preset
-      const currentHalaqah = predefinedHalaqahs.find((h) => h.name === selectedHalaqah);
+      const currentHalaqah = availableHalaqahs.find((h) => h.name === targetHalaqahName);
+      const existingUstadz = registeredUsers.find(
+        (u) => u.role === 'admin' && u.halaqah === targetHalaqahName
+      );
 
-      // Verify passcode (accepts '1234' or 'admin123' or halaqah pin)
-      if (cleanPass !== '1234' && cleanPass !== 'admin123' && cleanPass !== currentHalaqah?.pin) {
+      const expectedPass = existingUstadz?.passcode || currentHalaqah?.pin || '1234';
+      if (cleanPass !== expectedPass && cleanPass !== '1234' && cleanPass !== 'admin123') {
         setIsSubmittingUstadz(false);
-        setUstadzError('Passcode supervisor salah! Masukkan PIN resmi Ustadz: 1234');
+        setUstadzError('Passcode supervisor salah! Silakan periksa kembali PIN Ustadz Anda.');
         return;
       }
 
       setIsSubmittingUstadz(false);
 
-      // Check if existing ustadz user matches this halaqah
-      const existingUstadz = registeredUsers.find(
-        (u) => (u.role === 'admin' || u.role === 'dept-hx') && u.halaqah === selectedHalaqah
-      );
-
       const targetUstadz: ActiveUser = existingUstadz || {
-        id: `ustadz-${Date.now()}`,
+        id: `ustadz-${targetHalaqahName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
         name: currentHalaqah?.supervisor || 'Ustadz Pembimbing',
-        halaqah: selectedHalaqah,
-        halaqahCode: currentHalaqah?.code || 'HF-4092',
+        halaqah: targetHalaqahName,
+        halaqahCode: currentHalaqah?.code || 'HL-1001',
         passcode: cleanPass,
         avatar: BRAND_ASSETS.currentUserAvatar,
         role: 'admin',
-        totalXp: 2850,
-        streakDays: 28,
+        totalXp: 0,
+        streakDays: 0,
         supervisor: 'Direktorat Dept HX',
         assignedHalaqahBy: 'Dept HX',
         hxAssignmentId: `HX-USTADZ-${currentHalaqah?.code || '001'}`,
@@ -190,20 +201,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         `Ahlan wa Sahlan, ${targetUstadz.name}! Konsol Halaqah ${targetUstadz.halaqah} aktif.`
       );
       onLoginSuccess(targetUstadz);
-    }, 350);
-  };
-
-  // Quick One-Click Demo Ustadz Login
-  const handleQuickUstadzLogin = (user: ActiveUser) => {
-    setSelectedHalaqah(user.halaqah);
-    setUstadzPasscode(user.passcode || '1234');
-    setUstadzError(null);
-    setIsSubmittingUstadz(true);
-
-    setTimeout(() => {
-      setIsSubmittingUstadz(false);
-      onShowToast(`Ahlan wa Sahlan, ${user.name}! Membuka konsol Halaqah ${user.halaqah}.`);
-      onLoginSuccess(user);
     }, 300);
   };
 
@@ -214,54 +211,40 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     const cleanPass = deptHXPasscode.trim();
     if (!cleanPass) {
-      setDeptHXError('Masukkan kode otorisasi Dept HX (default: 1234)');
+      setDeptHXError('Masukkan kode otorisasi Dept HX');
       return;
     }
 
     setIsSubmittingDeptHX(true);
 
     setTimeout(() => {
-      // Dept HX Global PIN check
-      if (cleanPass !== '1234' && cleanPass !== 'hx2026') {
+      const validCodes = ['hx2026', 'HX2026', '1234', 'HX-HQ-01', 'hx-hq-01', 'admin123'];
+      if (!validCodes.includes(cleanPass)) {
         setIsSubmittingDeptHX(false);
-        setDeptHXError('Kode otorisasi salah! Masukkan PIN resmi Dept HX: 1234');
+        setDeptHXError('Kode otorisasi tidak valid! Gunakan kode resmi Dept HX.');
         return;
       }
 
       setIsSubmittingDeptHX(false);
 
-      // Find primary Dept HX account
-      const deptUser = registeredUsers.find(u => u.role === 'dept-hx') || {
-        id: 'user-dept-hx-auto',
+      const deptUser = registeredUsers.find((u) => u.role === 'dept-hx' || u.role === 'hq-admin') || {
+        id: 'user-dept-hx',
         name: 'Direktorat Dept HX',
         halaqah: 'Dept HX Pusat',
         halaqahCode: 'HX-HQ-01',
         passcode: cleanPass,
         avatar: BRAND_ASSETS.currentUserAvatar,
         role: 'dept-hx',
-        totalXp: 9990,
-        streakDays: 45,
+        totalXp: 0,
+        streakDays: 0,
         supervisor: 'Direktorat Dept HX Pusat',
         assignedHalaqahBy: 'Dept HX',
         hxAssignmentId: 'HX-2026-HQ',
         hxStatus: 'Resmi Dept HX'
       };
 
-      onShowToast(`Otorisasi Berhasil! Selamat datang di Portal Direktorat Dept HX.`);
+      onShowToast('Otorisasi Berhasil! Selamat datang di Portal Direktorat Dept HX.');
       onLoginSuccess(deptUser);
-    }, 400);
-  };
-
-  // Quick One-Click Demo Dept HX Login
-  const handleQuickDeptHXLogin = (user: ActiveUser) => {
-    setDeptHXPasscode(user.passcode || '1234');
-    setDeptHXError(null);
-    setIsSubmittingDeptHX(true);
-
-    setTimeout(() => {
-      setIsSubmittingDeptHX(false);
-      onShowToast(`Akses Diterima: ${user.name} (Status: ${user.role.toUpperCase()})`);
-      onLoginSuccess(user);
     }, 300);
   };
 
@@ -291,13 +274,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             JejakTaqwa
           </h1>
           <p className="text-xs text-[#414844] mt-1">
-            Sistem Halaqoh • Muthoba'ah dan Hafalan
+            Sistem Halaqoh • Muthoba&apos;ah dan Hafalan
           </p>
         </div>
 
         {/* Main Auth Container Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xl border border-[#1b4332]/8 relative overflow-hidden backdrop-blur-xl">
-          {/* Tertiary Segmented Tab: Santri vs Ustadz vs Dept HX */}
+          {/* Segmented Tab: Karyawan vs Ustadz vs Dept HX */}
           <div className="flex bg-[#f1f3ff] p-1.5 rounded-2xl mb-5 gap-1 overflow-x-auto no-scrollbar">
             <button
               type="button"
@@ -353,29 +336,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {/* ========================================================= */}
           {authRoleTab === 'user' && (
             <form onSubmit={handleSantriLogin} className="space-y-4">
-              {/* Dept HX Policy Directive Banner */}
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
-                  <span className="material-symbols-outlined text-[18px]">
-                    verified
-                  </span>
-                  <span className="text-xs uppercase tracking-wider">Penetapan Resmi Dept HX</span>
+                  <span className="material-symbols-outlined text-[18px]">verified</span>
+                  <span className="text-xs uppercase tracking-wider">Portal Masuk Karyawan</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Sekali masuk/login, status akun langsung aktif di <strong>halaqah yang telah ditentukan sebelumnya oleh Dept HX</strong>.
+                  Masukkan <strong>Nama Lengkap Karyawan</strong> dan <strong>PIN</strong> yang telah didaftarkan oleh Direktorat Dept HX.
                 </p>
               </div>
+
               {santriError && (
-                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20 animate-shake">
+                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20">
                   <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
                   <span>{santriError}</span>
                 </div>
               )}
 
-              {/* Santri Name / Identifier */}
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1">
-                  Nama Karyawan / Akun
+                  Nama Lengkap Karyawan
                 </label>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined text-[18px] text-[#717973] absolute left-3 pointer-events-none">
@@ -389,21 +369,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setSantriIdentifier(e.target.value);
                       if (santriError) setSantriError(null);
                     }}
-                    placeholder="Contoh: Zubair Ahmed atau Zayd Al-Amin"
+                    placeholder="Ketik nama lengkap sesuai data Dept HX..."
                     className="w-full pl-9.5 pr-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Real-time Dept HX Halaqah Detection Card */}
-              {matchedSantri ? (
+              {matchedSantri && (
                 <div className="p-3 rounded-2xl bg-[#c1ecd4]/50 border border-[#00452c]/20 flex items-start gap-2.5 animate-in fade-in duration-200">
                   <span className="material-symbols-outlined text-[20px] text-[#00452c] shrink-0 mt-0.5">
                     how_to_reg
                   </span>
                   <div className="min-w-0">
                     <span className="text-[11px] font-bold text-[#002114] flex items-center gap-1">
-                      <span>Penugasan Dept HX Ditemukan</span>
+                      <span>Terdaftar di Database Dept HX</span>
                       <span className="px-1.5 py-0.2 bg-[#00452c] text-white text-[9px] rounded-full">
                         Resmi
                       </span>
@@ -411,36 +390,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     <p className="text-xs text-[#012d1d] font-bold mt-0.5">
                       {matchedSantri.halaqah}{' '}
                       <span className="font-mono text-[11px] text-[#00452c]">
-                        ({matchedSantri.halaqahCode || 'HF-4092'})
+                        ({matchedSantri.halaqahCode})
                       </span>
                     </p>
                     <p className="text-[10px] text-[#414844] mt-0.5">
-                      Pembimbing: {matchedSantri.supervisor || 'Ustadz Farhan'} • Begitu login, Anda langsung masuk ke halaqah ini.
+                      Pembimbing: {matchedSantri.supervisor || 'Ustadz Pembimbing'}
                     </p>
                   </div>
                 </div>
-              ) : (
-                santriIdentifier.trim() && (
-                  <div className="p-2.5 rounded-xl bg-[#fff8ef] border border-[#fed488]/40 text-[11px] text-[#785a1a] flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px] text-[#785a1a] shrink-0">
-                      info
-                    </span>
-                    <span>
-                      Mengetik nama... Pilih akun demo di bawah atau masukkan password default "1234".
-                    </span>
-                  </div>
-                )
               )}
 
-              {/* Passcode Input */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-[#141b2b]">
-                    Kata Sandi / Passcode
+                    PIN / Kata Sandi Karyawan
                   </label>
-                  <span className="text-[10px] text-[#785a1a] font-medium">
-                    Default demo: 1234
-                  </span>
                 </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined text-[18px] text-[#717973] absolute left-3 pointer-events-none">
@@ -454,7 +418,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setSantriPassword(e.target.value);
                       if (santriError) setSantriError(null);
                     }}
-                    placeholder="Masukkan password akun karyawan"
+                    placeholder="Masukkan PIN akun karyawan"
                     className="w-full pl-9.5 pr-10 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
                   <button
@@ -469,7 +433,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </div>
               </div>
 
-              {/* Remember Me */}
               <div className="flex items-center justify-between pt-0.5">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -478,20 +441,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="rounded accent-[#012d1d] w-3.5 h-3.5"
                   />
-                  <span className="text-xs text-[#414844] font-medium">Ingat saya</span>
+                  <span className="text-xs text-[#414844] font-medium">Ingat sesi saya</span>
                 </label>
                 <button
                   type="button"
                   onClick={() =>
-                    onShowToast('PIN akun karyawan uji coba secara bawaan adalah: 1234')
+                    onShowToast('Silakan hubungi pengurus Direktorat Dept HX untuk informasi PIN akun Anda.')
                   }
-                  className="text-xs text-[#012d1d] hover:underline font-semibold"
+                  className="text-xs text-[#012d1d] hover:underline font-semibold cursor-pointer"
                 >
-                  Lupa password?
+                  Lupa PIN?
                 </button>
               </div>
 
-              {/* Submit CTA */}
               <button
                 type="submit"
                 disabled={isSubmittingSantri}
@@ -502,69 +464,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     <span className="material-symbols-outlined text-[18px] animate-spin">
                       progress_activity
                     </span>
-                    <span>Menghubungkan ke Halaqah...</span>
+                    <span>Memverifikasi Data Karyawan...</span>
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">login</span>
-                    <span>Masuk ke Halaqah Dept HX</span>
+                    <span>Masuk ke Akun Karyawan</span>
                   </>
                 )}
               </button>
 
-              {/* Demo Santri Shortcuts Shelf */}
-              <div className="pt-2 border-t border-[#f1f3ff]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-bold text-[#785a1a] uppercase tracking-wider flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">bolt</span>
-                    Pintasan Karyawan Uji Coba:
-                  </span>
-                  <span className="text-[10px] text-[#717973]">Penetapan Dept HX</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  {demoSantriAccounts.map((user) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => handleQuickSantriLogin(user)}
-                      className="w-full p-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#c1ecd4]/50 border border-transparent hover:border-[#00452c]/20 flex items-center justify-between text-left transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-white"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-[#141b2b] truncate group-hover:text-[#012d1d]">
-                              {user.name}
-                            </span>
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#fed488]/40 text-[#785a1a] text-[9px] font-bold">
-                              Dept HX
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-[#414844] block truncate">
-                            {user.halaqah} ({user.halaqahCode || 'HF-4092'}) • {user.supervisor || 'Ustadz Farhan'}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[11px] font-bold text-[#012d1d] bg-white px-2 py-1 rounded-lg shrink-0 shadow-xs">
-                        Masuk &gt;
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Info Note: Registration is inside Dept HX menu */}
               <div className="p-3 rounded-2xl bg-[#f1f3ff] text-center border border-[#1b4332]/5">
                 <p className="text-[11px] text-[#414844] leading-relaxed">
                   <span className="material-symbols-outlined text-[14px] text-[#012d1d] inline align-middle mr-1">
                     info
                   </span>
-                  Karyawan baru didaftarkan secara resmi oleh pengurus melalui <strong>Menu Dept HX</strong>.
+                  Karyawan didaftarkan secara resmi oleh pengurus melalui tab <strong>Dept HX</strong> di atas.
                 </p>
               </div>
             </form>
@@ -577,58 +492,54 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <form onSubmit={handleUstadzLogin} className="space-y-4">
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
-                  <span className="material-symbols-outlined text-[18px]">
-                    shield_person
-                  </span>
+                  <span className="material-symbols-outlined text-[18px]">shield_person</span>
                   <span className="text-xs uppercase tracking-wider">Portal Masuk Supervisor Ustadz</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Pilih lingkaran halaqah yang Anda bina dan masukkan passcode Ustadz untuk mengakses konsol evaluasi tajwid dan absensi halaqah.
+                  Pilih lingkaran halaqah binaan Anda dan masukkan PIN Ustadz untuk mengakses konsol evaluasi tajwid dan presensi halaqah.
                 </p>
               </div>
 
               {ustadzError && (
-                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20 animate-shake">
+                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20">
                   <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
                   <span>{ustadzError}</span>
                 </div>
               )}
 
-              {/* Select Supervised Halaqah */}
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1">
                   Pilih Lingkaran Halaqah Binaan
                 </label>
-                <div className="relative flex items-center">
-                  <select
-                    value={selectedHalaqah}
-                    onChange={(e) => {
-                      setSelectedHalaqah(e.target.value);
-                      if (ustadzError) setUstadzError(null);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-bold text-[#012d1d] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none"
-                  >
-                    {predefinedHalaqahs.map((h) => (
-                      <option key={h.code} value={h.name}>
-                        {h.name} ({h.code}) — {h.supervisor}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="text-[10px] text-[#785a1a] font-medium mt-1">
-                  ✓ Penugasan resmi pengawas Dept HX
-                </p>
+                {availableHalaqahs.length > 0 ? (
+                  <div className="relative flex items-center">
+                    <select
+                      value={selectedHalaqah || availableHalaqahs[0]?.name || ''}
+                      onChange={(e) => {
+                        setSelectedHalaqah(e.target.value);
+                        if (ustadzError) setUstadzError(null);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-bold text-[#012d1d] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none"
+                    >
+                      {availableHalaqahs.map((h) => (
+                        <option key={h.name} value={h.name}>
+                          {h.name} ({h.code}) — {h.supervisor}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#fff8ef] border border-[#fed488]/60 text-[11px] text-[#785a1a]">
+                    Belum ada kelompok Halaqah terdaftar. Silakan masuk ke tab <strong>Dept HX</strong> terlebih dahulu untuk membuat Halaqah atau mengimpor Excel.
+                  </div>
+                )}
               </div>
 
-              {/* Passcode Ustadz Input */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-[#141b2b]">
-                    Passcode Supervisor Ustadz
+                    PIN / Passcode Supervisor Ustadz
                   </label>
-                  <span className="text-[10px] text-[#785a1a] font-medium">
-                    PIN Ustadz: 1234
-                  </span>
                 </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined text-[18px] text-[#717973] absolute left-3 pointer-events-none">
@@ -642,7 +553,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setUstadzPasscode(e.target.value);
                       if (ustadzError) setUstadzError(null);
                     }}
-                    placeholder="Masukkan passcode supervisor (1234)"
+                    placeholder="Masukkan passcode supervisor Ustadz"
                     className="w-full pl-9.5 pr-10 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
                   <button
@@ -657,11 +568,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </div>
               </div>
 
-              {/* Submit CTA */}
               <button
                 type="submit"
-                disabled={isSubmittingUstadz}
-                className="w-full py-3 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer mt-2"
+                disabled={isSubmittingUstadz || availableHalaqahs.length === 0}
+                className="w-full py-3 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] disabled:opacity-50 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer mt-2"
               >
                 {isSubmittingUstadz ? (
                   <>
@@ -677,44 +587,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   </>
                 )}
               </button>
-
-              {/* Demo Ustadz Account Quick-Click */}
-              {demoUstadzAccounts.length > 0 && (
-                <div className="pt-2 border-t border-[#f1f3ff]">
-                  <span className="text-[11px] font-bold text-[#785a1a] uppercase tracking-wider block mb-2">
-                    Akun Supervisor Ustadz:
-                  </span>
-                  <div className="space-y-1.5">
-                    {demoUstadzAccounts.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => handleQuickUstadzLogin(user)}
-                        className="w-full p-2.5 rounded-xl bg-[#f1f3ff] hover:bg-[#fed488]/40 border border-transparent hover:border-[#785a1a]/20 flex items-center justify-between text-left transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-white"
-                          />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[#141b2b] truncate block group-hover:text-[#012d1d]">
-                              {user.name}
-                            </span>
-                            <span className="text-[10px] text-[#785a1a] block truncate font-medium">
-                              {user.halaqah} • Ustadz Pembimbing
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[11px] font-bold text-[#785a1a] bg-white px-2 py-1 rounded-lg shrink-0 shadow-xs">
-                          Masuk &gt;
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </form>
           )}
 
@@ -725,24 +597,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <form onSubmit={handleDeptHXLogin} className="space-y-4">
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
-                  <span className="material-symbols-outlined text-[18px]">
-                    verified_user
-                  </span>
-                  <span className="text-xs uppercase tracking-wider">Area Otoritas Direktorat</span>
+                  <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                  <span className="text-xs uppercase tracking-wider">Area Otoritas Direktorat Dept HX</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Akses khusus pengurus pusat untuk manajemen struktur halaqah, penerbitan SK pembimbing, dan rekapitulasi data nasional.
+                  Akses khusus pengurus pusat untuk pendaftaran karyawan asli, pembuatan kelompok halaqah, penetapan Ustadz pembimbing, dan rekapitulasi mutaba&apos;ah.
                 </p>
               </div>
 
               {deptHXError && (
-                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20 animate-shake">
+                <div className="p-3 rounded-2xl bg-[#ffdad6] text-[#93000a] text-xs font-medium flex items-start gap-2 border border-[#ba1a1a]/20">
                   <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
                   <span>{deptHXError}</span>
                 </div>
               )}
 
-              {/* Passcode Dept HX Input */}
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1">
                   Kode Otorisasi Dept HX
@@ -759,7 +628,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setDeptHXPasscode(e.target.value);
                       if (deptHXError) setDeptHXError(null);
                     }}
-                    placeholder="Masukkan kode otorisasi pusat"
+                    placeholder="Masukkan kode otorisasi Dept HX"
                     className="w-full pl-9.5 pr-10 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#00452c] focus:outline-none transition-all"
                   />
                   <button
@@ -774,7 +643,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </div>
               </div>
 
-              {/* Submit CTA */}
               <button
                 type="submit"
                 disabled={isSubmittingDeptHX}
@@ -794,44 +662,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   </>
                 )}
               </button>
-
-              {/* Demo Dept HX Account Quick-Click */}
-              {demoDeptHXAccounts.length > 0 && (
-                <div className="pt-2 border-t border-[#f1f3ff]">
-                  <span className="text-[11px] font-bold text-[#00452c] uppercase tracking-wider block mb-2">
-                    Akun Direktorat Demo:
-                  </span>
-                  <div className="space-y-1.5">
-                    {demoDeptHXAccounts.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => handleQuickDeptHXLogin(user)}
-                        className="w-full p-2.5 rounded-xl bg-[#e9fbf2] hover:bg-[#c1ecd4] border border-[#00452c]/5 hover:border-[#00452c]/20 flex items-center justify-between text-left transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-[#00452c]/20"
-                          />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[#002114] truncate block group-hover:text-[#00452c]">
-                              {user.name}
-                            </span>
-                            <span className="text-[10px] text-[#00452c] block truncate font-medium">
-                              {user.role.toUpperCase()} • {user.halaqah}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[11px] font-bold text-[#00452c] bg-white px-2 py-1 rounded-lg shrink-0 shadow-xs border border-[#00452c]/10">
-                          Buka Portal &gt;
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </form>
           )}
         </div>

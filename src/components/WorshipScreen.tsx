@@ -8,7 +8,7 @@ import {
   RegionLocation,
   PrayerTimeItem
 } from '../services/prayerTimes';
-import { evaluatePrayerWindow, findConflictingStandardAmalan, FastingOption } from '../services/amalanPaten';
+import { evaluatePrayerWindow, findConflictingStandardAmalan, FastingOption, isFiveDailyFardhuPrayer } from '../services/amalanPaten';
 import { MuraqabahConfirmModal } from './MuraqabahConfirmModal';
 import { FastingSelectionModal } from './FastingSelectionModal';
 import { StreakModal } from './StreakModal';
@@ -210,8 +210,8 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     const penalty = isLate ? 5 : 0;
 
     let earnedXp = task.xp;
-    const isPrayer = task.hasJamaahOption || task.prayerId;
-    if (isPrayer) {
+    const isFardhuPrayer = isFiveDailyFardhuPrayer(task);
+    if (isFardhuPrayer) {
       const base = 15;
       const bonus = selectedPrayerMode === 'jamaah' ? 5 : 0;
       earnedXp = Math.max(0, base + bonus - penalty);
@@ -222,7 +222,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     onToggleTask(task.id, {
       earnedXp,
       fastingNote: fastingNote || undefined,
-      isJamaah: selectedPrayerMode === 'jamaah'
+      isJamaah: isFardhuPrayer ? selectedPrayerMode === 'jamaah' : undefined
     });
 
     setShowMuraqabahModal(false);

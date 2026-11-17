@@ -15,7 +15,8 @@ import {
   StandardAmalanHX,
   DEFAULT_STANDARD_AMALAN_HX,
   getStoredStandardAmalan,
-  saveStoredStandardAmalan
+  saveStoredStandardAmalan,
+  isFiveDailyFardhuPrayer
 } from '../services/amalanPaten';
 import {
   setDoc,
@@ -38,13 +39,7 @@ export interface HalaqahDetail {
   dept?: string;
 }
 
-export const DEFAULT_BASE_HALAQAHS: HalaqahDetail[] = [
-  { id: 'h-fajr', name: 'Halaqah Al-Fajr', code: 'HF-4092', supervisor: 'Ustadz Farhan', schedule: 'Senin - Jumat 05:30 WIB', location: 'Masjid Al-Ikhlas', dept: 'Dept HX' },
-  { id: 'h-hafiz', name: 'Hafiz Circle', code: 'HC-1108', supervisor: 'Ustadz Tariq Mansoor', schedule: 'Selasa & Kamis 16:30 WIB', location: 'Mushola PT HEW', dept: 'Dept Produksi' },
-  { id: 'h-youth', name: 'Youth Tajweed', code: 'YT-7721', supervisor: 'Ustadzah Sarah', schedule: 'Rabu & Sabtu 19:30 WIB', location: 'Masjid Jami', dept: 'Dept Logistik' },
-  { id: 'h-madinah', name: 'Madinah Memorization Circle', code: 'MC-9901', supervisor: 'Ustadz Mansoor', schedule: 'Ahad 08:00 WIB', location: 'Masjid Al-Ikhlas', dept: 'Dept HRD' },
-  { id: 'h-noor', name: 'Noor Al-Huda Tajweed Circle', code: 'NH-3382', supervisor: 'Ustadz Zulkifli', schedule: 'Jumat 12:45 WIB', location: 'Mushola Karyawan', dept: 'Dept Finance' }
-];
+export const DEFAULT_BASE_HALAQAHS: HalaqahDetail[] = [];
 
 interface HQAdminScreenProps {
   onShowToast: (msg: string) => void;
@@ -95,7 +90,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [newReciterName, setNewReciterName] = useState('');
-  const [newReciterGroup, setNewReciterGroup] = useState('Halaqah Al-Fajr');
+  const [newReciterGroup, setNewReciterGroup] = useState('');
+  const [newReciterSupervisor, setNewReciterSupervisor] = useState('');
+  const [newReciterRole, setNewReciterRole] = useState<'member' | 'admin'>('member');
   const [newReciterPasscode, setNewReciterPasscode] = useState('1234');
   const [newReciterPhone, setNewReciterPhone] = useState('');
   const [newReciterTarget, setNewReciterTarget] = useState('Surah Al-Mulk (Ayat 1-10)');
@@ -109,20 +106,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   const [newHalaqahLocation, setNewHalaqahLocation] = useState<string>('Masjid Al-Ikhlas');
   const [newHalaqahDept, setNewHalaqahDept] = useState<string>('Dept HX');
 
-  // Unified Halaqah List (Includes Base + Custom + Edits)
+  // Unified Halaqah List (Production storage)
   const [halaqahList, setHalaqahList] = useState<HalaqahDetail[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_unified_halaqahs_v2');
+      const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-      const savedOld = localStorage.getItem('noorworship_saved_halaqahs_v1');
-      if (savedOld) {
-        const parsedOld = JSON.parse(savedOld);
-        if (Array.isArray(parsedOld) && parsedOld.length > 0) {
-          return [...DEFAULT_BASE_HALAQAHS, ...parsedOld];
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn(e);
@@ -132,7 +122,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_unified_halaqahs_v2', JSON.stringify(halaqahList));
+      localStorage.setItem('noorworship_unified_halaqahs_prod_v1', JSON.stringify(halaqahList));
     } catch (e) {
       console.warn(e);
     }
@@ -141,10 +131,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   useEffect(() => {
     const handleUpdate = () => {
       try {
-        const saved = localStorage.getItem('noorworship_unified_halaqahs_v2');
+        const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setHalaqahList(parsed);
           }
         }
@@ -159,7 +149,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   // Persistent deleted tracking so items stay deleted even on reload
   const [deletedHalaqahNames, setDeletedHalaqahNames] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_deleted_halaqah_names_v1');
+      const saved = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.warn(e);
@@ -169,7 +159,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_deleted_halaqah_names_v1', JSON.stringify(deletedHalaqahNames));
+      localStorage.setItem('noorworship_deleted_halaqah_names_prod_v1', JSON.stringify(deletedHalaqahNames));
     } catch (e) {
       console.warn(e);
     }
@@ -177,7 +167,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   const [deletedStudentIds, setDeletedStudentIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_deleted_student_ids_v1');
+      const saved = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.warn(e);
@@ -187,7 +177,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_deleted_student_ids_v1', JSON.stringify(deletedStudentIds));
+      localStorage.setItem('noorworship_deleted_student_ids_prod_v1', JSON.stringify(deletedStudentIds));
     } catch (e) {
       console.warn(e);
     }
@@ -196,7 +186,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   // Persistent User Halaqah Overrides (for moving or unassigning members)
   const [userHalaqahOverrides, setUserHalaqahOverrides] = useState<Record<string, string>>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_user_halaqah_overrides_v1');
+      const saved = localStorage.getItem('noorworship_user_halaqah_overrides_prod_v1');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.warn(e);
@@ -206,7 +196,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_user_halaqah_overrides_v1', JSON.stringify(userHalaqahOverrides));
+      localStorage.setItem('noorworship_user_halaqah_overrides_prod_v1', JSON.stringify(userHalaqahOverrides));
     } catch (e) {
       console.warn(e);
     }
@@ -728,12 +718,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   // Open Edit Modal for Paten Amalan
   const handleOpenEditPaten = (item: StandardAmalanHX) => {
+    const isFardhu5 = isFiveDailyFardhuPrayer(item);
     setEditingPaten(item);
     setFormPatenTitle(item.title);
     setFormPatenCategory(item.category);
     setFormPatenBaseXp(item.baseXp);
-    setFormPatenHasJamaah(item.hasJamaahOption || false);
-    setFormPatenJamaahBonus(item.jamaahBonusXp || 5);
+    setFormPatenHasJamaah(isFardhu5);
+    setFormPatenJamaahBonus(isFardhu5 ? (item.jamaahBonusXp || 5) : 0);
     setFormPatenTimeWindow(item.timeWindowDescription || '');
     setFormPatenNote(item.note || '');
     setFormPatenPenalty(item.penaltyLateXp || 5);
@@ -743,6 +734,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   const handleSaveEditPaten = () => {
     if (!editingPaten) return;
     const titleTrim = formPatenTitle.trim() || editingPaten.title;
+    const isFardhu5 = isFiveDailyFardhuPrayer({ ...editingPaten, title: titleTrim });
     const updated = standardAmalanList.map((item) => {
       if (item.id === editingPaten.id) {
         return {
@@ -750,8 +742,8 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           title: titleTrim,
           category: formPatenCategory,
           baseXp: formPatenBaseXp,
-          hasJamaahOption: formPatenHasJamaah,
-          jamaahBonusXp: formPatenHasJamaah ? formPatenJamaahBonus : 0,
+          hasJamaahOption: isFardhu5,
+          jamaahBonusXp: isFardhu5 ? formPatenJamaahBonus : undefined,
           timeWindowDescription: formPatenTimeWindow,
           note: formPatenNote,
           penaltyLateXp: formPatenPenalty,
@@ -795,13 +787,14 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       return;
     }
 
+    const isFardhu5 = isFiveDailyFardhuPrayer({ title: titleTrim });
     const newItem: StandardAmalanHX = {
       id: `paten-custom-${Date.now()}`,
       title: titleTrim,
       category: formPatenCategory,
       baseXp: formPatenBaseXp,
-      hasJamaahOption: formPatenHasJamaah,
-      jamaahBonusXp: formPatenHasJamaah ? formPatenJamaahBonus : 0,
+      hasJamaahOption: isFardhu5,
+      jamaahBonusXp: isFardhu5 ? formPatenJamaahBonus : undefined,
       timeWindowDescription: formPatenTimeWindow || 'Sepanjang Hari',
       note: formPatenNote || 'Amalan pasti resmi dari Dept HX',
       penaltyLateXp: formPatenPenalty,
@@ -821,36 +814,25 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   const allStudentsList = useMemo(() => {
     const map = new Map();
-    DEFAULT_HALAQAH_ROSTER.forEach(s => {
-      if (!deletedStudentIds.includes(s.id) && !deletedStudentIds.includes(s.name)) {
-        const assignedHalaqah = userHalaqahOverrides[s.id] !== undefined ? userHalaqahOverrides[s.id] : s.halaqah;
-        map.set(s.id, {
-          ...s,
-          halaqah: assignedHalaqah,
-          totalXp: 1420,
-          streakDays: 7,
-          tajweedAcc: 94,
-          role: 'member',
-          supervisor: 'Ustadz Farhan',
-          phone: '081234567890'
-        });
-      }
-    });
     if (registeredUsers) {
-      registeredUsers.forEach(u => {
+      registeredUsers.forEach((u) => {
+        if (u.role === 'dept-hx' || u.role === 'hq-admin') return;
         if (!deletedStudentIds.includes(u.id) && !deletedStudentIds.includes(u.name)) {
-          const assignedHalaqah = userHalaqahOverrides[u.id] !== undefined ? userHalaqahOverrides[u.id] : (u.halaqah || 'Halaqah Al-Fajr');
+          const assignedHalaqah =
+            userHalaqahOverrides[u.id] !== undefined
+              ? userHalaqahOverrides[u.id]
+              : u.halaqah || 'Tanpa Halaqah';
           map.set(u.id, {
             id: u.id,
             name: u.name,
             avatar: u.avatar,
             halaqah: assignedHalaqah,
-            totalXp: u.totalXp || 1200,
-            streakDays: u.streakDays || 5,
-            tajweedAcc: 92,
+            totalXp: u.totalXp || 0,
+            streakDays: u.streakDays || 0,
+            tajweedAcc: 95,
             role: u.role,
-            supervisor: u.supervisor || 'Ustadz Farhan',
-            phone: u.phone || '081298765432'
+            supervisor: u.supervisor || 'Ustadz Pembimbing',
+            phone: u.phone || ''
           });
         }
       });
@@ -858,86 +840,106 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     return Array.from(map.values());
   }, [registeredUsers, deletedStudentIds, userHalaqahOverrides]);
 
-
-
   const halaqahGroups = useMemo(() => {
-    const groups: Record<string, any[]> = {};
-    
+    const groupsMap: Record<string, any[]> = {};
+
     // Pre-populate with all presets so empty new halaqahs are also visible
-    allHalaqahPresets.forEach(preset => {
-      if (!groups[preset.name]) groups[preset.name] = [];
+    allHalaqahPresets.forEach((preset) => {
+      if (!groupsMap[preset.name]) groupsMap[preset.name] = [];
     });
 
     allStudentsList.forEach((st: any) => {
-      const h = st.halaqah || 'Halaqah Al-Fajr';
-      if (!groups[h]) groups[h] = [];
-      groups[h].push(st);
+      const h = st.halaqah;
+      if (!h || h === 'Dept HX Pusat' || h === 'Tanpa Halaqah') return;
+      if (!groupsMap[h]) groupsMap[h] = [];
+      if (st.role === 'member') {
+        groupsMap[h].push(st);
+      }
     });
 
-    return Object.entries(groups).map(([halaqahName, members]) => {
-      const matchedPreset = allHalaqahPresets.find(p => p.name === halaqahName);
+    return Object.entries(groupsMap).map(([halaqahName, members]) => {
+      const matchedPreset = allHalaqahPresets.find((p) => p.name === halaqahName);
+      const ustadzInGroup = allStudentsList.find(
+        (st: any) => st.role === 'admin' && st.halaqah === halaqahName
+      );
       return {
         halaqahName,
         members,
         code: matchedPreset?.code || 'HX-001',
-        supervisor: matchedPreset?.supervisor || (halaqahName === 'Halaqah Al-Fajr' ? 'Ustadz Farhan' : halaqahName === 'Hafiz Circle' ? 'Tariq Mansoor' : 'Ustadz Pembimbing'),
+        supervisor:
+          matchedPreset?.supervisor ||
+          ustadzInGroup?.name ||
+          members[0]?.supervisor ||
+          'Ustadz Pembimbing',
         schedule: matchedPreset?.schedule || 'Jadwal Reguler Dept HX',
         location: matchedPreset?.location || 'Masjid Al-Ikhlas',
-        avgTajweed: 93,
-        compliance: 89
+        avgTajweed: 95,
+        compliance: 100
       };
     });
   }, [allStudentsList, allHalaqahPresets]);
 
-
-
-  const halaqahPresets = [
-    { name: 'Halaqah Al-Fajr', code: 'HF-4092', supervisor: 'Ustadz Farhan' },
-    { name: 'Hafiz Circle', code: 'HC-1108', supervisor: 'Ustadz Tariq Mansoor' },
-    { name: 'Youth Tajweed', code: 'YT-7721', supervisor: 'Ustadzah Sarah' },
-    { name: 'Madinah Memorization Circle', code: 'MC-9901', supervisor: 'Ustadz Mansoor' },
-    { name: 'Noor Al-Huda Tajweed Circle', code: 'NH-3382', supervisor: 'Ustadz Zulkifli' }
-  ];
-
   const allRecitersList = useMemo(() => {
     const existingNames = new Set(reciters.map((r) => r.name.toLowerCase()));
     const fromRegistered: ReciterProfile[] = (registeredUsers || [])
-      .filter((u) => !existingNames.has(u.name.toLowerCase()) && !deletedStudentIds.includes(u.id) && !deletedStudentIds.includes(u.name))
+      .filter(
+        (u) =>
+          u.role !== 'dept-hx' &&
+          u.role !== 'hq-admin' &&
+          !existingNames.has(u.name.toLowerCase()) &&
+          !deletedStudentIds.includes(u.id) &&
+          !deletedStudentIds.includes(u.name)
+      )
       .map((u) => {
-        const assignedHalaqah = userHalaqahOverrides[u.id] !== undefined ? userHalaqahOverrides[u.id] : (u.halaqah || 'Tanpa Halaqah');
+        const assignedHalaqah =
+          userHalaqahOverrides[u.id] !== undefined
+            ? userHalaqahOverrides[u.id]
+            : u.halaqah || 'Tanpa Halaqah';
         return {
           id: u.id,
           name: u.name,
           group: assignedHalaqah,
-          supervisor: u.role === 'admin' ? 'Ustadz Pembimbing' : 'Ustadz Farhan',
+          supervisor: u.role === 'admin' ? 'Ustadz Pembimbing' : u.supervisor || 'Ustadz Pembimbing',
           avatar: u.avatar,
-          status: (u.totalXp > 1500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
+          status: (u.totalXp >= 500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
           tajweedAcc: 95.0,
-          streakDays: u.streakDays,
-          totalXp: u.totalXp.toLocaleString(),
-          currentActivity: `Aktif di ${assignedHalaqah} (Kode: ${u.halaqahCode || 'HF-4092'})`,
-          lastActive: 'Aktif hari ini'
+          streakDays: u.streakDays || 0,
+          totalXp: (u.totalXp || 0).toLocaleString(),
+          currentActivity:
+            u.role === 'admin'
+              ? `Ustadz Pembimbing ${assignedHalaqah} (${u.halaqahCode || 'HX-001'})`
+              : `Anggota ${assignedHalaqah} (Kode: ${u.halaqahCode || 'HX-001'})`,
+          lastActive: 'Terdaftar'
         };
       });
 
     const mappedReciters = reciters.map((r) => {
-      const assignedGroup = userHalaqahOverrides[r.id] !== undefined ? userHalaqahOverrides[r.id] : r.group;
+      const assignedGroup =
+        userHalaqahOverrides[r.id] !== undefined ? userHalaqahOverrides[r.id] : r.group;
       return {
         ...r,
         group: assignedGroup
       };
     });
 
-    return [...fromRegistered, ...mappedReciters].filter(r => !deletedStudentIds.includes(r.id) && !deletedStudentIds.includes(r.name));
+    return [...fromRegistered, ...mappedReciters].filter(
+      (r) => !deletedStudentIds.includes(r.id) && !deletedStudentIds.includes(r.name)
+    );
   }, [registeredUsers, reciters, deletedStudentIds, userHalaqahOverrides]);
 
-  const groups = [
-    { label: 'Semua Kelompok', count: '1.248' },
-    { label: 'Halaqah Al-Fajr', count: '38' },
-    { label: 'Hafiz Circle', count: '24' },
-    { label: 'Youth Tajweed', count: '42' },
-    { label: 'Masjid Al-Ikhlas', count: '115' }
-  ];
+  const groups = useMemo(() => {
+    const base = [{ label: 'Semua Kelompok', count: String(allRecitersList.length) }];
+    halaqahGroups.forEach((g) => {
+      const countInReciters = allRecitersList.filter(
+        (r) => r.group.toLowerCase() === g.halaqahName.toLowerCase()
+      ).length;
+      base.push({
+        label: g.halaqahName,
+        count: String(countInReciters)
+      });
+    });
+    return base;
+  }, [allRecitersList, halaqahGroups]);
 
   const filteredReciters = useMemo(() => {
     return allRecitersList.filter((item) => {
@@ -996,48 +998,57 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   const handleAddReciter = () => {
     if (!newReciterName.trim()) {
-      onShowToast('Mohon masukkan nama karyawan');
+      onShowToast('Mohon masukkan nama lengkap');
       return;
     }
 
-    const selectedPreset =
-      allHalaqahPresets.find((h) => h.name === newReciterGroup) || allHalaqahPresets[0];
+    const groupName = (newReciterGroup || allHalaqahPresets[0]?.name || '').trim();
+    if (!groupName) {
+      onShowToast('Mohon pilih atau ketik nama Kelompok Halaqah terlebih dahulu');
+      return;
+    }
+
+    let selectedPreset = allHalaqahPresets.find(
+      (h) => h.name.toLowerCase() === groupName.toLowerCase()
+    );
+
+    if (!selectedPreset) {
+      const autoCode = `HX-${Math.floor(1000 + Math.random() * 9000)}`;
+      const supName =
+        newReciterRole === 'admin'
+          ? newReciterName.trim()
+          : newReciterSupervisor.trim() || 'Ustadz Pembimbing';
+      const createdHalaqah: HalaqahDetail = {
+        id: `halaqah-${Date.now()}`,
+        name: groupName,
+        code: autoCode,
+        supervisor: supName,
+        schedule: 'Ba’da Subuh (05:30 WIB)',
+        location: 'Masjid Al-Ikhlas',
+        dept: 'Dept HX'
+      };
+      setHalaqahList((prev) => [createdHalaqah, ...prev]);
+      selectedPreset = createdHalaqah;
+    }
+
     const finalPasscode = newReciterPasscode.trim() || '1234';
 
-    // 1. Register to shared system state so karyawan can log in from the login screen immediately
     if (onRegisterSantri) {
       onRegisterSantri({
         name: newReciterName.trim(),
-        halaqah: newReciterGroup,
+        halaqah: selectedPreset.name,
         halaqahCode: selectedPreset.code,
         passcode: finalPasscode,
         phone: newReciterPhone.trim(),
-        role: 'member'
+        role: newReciterRole
       });
     }
 
-    // 2. Add to local reciters directory
-    const newEntry: ReciterProfile = {
-      id: `reciter-${Date.now()}`,
-      name: newReciterName.trim(),
-      group: newReciterGroup,
-      supervisor: selectedPreset.supervisor,
-      avatar:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
-      status: 'Mumtaz',
-      tajweedAcc: 95.0,
-      streakDays: 1,
-      totalXp: '150',
-      currentActivity: `Terdaftar di ${newReciterGroup}`,
-      lastActive: 'Baru saja didaftarkan'
-    };
-
-    setReciters([newEntry, ...reciters]);
     setShowAddModal(false);
     setNewReciterName('');
     setNewReciterPhone('');
     onShowToast(
-      `Karyawan ${newEntry.name} resmi didaftarkan Dept HX ke ${newReciterGroup}! Status akun langsung aktif.`
+      `${newReciterRole === 'admin' ? 'Ustadz Pembimbing' : 'Karyawan'} "${newReciterName.trim()}" resmi didaftarkan ke ${selectedPreset.name}!`
     );
   };
 
@@ -1087,67 +1098,83 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             </span>
           </div>
           <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">1.248</span>
-            <span className="text-[11px] sm:text-xs text-[#00452c] font-bold whitespace-nowrap">+32 pekan ini</span>
+            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">
+              {allStudentsList.filter((s: any) => s.role === 'member').length}
+            </span>
+            <span className="text-[11px] sm:text-xs text-[#00452c] font-bold whitespace-nowrap">
+              Karyawan Resmi
+            </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] text-[#414844] mt-1 truncate">Di 18 Lingkaran Halaqah</span>
+          <span className="text-[10px] sm:text-[11px] text-[#414844] mt-1 truncate">
+            Di {halaqahGroups.length} Lingkaran Halaqah
+          </span>
         </div>
 
-        {/* Active Today */}
+        {/* Active Today / Ustadz Count */}
         <div className="bg-white p-3 sm:p-3.5 rounded-2xl shadow-sm border border-[#1b4332]/5 flex flex-col justify-between min-w-0 overflow-hidden">
           <div className="flex items-start sm:items-center justify-between gap-1.5 mb-1.5 sm:mb-1">
             <span className="text-[11px] sm:text-xs text-[#414844] font-medium leading-tight min-w-0">
-              Karyawan Aktif Hari Ini
+              Halaqah &amp; Pembimbing
             </span>
             <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#c1ecd4]/60 flex items-center justify-center text-[#1b4332] shrink-0">
-              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">electric_bolt</span>
+              <span className="material-symbols-outlined text-[15px] sm:text-[16px]">shield_person</span>
             </span>
           </div>
           <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">892</span>
-            <span className="text-[11px] sm:text-xs text-[#414844] font-semibold whitespace-nowrap">71.5%</span>
+            <span className="text-xl sm:text-2xl font-bold text-[#012d1d] leading-none tabular-nums">
+              {halaqahGroups.length}
+            </span>
+            <span className="text-[11px] sm:text-xs text-[#414844] font-semibold whitespace-nowrap">
+              Kelompok Aktif
+            </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-[#414844] mt-1 truncate">
-            Setoran tilawah Subuh tercatat
+            {activeAttendanceSessions.length} sesi presensi tercatat
           </span>
         </div>
       </section>
 
       {/* Governance & Quick Actions Bar */}
-      <section className="flex items-center gap-2 flex-wrap">
+      <section className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
         <button
-          onClick={() => setShowAddModal(true)}
-          className="flex-1 min-w-[130px] h-11 px-4 bg-[#012d1d] hover:bg-[#1b4332] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98] transition-all cursor-pointer"
+          onClick={() => {
+            if (!newReciterGroup && allHalaqahPresets.length > 0) {
+              setNewReciterGroup(allHalaqahPresets[0].name);
+            }
+            setShowAddModal(true);
+          }}
+          className="w-full sm:flex-1 h-11 px-4 bg-[#012d1d] hover:bg-[#1b4332] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
         >
-          <span className="material-symbols-outlined text-[18px]">person_add</span>
-          <span>Daftar Karyawan Baru</span>
+          <span className="material-symbols-outlined text-[18px] shrink-0">person_add</span>
+          <span className="truncate">Daftar Karyawan / Ustadz</span>
         </button>
 
-        {onOpenSheets && (
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {onOpenSheets && (
+            <button
+              onClick={onOpenSheets}
+              className="flex-1 sm:flex-initial min-w-0 h-11 px-3.5 bg-white hover:bg-[#e9fbf2] text-[#00452c] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm border border-[#00452c]/20 transition-colors cursor-pointer whitespace-nowrap"
+              title="Kelola Data via Spreadsheet Excel (.xlsx) lokal tanpa biaya API"
+            >
+              <span className="material-symbols-outlined text-[18px] text-[#00452c] shrink-0">
+                table_chart
+              </span>
+              <span className="truncate">Kelola Sheet (.xlsx)</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold shrink-0">
+                Free
+              </span>
+            </button>
+          )}
+
           <button
-            onClick={onOpenSheets}
-            className="h-11 px-3.5 bg-white hover:bg-[#e9fbf2] text-[#00452c] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm border border-[#00452c]/20 transition-colors cursor-pointer"
-            title="Kelola Data via Spreadsheet Excel (.xlsx) lokal tanpa biaya API"
+            onClick={() => setShowBroadcastModal(true)}
+            aria-label="Kirim maklumat ke semua Halaqah"
+            title="Siaran / Kirim Maklumat"
+            className="h-11 w-11 bg-white hover:bg-[#f1f3ff] text-[#012d1d] rounded-xl flex items-center justify-center shadow-sm border border-[#1b4332]/5 transition-colors shrink-0 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[18px] text-[#00452c]">
-              table_chart
-            </span>
-            <span>Kelola Sheet (.xlsx)</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
-              Free
-            </span>
+            <span className="material-symbols-outlined text-[20px]">campaign</span>
           </button>
-        )}
-
-
-
-        <button
-          onClick={() => setShowBroadcastModal(true)}
-          aria-label="Kirim maklumat ke semua Halaqah"
-          className="h-11 w-11 bg-white hover:bg-[#f1f3ff] text-[#012d1d] rounded-xl flex items-center justify-center shadow-sm border border-[#1b4332]/5 transition-colors shrink-0 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[20px]">campaign</span>
-        </button>
+        </div>
       </section>
 
       {/* Dept HX View Mode Selector */}
@@ -1244,47 +1271,82 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {halaqahGroups.map((group) => (
-                <div
-                  key={group.halaqahName}
-                  onClick={() => handleOpenHalaqahModal(group.halaqahName)}
-                  className="p-4 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 hover:border-[#1b4332]/30 shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-3 group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
-                          Halaqah Resmi
-                        </span>
-                      </div>
-                      <h4 className="text-base font-bold text-[#141b2b] mt-1 group-hover:text-[#012d1d] transition-colors">
-                        {group.halaqahName}
-                      </h4>
-                      <p className="text-xs text-[#414844] mt-0.5">
-                        Pembimbing: <span className="font-semibold text-[#141b2b]">{group.supervisor}</span>
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-[#012d1d] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                      <span className="material-symbols-outlined text-[20px]">groups</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-[#f1f3ff] flex items-center justify-between gap-2 flex-wrap text-[11px] sm:text-xs">
-                    <span className="text-[#414844] font-medium inline-flex items-center gap-1 min-w-0 truncate">
-                      <span>👥</span>
-                      <strong className="text-[#141b2b] tabular-nums">{group.members.length}</strong>
-                      <span className="truncate">Karyawan Anggota</span>
-                    </span>
-                    <span className="text-[#012d1d] font-bold inline-flex items-center gap-1 shrink-0 whitespace-nowrap ml-auto group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform">
-                      <span className="material-symbols-outlined text-[14px] sm:text-[15px] shrink-0">settings</span>
-                      <span>Kelola Halaqah</span>
-                      <span className="material-symbols-outlined text-[15px] sm:text-[16px] shrink-0">arrow_forward</span>
-                    </span>
-                  </div>
+            {halaqahGroups.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-[#f9f9ff] border border-dashed border-[#1b4332]/20 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#e9edff] text-[#012d1d] flex items-center justify-center mx-auto">
+                  <span className="material-symbols-outlined text-[26px]">group_add</span>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#141b2b]">Belum Ada Lingkaran Halaqah Terdaftar</h4>
+                  <p className="text-xs text-[#414844] max-w-md mx-auto mt-1">
+                    Data uji coba telah dibersihkan. Silakan klik tombol <strong>&ldquo;Daftar Halaqah Baru&rdquo;</strong> untuk membuat kelompok halaqah resmi, atau gunakan tombol <strong>&ldquo;Kelola Sheet (.xlsx)&rdquo;</strong> di atas untuk mengimpor data karyawan &amp; halaqah sekaligus dari file Excel.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                  <button
+                    onClick={() => setShowAddHalaqahModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-[#fed488]">add_circle</span>
+                    <span>Daftar Halaqah Baru</span>
+                  </button>
+                  {onOpenSheets && (
+                    <button
+                      onClick={onOpenSheets}
+                      className="px-4 py-2.5 rounded-xl bg-white hover:bg-[#e9fbf2] text-[#00452c] border border-[#00452c]/25 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                      <span>Import Excel (.xlsx)</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {halaqahGroups.map((group) => (
+                  <div
+                    key={group.halaqahName}
+                    onClick={() => handleOpenHalaqahModal(group.halaqahName)}
+                    className="p-4 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 hover:border-[#1b4332]/30 shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-3 group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                            Halaqah Resmi
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-mono font-bold">
+                            {group.code}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-bold text-[#141b2b] mt-1 group-hover:text-[#012d1d] transition-colors">
+                          {group.halaqahName}
+                        </h4>
+                        <p className="text-xs text-[#414844] mt-0.5">
+                          Pembimbing: <span className="font-semibold text-[#141b2b]">{group.supervisor}</span>
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-[#012d1d] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                        <span className="material-symbols-outlined text-[20px]">groups</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-[#f1f3ff] flex items-center justify-between gap-2 flex-wrap text-[11px] sm:text-xs">
+                      <span className="text-[#414844] font-medium inline-flex items-center gap-1 min-w-0 truncate">
+                        <span>👥</span>
+                        <strong className="text-[#141b2b] tabular-nums">{group.members.length}</strong>
+                        <span className="truncate">Karyawan Anggota</span>
+                      </span>
+                      <span className="text-[#012d1d] font-bold inline-flex items-center gap-1 shrink-0 whitespace-nowrap ml-auto group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform">
+                        <span className="material-symbols-outlined text-[14px] sm:text-[15px] shrink-0">settings</span>
+                        <span>Kelola Halaqah</span>
+                        <span className="material-symbols-outlined text-[15px] sm:text-[16px] shrink-0">arrow_forward</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1354,16 +1416,6 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                 Semua ({filteredReciters.length})
               </button>
               <button
-                onClick={() => setSelectedStatus('flagged')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                  selectedStatus === 'flagged'
-                    ? 'bg-[#ffdad6] text-[#93000a]'
-                    : 'text-[#414844] hover:bg-[#e9edff]'
-                }`}
-              >
-                Perlu Bimbingan (1)
-              </button>
-              <button
                 onClick={() => setSelectedStatus('mumtaz')}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
                   selectedStatus === 'mumtaz'
@@ -1371,154 +1423,157 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     : 'text-[#414844] hover:bg-[#e9edff]'
                 }`}
               >
-                Mumtaz (3)
+                Mumtaz ({allRecitersList.filter((r) => r.status === 'Mumtaz').length})
               </button>
             </div>
           </div>
 
           {/* Reciters Directory List */}
           <section className="space-y-3">
-            <div className="flex flex-col gap-2.5">
-          {filteredReciters.map((item) => {
-            const isSelected = selectedIds.includes(item.id);
-            return (
-              <div
-                key={item.id}
-                className={`p-4 rounded-2xl bg-white shadow-sm border transition-all ${
-                  item.isFlagged
-                    ? 'border-[#ba1a1a]/30'
-                    : isSelected
-                    ? 'border-[#012d1d] ring-1 ring-[#012d1d]'
-                    : 'border-[#1b4332]/5'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {isMultiSelect && (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectReciter(item.id)}
-                        className="rounded accent-[#012d1d] cursor-pointer"
-                      />
-                    )}
-                    <img
-                      className="w-11 h-11 rounded-full object-cover shrink-0 shadow-sm"
-                      alt={item.name}
-                      src={item.avatar}
-                    />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-bold text-[#141b2b] truncate">
-                          {item.name}
-                        </span>
-                        <span className="px-2 py-0.2 rounded-full bg-[#f1f3ff] text-[#414844] text-[10px] font-semibold">
-                          {item.group}
-                        </span>
-                        {item.status === 'Mumtaz' ? (
-                          <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
-                            Mumtaz
-                          </span>
-                        ) : item.status === 'Top 1%' ? (
-                          <span className="px-1.5 py-0.2 rounded-full bg-[#fed488] text-[#785a1a] text-[9px] font-bold">
-                            Top 1%
-                          </span>
-                        ) : item.isFlagged ? (
-                          <span className="px-1.5 py-0.2 rounded-full bg-[#ffdad6] text-[#93000a] text-[9px] font-bold">
-                            Perlu Bimbingan
-                          </span>
-                        ) : null}
-                      </div>
-                      <span className="text-xs text-[#414844] block mt-0.5 truncate">
-                        {item.currentActivity}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-sm font-bold text-[#012d1d]">{item.totalXp} XP</span>
-                    <span className="text-[10px] text-[#717973] block">{item.lastActive}</span>
-                  </div>
-                </div>
-
-                {/* Sub-bar with Tajweed & Streak stats */}
-                <div className="mt-3 pt-2 border-t border-[#f1f3ff] flex items-center justify-between text-xs text-[#414844] flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 font-semibold text-[#00452c]">
-                      <span className="material-symbols-outlined text-[14px]">auto_stories</span>
-                      {item.tajweedAcc}% Tajwid
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[14px] text-[#ba1a1a]">
-                        local_fire_department
-                      </span>
-                      {item.streakDays} hari
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteStudent(item);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                      title={`Hapus Karyawan ${item.name}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">delete</span>
-                      <span>Hapus</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStudentDetail(item)}
-                      className="px-3 py-1 rounded-lg bg-[#e9edff] hover:bg-[#012d1d] hover:text-white text-[#012d1d] text-xs font-bold transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
-                    >
-                      <span>Detail</span>
-                      <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-                    </button>
-                  </div>
-                </div>
+            {filteredReciters.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-dashed border-[#1b4332]/20 text-center space-y-2.5">
+                <span className="material-symbols-outlined text-[32px] text-[#717973]">person_add</span>
+                <p className="text-sm font-bold text-[#141b2b]">Belum Ada Karyawan Terdaftar</p>
+                <p className="text-xs text-[#414844] max-w-sm mx-auto">
+                  Silakan klik tombol <strong>&ldquo;Daftar Karyawan / Ustadz&rdquo;</strong> di atas atau impor data sekaligus melalui <strong>&ldquo;Kelola Sheet (.xlsx)&rdquo;</strong>.
+                </p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {filteredReciters.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-2xl bg-white shadow-sm border transition-all ${
+                        item.isFlagged
+                          ? 'border-[#ba1a1a]/30'
+                          : isSelected
+                          ? 'border-[#012d1d] ring-1 ring-[#012d1d]'
+                          : 'border-[#1b4332]/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {isMultiSelect && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectReciter(item.id)}
+                              className="rounded accent-[#012d1d] cursor-pointer"
+                            />
+                          )}
+                          <img
+                            className="w-11 h-11 rounded-full object-cover shrink-0 shadow-sm"
+                            alt={item.name}
+                            src={item.avatar}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-bold text-[#141b2b] truncate">
+                                {item.name}
+                              </span>
+                              <span className="px-2 py-0.2 rounded-full bg-[#f1f3ff] text-[#414844] text-[10px] font-semibold">
+                                {item.group}
+                              </span>
+                              {item.status === 'Mumtaz' ? (
+                                <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
+                                  Mumtaz
+                                </span>
+                              ) : item.status === 'Top 1%' ? (
+                                <span className="px-1.5 py-0.2 rounded-full bg-[#fed488] text-[#785a1a] text-[9px] font-bold">
+                                  Top 1%
+                                </span>
+                              ) : item.isFlagged ? (
+                                <span className="px-1.5 py-0.2 rounded-full bg-[#ffdad6] text-[#93000a] text-[9px] font-bold">
+                                  Perlu Bimbingan
+                                </span>
+                              ) : null}
+                            </div>
+                            <span className="text-xs text-[#414844] block mt-0.5 truncate">
+                              {item.currentActivity}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-sm font-bold text-[#012d1d]">{item.totalXp} XP</span>
+                          <span className="text-[10px] text-[#717973] block">{item.lastActive}</span>
+                        </div>
+                      </div>
 
-      {/* Roster Governance Drawer */}
-      <section className="flex flex-col items-center justify-center gap-2 py-3 bg-[#f1f3ff]/60 rounded-2xl p-4 border border-[#1b4332]/5">
-        <div className="flex items-center gap-2 text-xs text-[#414844]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
-          <span>Menampilkan {filteredReciters.length} dari 1.248 karyawan terdaftar</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
-        </div>
+                      {/* Sub-bar with Tajweed & Streak stats */}
+                      <div className="mt-3 pt-2 border-t border-[#f1f3ff] flex items-center justify-between text-xs text-[#414844] flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 font-semibold text-[#00452c]">
+                            <span className="material-symbols-outlined text-[14px]">auto_stories</span>
+                            {item.tajweedAcc}% Tajwid
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] text-[#ba1a1a]">
+                              local_fire_department
+                            </span>
+                            {item.streakDays} hari
+                          </span>
+                        </div>
 
-        <button
-          onClick={handleLoadMore}
-          className="w-full max-w-xs h-11 rounded-xl bg-white text-[#012d1d] text-xs font-bold flex items-center justify-center gap-2 shadow-sm border border-[#1b4332]/5 hover:bg-[#e9edff] transition-colors cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">expand_more</span>
-          <span>Muat 20 Karyawan Berikutnya</span>
-        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteStudent(item);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                            title={`Hapus Karyawan ${item.name}`}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                            <span>Hapus</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentDetail(item)}
+                            className="px-3 py-1 rounded-lg bg-[#e9edff] hover:bg-[#012d1d] hover:text-white text-[#012d1d] text-xs font-bold transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <span>Detail</span>
+                            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-        <div className="flex items-center justify-between w-full pt-2 px-1 text-xs text-[#414844]">
-          <div className="flex items-center gap-1">
-            <span className="material-symbols-outlined text-[15px] text-[#00452c]">
-              verified_user
-            </span>
-            <span>Data Karyawan Terenkripsi</span>
-          </div>
-          <button
-            onClick={() => {
-              setIsMultiSelect(!isMultiSelect);
-              onShowToast(isMultiSelect ? 'Mode multi-pilih nonaktif' : 'Mode multi-pilih aktif');
-            }}
-            className="text-[#012d1d] font-bold hover:underline cursor-pointer"
-          >
-            {isMultiSelect ? 'Keluar Multi-Pilih' : 'Mode Pilih Massal'}
-          </button>
+          {/* Roster Governance Drawer */}
+          <section className="flex flex-col items-center justify-center gap-2 py-3 bg-[#f1f3ff]/60 rounded-2xl p-4 border border-[#1b4332]/5">
+            <div className="flex items-center gap-2 text-xs text-[#414844]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
+              <span>Menampilkan {filteredReciters.length} dari {allRecitersList.length} pengguna terdaftar</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
+            </div>
+
+            <div className="flex items-center justify-between w-full pt-1 px-1 text-xs text-[#414844]">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px] text-[#00452c]">
+                  verified_user
+                </span>
+                <span>Data Karyawan Terenkripsi</span>
+              </div>
+              <button
+                onClick={() => {
+                  setIsMultiSelect(!isMultiSelect);
+                  onShowToast(isMultiSelect ? 'Mode multi-pilih nonaktif' : 'Mode multi-pilih aktif');
+                }}
+                className="text-[#012d1d] font-bold hover:underline cursor-pointer"
+              >
+                {isMultiSelect ? 'Keluar Multi-Pilih' : 'Mode Pilih Massal'}
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
-      </div>)}
+      )}
 
       {/* Tab: Kelola Amalan Ibadah Paten Dept HX */}
       {deptHxTab === 'amalan-paten' && (
@@ -2360,18 +2415,18 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                 </div>
               </div>
 
-              {/* Jamaah Toggle */}
-              <div className="p-3 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-[#012d1d]">
-                  <input
-                    type="checkbox"
-                    checked={formPatenHasJamaah}
-                    onChange={(e) => setFormPatenHasJamaah(e.target.checked)}
-                    className="rounded text-[#00452c] focus:ring-0 w-4 h-4 cursor-pointer"
-                  />
-                  <span>Sediakan Opsi Shalat Berjamaah</span>
-                </label>
-                {formPatenHasJamaah && (
+              {/* Jamaah Info / Toggle (Strictly for 5 Fardhu Prayers) */}
+              {isFiveDailyFardhuPrayer(editingPaten || { title: formPatenTitle }) ? (
+                <div className="p-3 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#012d1d] flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-[#00452c]">mosque</span>
+                      Opsi Shalat Berjamaah / Munfarid (Khusus Sholat 5 Waktu)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                      Aktif
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2 text-[11px] pt-1">
                     <span className="text-[#414844]">Bonus Berjamaah:</span>
                     <input
@@ -2380,10 +2435,17 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                       onChange={(e) => setFormPatenJamaahBonus(parseInt(e.target.value) || 0)}
                       className="w-16 px-2 py-1 rounded-lg border border-[#1b4332]/20 bg-white text-center font-bold"
                     />
-                    <span className="font-bold text-[#00452c]">XP (Total: {formPatenBaseXp + formPatenJamaahBonus} XP)</span>
+                    <span className="font-bold text-[#00452c]">XP (Total Berjamaah: {formPatenBaseXp + formPatenJamaahBonus} XP)</span>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-[#f1f3ff] border border-[#1b4332]/10 text-[11px] text-[#414844] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px] text-[#00452c] shrink-0">info</span>
+                  <span>
+                    Amalan selain Sholat 5 Waktu (Subuh, Dzuhur, Ashar, Maghrib, Isya&apos;) <strong>tidak memiliki</strong> pilihan Berjamaah / Munfarid.
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label className="font-bold text-[#414844] block mb-1">Keterangan Batas Waktu:</label>
@@ -2571,10 +2633,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   <span>Registrasi Resmi Dept HX</span>
                 </div>
                 <h3 className="font-bold text-sm sm:text-base text-[#012d1d] leading-snug">
-                  Pendaftaran Karyawan Baru
+                  Pendaftaran Karyawan / Ustadz Baru
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[#414844] leading-snug mt-0.5">
-                  Tetapkan halaqah binaan dan terbitkan akses masuk karyawan
+                  Tetapkan halaqah binaan dan terbitkan akses masuk resmi
                 </p>
               </div>
               <button
@@ -2585,55 +2647,113 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               </button>
             </div>
 
-            {/* Directive Notice */}
-            <div className="p-3 rounded-2xl bg-[#c1ecd4]/40 border border-[#00452c]/20 text-xs text-[#002114] leading-relaxed">
-              <span className="font-bold block mb-0.5">Skenario Masuk Otomatis:</span>
-              Begitu karyawan ini disimpan, ia langsung dapat login di halaman utama menggunakan namanya, dan statusnya <strong>otomatis langsung aktif di halaqah yang Anda tetapkan di bawah ini</strong>.
-            </div>
-
             {/* Form Fields */}
             <div className="space-y-3">
+              {/* Role Selection */}
+              <div>
+                <label className="text-xs font-bold text-[#141b2b] mb-1.5 block">
+                  Peran Pengguna <span className="text-[#ba1a1a]">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewReciterRole('member')}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      newReciterRole === 'member'
+                        ? 'bg-[#012d1d] text-white border-[#012d1d] shadow-xs'
+                        : 'bg-[#f1f3ff] text-[#414844] border-transparent hover:bg-[#e9edff]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">person</span>
+                    <span>Karyawan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewReciterRole('admin')}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      newReciterRole === 'admin'
+                        ? 'bg-[#012d1d] text-white border-[#012d1d] shadow-xs'
+                        : 'bg-[#f1f3ff] text-[#414844] border-transparent hover:bg-[#e9edff]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">shield_person</span>
+                    <span>Ustadz Pembimbing</span>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                  Nama Lengkap Karyawan <span className="text-[#ba1a1a]">*</span>
+                  {newReciterRole === 'admin' ? 'Nama Lengkap Ustadz' : 'Nama Lengkap Karyawan'}{' '}
+                  <span className="text-[#ba1a1a]">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={newReciterName}
                   onChange={(e) => setNewReciterName(e.target.value)}
-                  placeholder="Contoh: Muhammad Reyhan Pratama"
+                  placeholder={
+                    newReciterRole === 'admin'
+                      ? 'Contoh: Ustadz Ahmad Fauzi'
+                      : 'Contoh: Muhammad Reyhan Pratama'
+                  }
                   className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:bg-white focus:border-[#012d1d] focus:outline-none transition-all"
                 />
               </div>
 
-              {/* Halaqah Preset Selection */}
+              {/* Halaqah Preset Selection or Direct Input */}
               <div>
                 <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                  Penetapan Halaqah Dept HX <span className="text-[#ba1a1a]">*</span>
+                  Kelompok Halaqah <span className="text-[#ba1a1a]">*</span>
                 </label>
-                <select
-                  value={newReciterGroup}
-                  onChange={(e) => setNewReciterGroup(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] focus:bg-white focus:outline-none"
-                >
-                  {halaqahPresets.map((h) => (
-                    <option key={h.code} value={h.name}>
-                      {h.name} ({h.code}) — {h.supervisor}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-[#00452c] font-semibold mt-1">
-                  ✓ Kode Penugasan:{' '}
-                  {halaqahPresets.find((h) => h.name === newReciterGroup)?.code || 'HF-4092'} • Pembimbing:{' '}
-                  {halaqahPresets.find((h) => h.name === newReciterGroup)?.supervisor || 'Ustadz Farhan'}
-                </p>
+                {allHalaqahPresets.length > 0 ? (
+                  <>
+                    <select
+                      value={newReciterGroup}
+                      onChange={(e) => setNewReciterGroup(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] focus:bg-white focus:outline-none"
+                    >
+                      {allHalaqahPresets.map((h) => (
+                        <option key={h.id || h.name} value={h.name}>
+                          {h.name} ({h.code}) — {h.supervisor}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-[#00452c] font-semibold mt-1">
+                      ✓ Kode Penugasan:{' '}
+                      {allHalaqahPresets.find((h) => h.name === newReciterGroup)?.code || 'HX-001'} • Pembimbing:{' '}
+                      {allHalaqahPresets.find((h) => h.name === newReciterGroup)?.supervisor || 'Ustadz Pembimbing'}
+                    </p>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={newReciterGroup}
+                      onChange={(e) => setNewReciterGroup(e.target.value)}
+                      placeholder="Ketik nama kelompok halaqah (misal: Halaqah Al-Fajr)"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:bg-white focus:border-[#012d1d] focus:outline-none"
+                    />
+                    {newReciterRole === 'member' && (
+                      <input
+                        type="text"
+                        value={newReciterSupervisor}
+                        onChange={(e) => setNewReciterSupervisor(e.target.value)}
+                        placeholder="Nama Ustadz Pembimbing halaqah ini (opsional)"
+                        className="w-full px-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] border border-transparent focus:bg-white focus:border-[#012d1d] focus:outline-none"
+                      />
+                    )}
+                    <p className="text-[10px] text-[#785a1a]">
+                      💡 Halaqah baru akan otomatis dibuat beserta kode uniknya.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Passcode Login */}
               <div>
                 <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                  Passcode Login Karyawan
+                  Passcode / PIN Login
                 </label>
                 <input
                   type="text"
@@ -2642,7 +2762,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   placeholder="Default: 1234"
                   className="w-full px-3 py-2 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] focus:bg-white focus:outline-none"
                 />
-                <span className="text-[10px] text-[#717973] block mt-0.5">Bawaan: 1234</span>
+                <span className="text-[10px] text-[#717973] block mt-0.5">
+                  PIN yang digunakan saat login di halaman depan (bawaan: 1234)
+                </span>
               </div>
             </div>
 
@@ -2661,7 +2783,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                 className="flex-2 py-3 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] active:scale-[0.99] text-white text-xs font-bold shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[17px] text-[#fed488]">verified</span>
-                <span>Daftarkan &amp; Tetapkan Halaqah</span>
+                <span>Simpan &amp; Daftarkan</span>
               </button>
             </div>
           </div>

@@ -13,282 +13,18 @@ interface LeaderboardScreenProps {
   registeredUsers?: ActiveUser[];
 }
 
-// Baseline mock employee roster so each halaqah has realistic, active members with XP
-const BASE_EMPLOYEES_ROSTER: ActiveUser[] = [
-  // Halaqah Al-Fajr
-  {
-    id: 'user-zayd',
-    name: 'Zayd Al-Amin',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    role: 'member',
-    totalXp: 2410,
-    streakDays: 12,
-    supervisor: 'Ustadz Farhan'
-  },
-  {
-    id: 'user-zubair',
-    name: 'Zubair Ahmed',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-    role: 'member',
-    totalXp: 1940,
-    streakDays: 7,
-    supervisor: 'Ustadz Farhan'
-  },
-  {
-    id: 'user-hamza-malik',
-    name: 'Hamza Malik',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDl2oh3o0y1qDHWksSoqmd8XMiZZldRTSjimhlbpgvokYxxLZf3dzPd7n29Nhetf_Olmrxo8f9PEEVJhi4uXMk4tNb7fFd_nZUOzN5Rdja-yRE3q5yF17T8TSUKJOy1bcgtuTtokarrdyNVkM2Z_9y1dzn6US_MYhabTxnbkjabBFoyfSVw_r_AWxTv7v3vkt5B9VHnhxEkJqUEqS7Pe5oQFVZO3Zo5EoaPga-DW757Niz5e4SApnpruQ',
-    role: 'member',
-    totalXp: 1820,
-    streakDays: 11,
-    supervisor: 'Ustadz Farhan'
-  },
-  {
-    id: 'user-omar-farooq',
-    name: 'Omar Farooq',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCcAVJVBIvR2fyyLBXyaSgjvE4RI9klor1q9f3YpkDkf2KeXbl0hrWztnFRiSWcSfLTnrQkd_41qxbM1C2uyRrsHq1ir_TL4Gh-GFly3YVQqNRB7HTPQHdPaGBv7x6KCgmQhOU0q3Ae2XU0SM9lprCvHiTSyzcvD7stWgUUtTmZyRx0-ZN_QclVfCoBLY3-e8BaNX2o3RmqVh4WpflwNhtXqvDNzEuTqnRmlfSalk2ZwuxkhPfQqwygGA',
-    role: 'member',
-    totalXp: 1650,
-    streakDays: 9,
-    supervisor: 'Ustadz Farhan'
-  },
-  {
-    id: 'user-bilal-rasyid',
-    name: 'Bilal Ar-Rasyid',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCk7Ng2NYqB-E8a77cnkx5RcXAWy5V_quwhyswZscObx00whBdBV1MJfpsPuKOTMOME1dPKfDRZnGMeT6yR5PXCxFcrBhSwSHLT6ZdbBCEZFFfIHvBdsYxd4PPcQ17SZfTiyVT6qz06ZZsB6Msxk1vN_TxPOW1Tfm_DPsI00lTcglSJX2xH6uSo3GgmQAaQ12g-D5DM4h6v6mtFc-oHZWc1RLZSFmEDoSkXjH-5JwI3TRzX03Zl0UNJWg',
-    role: 'member',
-    totalXp: 1540,
-    streakDays: 8,
-    supervisor: 'Ustadz Farhan'
-  },
-  {
-    id: 'user-faris-banjari',
-    name: 'Faris Al-Banjari',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD5eNA6Cc-haxAb47iyA_T5sVq_esnqNS7ElzveTLKE5rxANA6DJjN84DSl41N4Vj46zDGw4UYabLdXU7nq04zEKgiSUntFivHLumiM1gofA2RwV6bR9Z_Y9NxZVSWr2jTomP_XSUAxKAX3tJPw0ZjCMqI68v5L85TLG9CMhWMPzMfCeKxpgODtb-3S8UNT5hlf-TU20-fu-pKPCnI95v9xK5yxmOIp8eoFKZpvymwvnWKqd7dz_Q9pQ',
-    role: 'member',
-    totalXp: 1380,
-    streakDays: 5,
-    supervisor: 'Ustadz Farhan'
-  },
+const BASE_EMPLOYEES_ROSTER: ActiveUser[] = [];
 
-  // Hafiz Circle
-  {
-    id: 'user-tariq-mansoor',
-    name: 'Tariq Mansoor',
-    halaqah: 'Hafiz Circle',
-    halaqahCode: 'HC-1108',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBk9LWZ-0dEg9IaUBzxXTxLUfqZoGy8Q_Gyq5eDi0id422l1gTQRXmu7w2IRUuHKnuIIKDQfz0IqBGjhZolSIVvibJWwQh9isFTPI1q30Rtimj2C28zuAiMh9aejCr8Mrm22bx69cIaYiDngzNd-7HRJwZMIdc1HT_JjbH1nfrbjhcqmM4hG6bGivGECaOerT1I6Qr9T25Ia-I4lI1Bm2PPZWQ4GhNd14lU0olP2lEoLJjkI3TVKVwjYg',
-    role: 'member',
-    totalXp: 2850,
-    streakDays: 28,
-    supervisor: 'Ustadz Tariq Mansoor'
-  },
-  {
-    id: 'user-luqman-faris',
-    name: 'Luqman Faris',
-    halaqah: 'Hafiz Circle',
-    halaqahCode: 'HC-1108',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD5eNA6Cc-haxAb47iyA_T5sVq_esnqNS7ElzveTLKE5rxANA6DJjN84DSl41N4Vj46zDGw4UYabLdXU7nq04zEKgiSUntFivHLumiM1gofA2RwV6bR9Z_Y9NxZVSWr2jTomP_XSUAxKAX3tJPw0ZjCMqI68v5L85TLG9CMhWMPzMfCeKxpgODtb-3S8UNT5hlf-TU20-fu-pKPCnI95v9xK5yxmOIp8eoFKZpvymwvnWKqd7dz_Q9pQ',
-    role: 'member',
-    totalXp: 1790,
-    streakDays: 10,
-    supervisor: 'Ustadz Tariq Mansoor'
-  },
-  {
-    id: 'user-salim-basalamah',
-    name: 'Salim Basalamah',
-    halaqah: 'Hafiz Circle',
-    halaqahCode: 'HC-1108',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwgfRenieAlLRgHUPBwuuS-VTNTWIvwIb8DzHtL_B5CLE3pAvEuRHzWp-wAjL3DfFpwMDNIdV7pJVzgLweGWHQiDvVtrlBkgNA3Qc5hwsd94xQeucsbYmxOcjLbapMBO3loC4DIM60u4t4xLR_dRLbM7l-107koAC54gjokfg5zXjyvGelfNRPldGZAwEIK_jsLYyImLvfKchPKQQSD1lZuSfL5CLgdvxbPEVheGbvjpOSflgx7GT8Cw',
-    role: 'member',
-    totalXp: 1640,
-    streakDays: 8,
-    supervisor: 'Ustadz Tariq Mansoor'
-  },
-  {
-    id: 'user-rayhan-abdullah',
-    name: 'Rayhan Abdullah',
-    halaqah: 'Hafiz Circle',
-    halaqahCode: 'HC-1108',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2YNn3chwgvghi6bKAIGsEzSZIzx99nw2u8pS2HThk7F2THKw9y_ZhJ73dPHqsFS5__dExkPODyFeOt9GlkDytTjgroH4QSsM-9u4UY7NyIckRf-mt5ODfKBkVhZrAJAMEE_ch6sgUPNZPoQiwyPK8UrO9txsSCxA5ef_AS0q7wtGhzwvUAqX63PHPh3ZYRGVzAEi4MbythULEXgVF332iusFnFVQWQj-P7H_7YG-MLqFDxNZDHqiXgA',
-    role: 'member',
-    totalXp: 1410,
-    streakDays: 6,
-    supervisor: 'Ustadz Tariq Mansoor'
-  },
-
-  // Youth Tajweed
-  {
-    id: 'user-bilal-kareem',
-    name: 'Bilal Kareem',
-    halaqah: 'Youth Tajweed',
-    halaqahCode: 'YT-7721',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnFoMagLqqmSNjNYEANFOH4M8kwlAzN0a2jOL9MjmFLHT-2YXwQ-926XaHXKQHACoeY1PzlqbgsHc1qg1ED_d1qS9ylheKXHkFOm3yFHJhJShgoMaivpA8tTv614np7Cw5fh_lLTaVm24ZOJ_W6kd-rdp4ZouYXhxWQmgmOSgukYsYMPmKn1NFqp1nLXOz4G3TO3Ejptv1Grd2xEu5b-ipFoGM7rJhQhyWV14NaZHptPX8sXfAM5W9wA',
-    role: 'member',
-    totalXp: 2180,
-    streakDays: 15,
-    supervisor: 'Ustadzah Sarah'
-  },
-  {
-    id: 'user-yusuf-pratama',
-    name: 'Yusuf Pratama',
-    halaqah: 'Youth Tajweed',
-    halaqahCode: 'YT-7721',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-    role: 'member',
-    totalXp: 1910,
-    streakDays: 11,
-    supervisor: 'Ustadzah Sarah'
-  },
-  {
-    id: 'user-arkan-fauzan',
-    name: 'Arkan Fauzan',
-    halaqah: 'Youth Tajweed',
-    halaqahCode: 'YT-7721',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4PTvyt7-_5JmT_ZnOQdWxtCuYIdE--3_gxAqVzj0NOc7N6_bqcvR21UCMvLTCzQdSoO3QZCtryytN_R4zYIe6ouKr5cB3cssSdChFRePHKZSDaaXn_S08wLQV7Ax_gzj8D0vcg7rup-E9Mk7skIWgMoRtxrosUMDFBDS8RdcWpECxK8hYWjqTigBKC8yPkVSNQ_WhGKTJSLp1f9CZkzeWwWQhOjjjSz-kX7pqCPtyJkxmXIvjT6NrGg',
-    role: 'member',
-    totalXp: 1580,
-    streakDays: 7,
-    supervisor: 'Ustadzah Sarah'
-  },
-  {
-    id: 'user-dimas-alhafidz',
-    name: 'Dimas Al-Hafidz',
-    halaqah: 'Youth Tajweed',
-    halaqahCode: 'YT-7721',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    role: 'member',
-    totalXp: 1320,
-    streakDays: 4,
-    supervisor: 'Ustadzah Sarah'
-  },
-
-  // Madinah Memorization Circle
-  {
-    id: 'user-dr-omar-siddiqui',
-    name: 'Dr. Omar Siddiqui',
-    halaqah: 'Madinah Memorization Circle',
-    halaqahCode: 'MC-9901',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4PTvyt7-_5JmT_ZnOQdWxtCuYIdE--3_gxAqVzj0NOc7N6_bqcvR21UCMvLTCzQdSoO3QZCtryytN_R4zYIe6ouKr5cB3cssSdChFRePHKZSDaaXn_S08wLQV7Ax_gzj8D0vcg7rup-E9Mk7skIWgMoRtxrosUMDFBDS8RdcWpECxK8hYWjqTigBKC8yPkVSNQ_WhGKTJSLp1f9CZkzeWwWQhOjjjSz-kX7pqCPtyJkxmXIvjT6NrGg',
-    role: 'member',
-    totalXp: 2250,
-    streakDays: 14,
-    supervisor: 'Ustadz Mansoor'
-  },
-  {
-    id: 'user-suhayb-rumi',
-    name: 'Suhayb Ar-Rumi',
-    halaqah: 'Madinah Memorization Circle',
-    halaqahCode: 'MC-9901',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    role: 'member',
-    totalXp: 2120,
-    streakDays: 12,
-    supervisor: 'Ustadz Mansoor'
-  },
-  {
-    id: 'user-harun-khattab',
-    name: 'Harun Al-Khattab',
-    halaqah: 'Madinah Memorization Circle',
-    halaqahCode: 'MC-9901',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDl2oh3o0y1qDHWksSoqmd8XMiZZldRTSjimhlbpgvokYxxLZf3dzPd7n29Nhetf_Olmrxo8f9PEEVJhi4uXMk4tNb7fFd_nZUOzN5Rdja-yRE3q5yF17T8TSUKJOy1bcgtuTtokarrdyNVkM2Z_9y1dzn6US_MYhabTxnbkjabBFoyfSVw_r_AWxTv7v3vkt5B9VHnhxEkJqUEqS7Pe5oQFVZO3Zo5EoaPga-DW757Niz5e4SApnpruQ',
-    role: 'member',
-    totalXp: 1700,
-    streakDays: 9,
-    supervisor: 'Ustadz Mansoor'
-  },
-  {
-    id: 'user-salman-faris',
-    name: 'Salman Faris',
-    halaqah: 'Madinah Memorization Circle',
-    halaqahCode: 'MC-9901',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwgfRenieAlLRgHUPBwuuS-VTNTWIvwIb8DzHtL_B5CLE3pAvEuRHzWp-wAjL3DfFpwMDNIdV7pJVzgLweGWHQiDvVtrlBkgNA3Qc5hwsd94xQeucsbYmxOcjLbapMBO3loC4DIM60u4t4xLR_dRLbM7l-107koAC54gjokfg5zXjyvGelfNRPldGZAwEIK_jsLYyImLvfKchPKQQSD1lZuSfL5CLgdvxbPEVheGbvjpOSflgx7GT8Cw',
-    role: 'member',
-    totalXp: 1450,
-    streakDays: 6,
-    supervisor: 'Ustadz Mansoor'
-  },
-
-  // Noor Al-Huda Tajweed Circle
-  {
-    id: 'user-ibrahim-qureshi',
-    name: 'Ibrahim Qureshi',
-    halaqah: 'Noor Al-Huda Tajweed Circle',
-    halaqahCode: 'NH-3382',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwgfRenieAlLRgHUPBwuuS-VTNTWIvwIb8DzHtL_B5CLE3pAvEuRHzWp-wAjL3DfFpwMDNIdV7pJVzgLweGWHQiDvVtrlBkgNA3Qc5hwsd94xQeucsbYmxOcjLbapMBO3loC4DIM60u4t4xLR_dRLbM7l-107koAC54gjokfg5zXjyvGelfNRPldGZAwEIK_jsLYyImLvfKchPKQQSD1lZuSfL5CLgdvxbPEVheGbvjpOSflgx7GT8Cw',
-    role: 'member',
-    totalXp: 2050,
-    streakDays: 13,
-    supervisor: 'Ustadz Zulkifli'
-  },
-  {
-    id: 'user-ahmad-daniyal',
-    name: 'Ahmad Daniyal',
-    halaqah: 'Noor Al-Huda Tajweed Circle',
-    halaqahCode: 'NH-3382',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2YNn3chwgvghi6bKAIGsEzSZIzx99nw2u8pS2HThk7F2THKw9y_ZhJ73dPHqsFS5__dExkPODyFeOt9GlkDytTjgroH4QSsM-9u4UY7NyIckRf-mt5ODfKBkVhZrAJAMEE_ch6sgUPNZPoQiwyPK8UrO9txsSCxA5ef_AS0q7wtGhzwvUAqX63PHPh3ZYRGVzAEi4MbythULEXgVF332iusFnFVQWQj-P7H_7YG-MLqFDxNZDHqiXgA',
-    role: 'member',
-    totalXp: 1880,
-    streakDays: 10,
-    supervisor: 'Ustadz Zulkifli'
-  },
-  {
-    id: 'user-ziyad-farisi',
-    name: 'Ziyad Al-Farisi',
-    halaqah: 'Noor Al-Huda Tajweed Circle',
-    halaqahCode: 'NH-3382',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-    role: 'member',
-    totalXp: 1620,
-    streakDays: 8,
-    supervisor: 'Ustadz Zulkifli'
-  },
-  {
-    id: 'user-fathur-rahman',
-    name: 'Fathur Rahman',
-    halaqah: 'Noor Al-Huda Tajweed Circle',
-    halaqahCode: 'NH-3382',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    role: 'member',
-    totalXp: 1390,
-    streakDays: 5,
-    supervisor: 'Ustadz Zulkifli'
-  }
-];
+const LEGACY_DEMO_IDS = new Set([
+  'user-zubair',
+  'user-zayd',
+  'user-tariq',
+  'user-farhan',
+  'user-hamza',
+  'user-omar',
+  'user-bilal',
+  'user-faris'
+]);
 
 export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   userXp,
@@ -311,8 +47,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
     const q = query(collection(db, 'users'), orderBy('totalXp', 'desc'), limit(100));
     const unsub = onSnapshot(q, (snapshot) => {
       const users: ActiveUser[] = [];
-      snapshot.forEach((doc) => {
-        users.push(doc.data() as ActiveUser);
+      snapshot.forEach((docSnap) => {
+        if (LEGACY_DEMO_IDS.has(docSnap.id)) return;
+        users.push({ id: docSnap.id, ...docSnap.data() } as ActiveUser);
       });
       setLiveUsers(users);
     });
@@ -323,7 +60,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   const halaqahDetailsList = useMemo<HalaqahDetail[]>(() => {
     let list: HalaqahDetail[] = [];
     try {
-      const saved = localStorage.getItem('noorworship_unified_halaqahs_v2');
+      const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) list = parsed;
@@ -347,7 +84,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
     // 2. Overlay registeredUsers (e.g. newly added by Dept HX or AuthScreen)
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
-        if (u.role === 'member') {
+        if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id)) {
           map.set(u.id, { ...(map.get(u.id) || {}), ...u });
         }
       });
@@ -355,7 +92,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
     // 3. Overlay Firestore live users
     liveUsers.forEach((u) => {
-      if (u.role === 'member') {
+      if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id)) {
         map.set(u.id, { ...(map.get(u.id) || {}), ...u });
       }
     });

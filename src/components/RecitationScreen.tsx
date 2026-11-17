@@ -3,7 +3,7 @@ import { RECITATION_AYAHS, RecitationAyah, AyahWord } from '../data/recitationVe
 import { ActiveUser } from '../types';
 import { logRecitationToSheets } from '../services/googleSheets';
 import { downloadPerColumnCSV } from '../services/csvExport';
-import { runLocalTarteelModel, simulateRecitationProfile, FeasibilityProfile } from '../services/localEvaluator';
+import { runLocalTarteelModel } from '../services/localEvaluator';
 
 export interface RecitationExamRecord {
   id: string;
@@ -71,143 +71,9 @@ export const exportRecitationExamToExcel = (
   downloadPerColumnCSV(filename, headers, rows);
 };
 
-const DEFAULT_STUDENTS: ActiveUser[] = [
-  {
-    id: 'user-zubair',
-    name: 'Zubair Ahmed',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-    role: 'member',
-    totalXp: 1420,
-    streakDays: 7,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  },
-  {
-    id: 'user-zayd',
-    name: 'Zayd Al-Amin',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    role: 'member',
-    totalXp: 2410,
-    streakDays: 12,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  },
-  {
-    id: 'user-tariq',
-    name: 'Tariq Mansoor',
-    halaqah: 'Hafiz Circle',
-    halaqahCode: 'HC-1108',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBk9LWZ-0dEg9IaUBzxXTxLUfqZoGy8Q_Gyq5eDi0id422l1gTQRXmu7w2IRUuHKnuIIKDQfz0IqBGjhZolSIVvibJWwQh9isFTPI1q30Rtimj2C28zuAiMh9aejCr8Mrm22bx69cIaYiDngzNd-7HRJwZMIdc1HT_JjbH1nfrbjhcqmM4hG6bGivGECaOerT1I6Qr9T25Ia-I4lI1Bm2PPZWQ4GhNd14lU0olP2lEoLJjkI3TVKVwjYg',
-    role: 'member',
-    totalXp: 2850,
-    streakDays: 28,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  },
-  {
-    id: 'user-bilal',
-    name: 'Bilal Kareem',
-    halaqah: 'Liga Remaja Tajwid',
-    halaqahCode: 'LR-209',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnFoMagLqqmSNjNYEANFOH4M8kwlAzN0a2jOL9MjmFLHT-2YXwQ-926XaHXKQHACoeY1PzlqbgsHc1qg1ED_d1qS9ylheKXHkFOm3yFHJhJShgoMaivpA8tTv614np7Cw5fh_lLTaVm24ZOJ_W6kd-rdp4ZouYXhxWQmgmOSgukYsYMPmKn1NFqp1nLXOz4G3TO3Ejptv1Grd2xEu5b-ipFoGM7rJhQhyWV14NaZHptPX8sXfAM5W9wA',
-    role: 'member',
-    totalXp: 2180,
-    streakDays: 5,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  },
-  {
-    id: 'user-hamza',
-    name: 'Hamza Malik',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDl2oh3o0y1qDHWksSoqmd8XMiZZldRTSjimhlbpgvokYxxLZf3dzPd7n29Nhetf_Olmrxo8f9PEEVJhi4uXMk4tNb7fFd_nZUOzN5Rdja-yRE3q5yF17T8TSUKJOy1bcgtuTtokarrdyNVkM2Z_9y1dzn6US_MYhabTxnbkjabBFoyfSVw_r_AWxTv7v3vkt5B9VHnhxEkJqUEqS7Pe5oQFVZO3Zo5EoaPga-DW757Niz5e4SApnpruQ',
-    role: 'member',
-    totalXp: 1820,
-    streakDays: 8,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  },
-  {
-    id: 'user-luqman',
-    name: 'Luqman Faris',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    passcode: '1234',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD5eNA6Cc-haxAb47iyA_T5sVq_esnqNS7ElzveTLKE5rxANA6DJjN84DSl41N4Vj46zDGw4UYabLdXU7nq04zEKgiSUntFivHLumiM1gofA2RwV6bR9Z_Y9NxZVSWr2jTomP_XSUAxKAX3tJPw0ZjCMqI68v5L85TLG9CMhWMPzMfCeKxpgODtb-3S8UNT5hlf-TU20-fu-pKPCnI95v9xK5yxmOIp8eoFKZpvymwvnWKqd7dz_Q9pQ',
-    role: 'member',
-    totalXp: 1490,
-    streakDays: 4,
-    supervisor: 'Ustadz Farhan',
-    assignedHalaqahBy: 'Dept HX'
-  }
-];
+const DEFAULT_STUDENTS: ActiveUser[] = [];
 
-const DEFAULT_EXAM_RECORDS: RecitationExamRecord[] = [
-  {
-    id: 'exam-1',
-    studentId: 'user-tariq',
-    studentName: 'Tariq Mansoor',
-    halaqah: 'Hafiz Circle',
-    examinerName: 'Ustadz Farhan',
-    examinerRole: 'Ustadz Pembimbing',
-    surah: 'Surah Al-Mulk',
-    ayah: 'Ayat 1',
-    totalScore: 98,
-    makhrajScore: 98,
-    tajweedScore: 97,
-    fluencyScore: 99,
-    predicate: 'Mumtaz (Istimewa)',
-    ustadzNotes: 'MashaAllah bacaan tartil sangat fasih dan matang. Sifatul huruf dan makhraj presisi standar tahsin lanjutan.',
-    evaluatedAt: '2026-10-27 08:30 WIB',
-    audioDurationSec: 14
-  },
-  {
-    id: 'exam-2',
-    studentId: 'user-zayd',
-    studentName: 'Zayd Al-Amin',
-    halaqah: 'Halaqah Al-Fajr',
-    examinerName: 'Ustadz Farhan',
-    examinerRole: 'Ustadz Pembimbing',
-    surah: 'Surah Al-Mulk',
-    ayah: 'Ayat 1',
-    totalScore: 95,
-    makhrajScore: 96,
-    tajweedScore: 94,
-    fluencyScore: 95,
-    predicate: 'Mumtaz (Istimewa)',
-    ustadzNotes: 'Mad thabi’i konsisten 2 harakat, artikulasi huruf jim dan mim bersih. Pertahankan ketukan ghunnah.',
-    evaluatedAt: '2026-10-27 09:15 WIB',
-    audioDurationSec: 15
-  },
-  {
-    id: 'exam-3',
-    studentId: 'user-bilal',
-    studentName: 'Bilal Kareem',
-    halaqah: 'Liga Remaja Tajwid',
-    examinerName: 'Ustadz Farhan',
-    examinerRole: 'Ustadz Pembimbing',
-    surah: 'Surah Al-Mulk',
-    ayah: 'Ayat 1',
-    totalScore: 91,
-    makhrajScore: 92,
-    tajweedScore: 90,
-    fluencyScore: 91,
-    predicate: 'Jayyid Jiddan (Sangat Baik)',
-    ustadzNotes: 'Lancar dan tartil. Catatan: perhatikan panjang mad ‘aridh lissukun di akhir ayat sebelum waqaf.',
-    evaluatedAt: '2026-10-26 16:40 WIB',
-    audioDurationSec: 13
-  }
-];
+const DEFAULT_EXAM_RECORDS: RecitationExamRecord[] = [];
 
 interface RecitationScreenProps {
   onBack: () => void;
@@ -235,10 +101,10 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
   // Exam Records State (saved to localStorage for persistence & Excel export)
   const [examRecords, setExamRecords] = useState<RecitationExamRecord[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_recitation_exam_records_v1');
+      const saved = localStorage.getItem('noorworship_recitation_exam_records_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn('Could not load saved exam records:', e);
@@ -248,7 +114,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('noorworship_recitation_exam_records_v1', JSON.stringify(examRecords));
+      localStorage.setItem('noorworship_recitation_exam_records_prod_v1', JSON.stringify(examRecords));
     } catch (e) {
       console.warn('Failed saving exam records:', e);
     }
@@ -971,53 +837,6 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
     onShowToast(`Menyiapkan pengujian ulang untuk ${currentAyah.surahName}...`);
     setTimeout(() => {
       startRecording();
-    }, 400);
-  };
-
-  // Instant Feasibility Simulator for any of the 37 surahs in Juz 30 (Zero-Cost Testing)
-  const handleSimulateFeasibility = (profile: FeasibilityProfile) => {
-    if (isRecording) {
-      onShowToast('Hentikan rekaman mikrofon terlebih dahulu.');
-      return;
-    }
-    if (isPlayingSheikh && sheikhAudioRef.current) {
-      sheikhAudioRef.current.pause();
-      setIsPlayingSheikh(false);
-    }
-    if (isPlayingUserAudio && userAudioRef.current) {
-      userAudioRef.current.pause();
-      setIsPlayingUserAudio(false);
-    }
-
-    setIsAnalyzing(true);
-    setIsSilenceDetected(false);
-
-    const profileLabels: Record<FeasibilityProfile, string> = {
-      mumtaz: 'Tartil Mumtaz (97%)',
-      hurried: 'Tempo Cepat & Mad Tergesa (84%)',
-      makhraj_fix: 'Perbaikan Makhraj Huruf (76%)',
-    };
-
-    setAnalysisStep(`Menjalankan simulasi kelayakan tilawah: ${profileLabels[profile]}...`);
-
-    setTimeout(() => {
-      const data = simulateRecitationProfile(currentAyah, profile);
-      setIsAnalyzing(false);
-      setIsSilenceDetected(false);
-      setOverallScore(data.overallScore);
-      setMakhrajScore(data.makhrajScore);
-      setTajweedScore(data.tajweedScore);
-      setFluencyScore(data.fluencyScore);
-      setDetectedSurahName(data.detectedSurah);
-      setUstadzFeedback(data.ustadzFeedback);
-      setEvaluatedWords(data.words);
-      setRecordSeconds(data.simulatedDurationSec || currentAyah.idealDurationMinSec || 15);
-
-      const faultyWord = data.words.find((w) => w.status === 'error' || w.status === 'warning');
-      setSelectedWord((faultyWord || data.words[0]) as any);
-
-      setIsEvaluated(true);
-      onShowToast(`🧪 Uji Kelayakan [${profileLabels[profile]}] berhasil untuk ${currentAyah.surahName}! Simak evaluasi kata di bawah.`);
     }, 400);
   };
 
@@ -2726,57 +2545,6 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
 
       {/* Bottom Main Actions: Microphone and Submit */}
       <section className="space-y-3 pt-1">
-        {/* Panel Uji Kelayakan Cepat (Feasibility Test Simulator for Juz 30) */}
-        <div className="p-3 sm:p-3.5 bg-[#f1f3ff] rounded-2xl border border-[#1b4332]/10 space-y-2 text-left shadow-xs">
-          <div className="flex items-center justify-between flex-wrap gap-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d] min-w-0">
-              <span className="material-symbols-outlined text-[17px] text-[#00452c] shrink-0">science</span>
-              <span>Uji Kelayakan Instan (Simulasi 3 Profil)</span>
-            </div>
-            <span className="text-[10px] font-semibold text-[#00452c] bg-[#c1ecd4] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-              100% Gratis • Tanpa Mic
-            </span>
-          </div>
-          <p className="text-[11px] text-[#414844] leading-relaxed">
-            Pilih skenario untuk menguji kelayakan analisis tajwid surah <strong>{currentAyah.surahName}</strong> secara instan:
-          </p>
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5">
-            <button
-              type="button"
-              onClick={() => handleSimulateFeasibility('mumtaz')}
-              disabled={isRecording || isAnalyzing}
-              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#c1ecd4]/50 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
-            >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#00452c] whitespace-nowrap">
-                <span>🌟 Mumtaz</span>
-              </div>
-              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Tartil fasih ~97%</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSimulateFeasibility('hurried')}
-              disabled={isRecording || isAnalyzing}
-              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#ffe082]/30 border border-[#1b4332]/10 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
-            >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#785a1a] whitespace-nowrap">
-                <span>⚠️ Cepat</span>
-              </div>
-              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Mad kurang ~84%</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSimulateFeasibility('makhraj_fix')}
-              disabled={isRecording || isAnalyzing}
-              className="px-2 py-2 sm:px-2.5 rounded-xl bg-white hover:bg-[#ffdad6]/40 border border-[#ba1a1a]/20 text-left transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 flex flex-col justify-between h-full"
-            >
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] whitespace-nowrap">
-                <span>❌ Makhraj</span>
-              </div>
-              <p className="text-[10px] text-[#414844] mt-0.5 leading-tight">Perlu koreksi ~76%</p>
-            </button>
-          </div>
-        </div>
-
         <div className="flex items-center gap-3">
           {/* Retest Trigger (only shown if already recorded or evaluated) */}
           {recordedAudioUrl && (

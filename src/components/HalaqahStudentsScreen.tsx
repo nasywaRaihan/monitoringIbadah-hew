@@ -28,116 +28,7 @@ interface StudentPerformanceRecord {
   parentContact?: string;
 }
 
-const DEFAULT_HALAQAH_STUDENTS: StudentPerformanceRecord[] = [
-  {
-    id: 'user-zubair',
-    name: 'Zubair Ahmed',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 1420,
-    streak: 7,
-    masjidAttendance: '19/20 Hadir',
-    masjidPercent: 95,
-    tajweedScore: 94,
-    lastSurah: 'Al-Mulk (Ayat 1–10)',
-    status: 'Mumtaz',
-    completedDailyTasks: 5,
-    totalDailyTasks: 6,
-    recentNotes: 'Makhraj huruf jim dan shad sudah sangat mantap. Tingkatkan konsistensi rawatib zhuhur.',
-    parentContact: '+62 812-3344-5566'
-  },
-  {
-    id: 'user-zayd',
-    name: 'Zayd Al-Amin',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFaQMyKnk2iLn9PRfVmgzOfoHE-e58Ab-VQMcTGdrxacm8wwW5nVi98gYcmjd_aHSNCKD0sbLlHflF6AoNGqxQ_Qheo_UDWOWgK1ivvZ9y8uvq7cdAjlrY5W6ibzXVRWlgMIxEXSbSK4NBiLsJ_1i-PslkBNixofnYzQWHbJhPmdsvZPmjWmq9Gf7Q02c1TuG4PIm9KXJKPp4IwrwHIie0wPPqYICwOCcU4f0tryN4MvTSkghJ6IZD_Q',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 2410,
-    streak: 12,
-    masjidAttendance: '20/20 Hadir',
-    masjidPercent: 100,
-    tajweedScore: 96,
-    lastSurah: 'Al-Mulk (Ayat 11–20)',
-    status: 'Mumtaz',
-    completedDailyTasks: 6,
-    totalDailyTasks: 6,
-    recentNotes: 'Tartil sempurna dengan tempo tilawah tenang. Rekomendasi naik ke juz berikutnya.',
-    parentContact: '+62 813-8899-7700'
-  },
-  {
-    id: 'user-hamza',
-    name: 'Hamza Malik',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2YNn3chwgvghi6bKAIGsEzSZIzx99nw2u8pS2HThk7F2THKw9y_ZhJ73dPHqsFS5__dExkPODyFeOt9GlkDytTjgroH4QSsM-9u4UY7NyIckRf-mt5ODfKBkVhZrAJAMEE_ch6sgUPNZPoQiwyPK8UrO9txsSCxA5ef_AS0q7wtGhzwvUAqX63PHPh3ZYRGVzAEi4MbythULEXgVF332iusFnFVQWQj-P7H_7YG-MLqFDxNZDHqiXgA',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 1150,
-    streak: 5,
-    masjidAttendance: '15/20 Hadir',
-    masjidPercent: 75,
-    tajweedScore: 78,
-    lastSurah: 'Surah Yasin (Ayat 1–15)',
-    status: 'Perlu Bimbingan',
-    completedDailyTasks: 3,
-    totalDailyTasks: 6,
-    recentNotes: 'Perlu latihan qalqalah kubra di akhir ayat 14 dan menjaga shalat subuh tepat waktu.',
-    parentContact: '+62 821-4455-6677'
-  },
-  {
-    id: 'user-omar',
-    name: 'Omar Farooq',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4PTvyt7-_5JmT_ZnOQdWxtCuYIdE--3_gxAqVzj0NOc7N6_bqcvR21UCMvLTCzQdSoO3QZCtryytN_R4zYIe6ouKr5cB3cssSdChFRePHKZSDaaXn_S08wLQV7Ax_gzj8D0vcg7rup-E9Mk7skIWgMoRtxrosUMDFBDS8RdcWpECxK8hYWjqTigBKC8yPkVSNQ_WhGKTJSLp1f9CZkzeWwWQhOjjjSz-kX7pqCPtyJkxmXIvjT6NrGg',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 1890,
-    streak: 15,
-    masjidAttendance: '18/20 Hadir',
-    masjidPercent: 90,
-    tajweedScore: 91,
-    lastSurah: 'Al-Waqi’ah (Ayat 1–30)',
-    status: 'Disiplin',
-    completedDailyTasks: 5,
-    totalDailyTasks: 6,
-    recentNotes: 'Disiplin dzikir pagi petang sangat baik. Perhatikan dengung ikhfa haqiqi.',
-    parentContact: '+62 856-1122-3344'
-  },
-  {
-    id: 'user-bilal',
-    name: 'Bilal Ar-Rasyid',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwgfRenieAlLRgHUPBwuuS-VTNTWIvwIb8DzHtL_B5CLE3pAvEuRHzWp-wAjL3DfFpwMDNIdV7pJVzgLweGWHQiDvVtrlBkgNA3Qc5hwsd94xQeucsbYmxOcjLbapMBO3loC4DIM60u4t4xLR_dRLbM7l-107koAC54gjokfg5zXjyvGelfNRPldGZAwEIK_jsLYyImLvfKchPKQQSD1lZuSfL5CLgdvxbPEVheGbvjpOSflgx7GT8Cw',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 1680,
-    streak: 8,
-    masjidAttendance: '17/20 Hadir',
-    masjidPercent: 85,
-    tajweedScore: 89,
-    lastSurah: 'Al-Mulk (Ayat 1–15)',
-    status: 'Disiplin',
-    completedDailyTasks: 4,
-    totalDailyTasks: 6,
-    recentNotes: 'Tilawah harian one day one juz berjalan tertib. Pertahankan hafalan juz 29.',
-    parentContact: '+62 811-9988-7766'
-  },
-  {
-    id: 'user-faris',
-    name: 'Faris Al-Banjari',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD5eNA6Cc-haxAb47iyA_T5sVq_esnqNS7ElzveTLKE5rxANA6DJjN84DSl41N4Vj46zDGw4UYabLdXU7nq04zEKgiSUntFivHLumiM1gofA2RwV6bR9Z_Y9NxZVSWr2jTomP_XSUAxKAX3tJPw0ZjCMqI68v5L85TLG9CMhWMPzMfCeKxpgODtb-3S8UNT5hlf-TU20-fu-pKPCnI95v9xK5yxmOIp8eoFKZpvymwvnWKqd7dz_Q9pQ',
-    halaqah: 'Halaqah Al-Fajr',
-    halaqahCode: 'HF-4092',
-    xp: 1350,
-    streak: 6,
-    masjidAttendance: '16/20 Hadir',
-    masjidPercent: 80,
-    tajweedScore: 88,
-    lastSurah: 'Ar-Rahman (Ayat 1–25)',
-    status: 'Disiplin',
-    completedDailyTasks: 4,
-    totalDailyTasks: 6,
-    recentNotes: 'Suara tartil lantang dan jelas. Perhatikan panjang mad wajib muttashil.',
-    parentContact: '+62 878-3322-1100'
-  }
-];
+const DEFAULT_HALAQAH_STUDENTS: StudentPerformanceRecord[] = [];
 
 export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
   activeUser,
@@ -145,17 +36,17 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
   onShowToast,
   onDeleteStudent
 }) => {
-  const currentHalaqah = activeUser?.halaqah || 'Halaqah Al-Fajr';
-  const halaqahCode = activeUser?.halaqahCode || 'HF-4092';
-  const supervisorName = activeUser?.name || 'Ustadz Farhan';
+  const currentHalaqah = activeUser?.halaqah || 'Halaqah Binaan';
+  const halaqahCode = activeUser?.halaqahCode || 'HL-1001';
+  const supervisorName = activeUser?.name || 'Ustadz Pembimbing';
 
   // Merge registered members if any match current halaqah
   const [students, setStudents] = useState<StudentPerformanceRecord[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_halaqah_students_v1');
+      const saved = localStorage.getItem('noorworship_halaqah_students_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     return DEFAULT_HALAQAH_STUDENTS;
@@ -163,7 +54,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
 
   const [deletedStudentIds, setDeletedStudentIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('noorworship_deleted_student_ids_v1');
+      const saved = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.warn(e);
@@ -187,14 +78,14 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     setStudents((prev) => {
       const updated = prev.filter((s) => s.id !== student.id && s.name !== student.name);
       try {
-        localStorage.setItem('noorworship_halaqah_students_v1', JSON.stringify(updated));
+        localStorage.setItem('noorworship_halaqah_students_prod_v1', JSON.stringify(updated));
       } catch {}
       return updated;
     });
     setDeletedStudentIds((prev) => {
       const updated = [...prev, student.id, student.name];
       try {
-        localStorage.setItem('noorworship_deleted_student_ids_v1', JSON.stringify(updated));
+        localStorage.setItem('noorworship_deleted_student_ids_prod_v1', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -218,7 +109,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     // 2. Add registered users from Dept HX
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
-        const uHalaqah = u.halaqah || 'Halaqah Al-Fajr';
+        const uHalaqah = u.halaqah || 'Halaqah Binaan';
         const isMatch =
           u.role === 'member' &&
           (uHalaqah === currentHalaqah ||
@@ -233,8 +124,8 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
             avatar: u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
             halaqah: uHalaqah,
             halaqahCode: u.halaqahCode || halaqahCode,
-            xp: u.totalXp || 150,
-            streak: u.streakDays || 1,
+            xp: u.totalXp || 0,
+            streak: u.streakDays || 0,
             masjidAttendance: '20/20 Hadir',
             masjidPercent: 100,
             tajweedScore: 92,
@@ -243,7 +134,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
             completedDailyTasks: 4,
             totalDailyTasks: 6,
             recentNotes: `Karyawan resmi ${uHalaqah} terdaftar via Dept HX.`,
-            parentContact: u.phone || '+62 812-3456-7890'
+            parentContact: u.phone || '-'
           });
         }
       });
@@ -279,7 +170,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       const updated = students.map((s) =>
         s.id === selectedStudent.id ? { ...s, recentNotes: note } : s
       );
-      localStorage.setItem('noorworship_halaqah_students_v1', JSON.stringify(updated));
+      localStorage.setItem('noorworship_halaqah_students_prod_v1', JSON.stringify(updated));
     } catch {}
     onShowToast(`Catatan bimbingan untuk ${selectedStudent.name} berhasil disimpan!`);
     setSelectedStudent(null);

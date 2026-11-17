@@ -1,6 +1,6 @@
 import React from 'react';
 import { DailyTask } from '../types';
-import { PrayerWindowStatus } from '../services/amalanPaten';
+import { PrayerWindowStatus, isFiveDailyFardhuPrayer } from '../services/amalanPaten';
 
 interface MuraqabahConfirmModalProps {
   isOpen: boolean;
@@ -25,13 +25,14 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
 }) => {
   if (!isOpen || !task) return null;
 
-  const isPrayer = task.hasJamaahOption || (task as any).prayerId;
+  // Pilihan Jamaah / Munfarid HANYA untuk 5 Sholat Wajib (Subuh, Dzuhur, Ashar, Maghrib, Isya')
+  const isFardhuPrayer = isFiveDailyFardhuPrayer(task);
   const isLate = prayerStatus?.isLate;
   const penalty = isLate ? 5 : 0;
 
   // Calculate final XP
   let calculatedXp = task.xp;
-  if (isPrayer) {
+  if (isFardhuPrayer) {
     const base = 15;
     const bonus = selectedPrayerMode === 'jamaah' ? 5 : 0;
     calculatedXp = Math.max(0, base + bonus - penalty);
@@ -78,15 +79,15 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
           </button>
         </div>
 
-        {/* Prayer Jamaah vs Munfarid Selection (if applicable) */}
-        {isPrayer && (
+        {/* Prayer Jamaah vs Munfarid Selection (ONLY for 5 Fardhu Prayers) */}
+        {isFardhuPrayer && (
           <div className="p-3 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#012d1d] flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-[#00452c]">
                   mosque
                 </span>
-                Metode Pelaksanaan Sholat:
+                Metode Pelaksanaan Sholat Wajib:
               </span>
               <span className="text-[11px] text-[#717973]">
                 {prayerStatus?.timeRangeLabel || ''}

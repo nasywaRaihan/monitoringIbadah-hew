@@ -66,56 +66,42 @@ export default function AdminScreen({
 
   const allStudentsList = useMemo(() => {
     const map = new Map<string, any>();
-    DEFAULT_HALAQAH_ROSTER.forEach((s) => {
-      map.set(s.id, {
-        ...s,
-        totalXp: 1420,
-        streakDays: 7,
-        tajweedAcc: 94,
-        role: 'member',
-        supervisor: 'Ustadz Farhan',
-        phone: '081234567890'
-      });
-    });
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
+        if (u.role === 'dept-hx' || u.role === 'hq-admin') return;
         map.set(u.id, {
           id: u.id,
           name: u.name,
           avatar: u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          halaqah: u.halaqah || 'Halaqah Al-Fajr',
-          totalXp: u.totalXp || 1200,
-          streakDays: u.streakDays || 5,
-          tajweedAcc: 92,
-          role: u.role || 'santri',
-          supervisor: (u as any).supervisor || 'Ustadz Farhan',
-          phone: (u as any).phone || '081298765432'
+          halaqah: u.halaqah || activeUser?.halaqah || 'Tanpa Halaqah',
+          totalXp: u.totalXp || 0,
+          streakDays: u.streakDays || 0,
+          tajweedAcc: 95,
+          role: u.role || 'member',
+          supervisor: (u as any).supervisor || activeUser?.name || 'Ustadz Pembimbing',
+          phone: (u as any).phone || ''
         });
       });
     }
     return Array.from(map.values());
-  }, [registeredUsers]);
+  }, [registeredUsers, activeUser?.halaqah, activeUser?.name]);
 
   const halaqahGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
     allStudentsList.forEach((st) => {
-      const h = st.halaqah || 'Halaqah Al-Fajr';
+      if (st.role !== 'member') return;
+      const h = st.halaqah || activeUser?.halaqah || 'Tanpa Halaqah';
       if (!groups[h]) groups[h] = [];
       groups[h].push(st);
     });
     return Object.entries(groups).map(([halaqahName, members]) => ({
       halaqahName,
       members,
-      supervisor:
-        halaqahName === 'Halaqah Al-Fajr'
-          ? 'Ustadz Farhan'
-          : halaqahName === 'Hafiz Circle'
-          ? 'Tariq Mansoor'
-          : 'Ustadz Pembimbing',
-      avgTajweed: 93,
-      compliance: 89
+      supervisor: members[0]?.supervisor || activeUser?.name || 'Ustadz Pembimbing',
+      avgTajweed: 95,
+      compliance: 100
     }));
-  }, [allStudentsList]);
+  }, [allStudentsList, activeUser?.halaqah, activeUser?.name]);
   
   const [editingDirective, setEditingDirective] = useState<IbadahDirective | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string; category?: string; xp?: number } | null>(null);
@@ -694,36 +680,42 @@ export default function AdminScreen({
 
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              Halaqah Al-Fajr • Panel Ustadz
+              {activeUser?.halaqah || 'Halaqah Binaan'} • Panel Ustadz
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
-              Pemantauan mutaba'ah ibadah yaumiyah/usbu'iyah &amp; diagnostik tajwid karyawan
+              Pemantauan mutaba&apos;ah ibadah yaumiyah/usbu&apos;iyah &amp; diagnostik tajwid karyawan
             </p>
           </div>
 
           {/* Metric Trio Grid */}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
             <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
-              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Aktif</span>
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Binaan</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
-                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">38</span>
-                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Aktif</span>
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
+                  {allStudentsList.filter((s) => s.role === 'member' && s.halaqah === activeUser?.halaqah).length}
+                </span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Anggota</span>
               </div>
             </div>
 
             <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
-              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Binaan Resmi</span>
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Tugas Aktif</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
-                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">18</span>
-                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Grup</span>
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
+                  {ibadahDirectives.filter((d) => isDirectiveCurrentlyActive(d)).length}
+                </span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Tugas</span>
               </div>
             </div>
 
             <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
-              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Mutaba'ah Ibadah</span>
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Sesi Presensi</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
-                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">88%</span>
-                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Tuntas</span>
+                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
+                  {(attendanceSessions || []).filter((s) => s.halaqahName === activeUser?.halaqah).length}
+                </span>
+                <span className="text-[10px] sm:text-xs text-[#92f7c3] font-semibold leading-tight">Sesi</span>
               </div>
             </div>
           </div>
