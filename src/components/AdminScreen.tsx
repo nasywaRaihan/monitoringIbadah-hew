@@ -16,6 +16,9 @@ import {
   isDirectiveExpired
 } from '../services/directiveLifecycle';
 import { findConflictingStandardAmalan } from '../services/amalanPaten';
+import { pushNotification } from '../services/notificationService';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
 import {
   DailyTask,
   ActiveUser,
@@ -78,13 +81,13 @@ export default function AdminScreen({
           streakDays: u.streakDays || 0,
           tajweedAcc: 95,
           role: u.role || 'member',
-          supervisor: (u as any).supervisor || activeUser?.name || 'Ustadz Pembimbing',
+          supervisor: formatSupervisorDisplayName((u as any).supervisor || activeUser?.name, activeUser?.gender),
           phone: (u as any).phone || ''
         });
       });
     }
     return Array.from(map.values());
-  }, [registeredUsers, activeUser?.halaqah, activeUser?.name]);
+  }, [registeredUsers, activeUser?.halaqah, activeUser?.name, activeUser?.gender]);
 
   const halaqahGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -97,11 +100,11 @@ export default function AdminScreen({
     return Object.entries(groups).map(([halaqahName, members]) => ({
       halaqahName,
       members,
-      supervisor: members[0]?.supervisor || activeUser?.name || 'Ustadz Pembimbing',
+      supervisor: formatSupervisorDisplayName(members[0]?.supervisor || activeUser?.name, activeUser?.gender),
       avgTajweed: 95,
       compliance: 100
     }));
-  }, [allStudentsList, activeUser?.halaqah, activeUser?.name]);
+  }, [allStudentsList, activeUser?.halaqah, activeUser?.name, activeUser?.gender]);
   
   const [editingDirective, setEditingDirective] = useState<IbadahDirective | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string; category?: string; xp?: number } | null>(null);
@@ -148,39 +151,33 @@ export default function AdminScreen({
     }
 
     const halaqahTarget = activeUser.halaqah || 'Halaqah Al-Fajr';
-    // Filter members for this ustadz's halaqah
-    const members = registeredUsers.filter(u => u.role === 'member' && u.halaqah === halaqahTarget);
+    const members = allStudentsList.filter(
+      (u) => (!u.role || u.role === 'member') && (!u.halaqah || u.halaqah === halaqahTarget)
+    );
+    const batchId = `broadcast-${Date.now()}`;
 
-    if (members.length === 0) {
-      onShowToast(`Belum ada anggota terdaftar di ${halaqahTarget} untuk menerima maklumat.`);
-      setShowBroadcastModal(false);
-      return;
-    }
+    // Always push a Halaqah-level broadcast notification so any member of this halaqah sees it
+    await pushNotification({
+      targetHalaqah: halaqahTarget,
+      senderName: formatSupervisorDisplayName(activeUser.name, activeUser.gender),
+      title: `Maklumat ${halaqahTarget}`,
+      message: broadcastText.trim(),
+      type: 'broadcast',
+      batchId,
+    });
 
-    const now = new Date();
-    const timestamp = now.toISOString();
-
-    // Create notifications for each member
+    // Also push individual notifications for registered members
     for (const member of members) {
-      const notifId = `notif-broadcast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notificationItem = {
-        id: notifId,
+      await pushNotification({
         targetUserId: member.id,
         recipientName: member.name,
-        senderName: activeUser.name,
+        targetHalaqah: halaqahTarget,
+        senderName: formatSupervisorDisplayName(activeUser.name, activeUser.gender),
         title: `Maklumat ${halaqahTarget}`,
         message: broadcastText.trim(),
-        time: 'Baru saja',
-        read: false,
         type: 'broadcast',
-        createdAt: timestamp
-      };
-
-      try {
-        await setDoc(doc(db, 'notifications', notifId), notificationItem);
-      } catch (e) {
-        console.error('Error sending broadcast:', e);
-      }
+        batchId,
+      });
     }
 
     onShowToast(`📢 Maklumat berhasil disiarkan ke seluruh anggota ${halaqahTarget}!`);
@@ -217,7 +214,7 @@ export default function AdminScreen({
     if (isYaumiyah) {
       if (editXp > 30) {
         onShowToast(
-          'Peringatan: Kuota tugas Ustadz tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu\'iyah (Mingguan).'
+          `Peringatan: Kuota tugas ${getUstadzTitle(activeUser)} tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu'iyah (Mingguan).`
         );
         return;
       }
@@ -230,7 +227,7 @@ export default function AdminScreen({
       if (otherYaumiyahXp + editXp > 30) {
         const remainingQuota = Math.max(0, 30 - otherYaumiyahXp);
         onShowToast(
-          `Peringatan: Total tugas Yaumiyah (Harian) Ustadz jika diedit menjadi ${otherYaumiyahXp + editXp} XP akan melebihi kuota harian 30 XP/hari (Sisa kuota: ${remainingQuota} XP).`
+          `Peringatan: Total tugas Yaumiyah (Harian) ${getUstadzTitle(activeUser)} jika diedit menjadi ${otherYaumiyahXp + editXp} XP akan melebihi kuota harian 30 XP/hari (Sisa kuota: ${remainingQuota} XP).`
         );
         return;
       }
@@ -293,9 +290,9 @@ export default function AdminScreen({
         halaqah: targetSub?.halaqah || activeUser.halaqah,
         isCompleted: willBeCompleted,
         completedAt: willBeCompleted
-          ? `Hari ini ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB (Disahkan Ustadz)`
+          ? `Hari ini ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB (Disahkan ${getUstadzTitle(activeUser)})`
           : undefined,
-        notes: willBeCompleted ? 'Terverifikasi langsung oleh Ustadz' : 'Belum setor mutaba\'ah'
+        notes: willBeCompleted ? `Terverifikasi langsung oleh ${getUstadzTitle(activeUser)}` : 'Belum setor mutaba\'ah'
       }, { merge: true });
 
       onShowToast(
@@ -310,32 +307,15 @@ export default function AdminScreen({
   };
 
   const handleRemindStudent = async (studentName: string, taskTitle: string, studentId?: string) => {
-    const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const notificationItem = {
-      id: notifId,
+    await pushNotification({
       targetUserId: studentId || '',
       recipientName: studentName,
-      senderName: activeUser?.name || 'Ustadz Pembimbing',
-      title: 'Pengingat Mutaba\'ah Ibadah',
+      targetHalaqah: activeUser?.halaqah,
+      senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+      title: "Pengingat Mutaba'ah Ibadah",
       message: `Mohon segera menuntaskan tugas "${taskTitle}". Barakallahu fikum.`,
-      time: 'Baru saja',
-      read: false,
       type: 'reminder',
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      await setDoc(doc(db, 'notifications', notifId), notificationItem);
-    } catch (e) {
-      console.warn('Could not save notification to Firestore', e);
-    }
-
-    try {
-      const existing = JSON.parse(localStorage.getItem('noorworship_notifications') || '[]');
-      localStorage.setItem('noorworship_notifications', JSON.stringify([notificationItem, ...existing]));
-    } catch (e) {
-      console.warn('Could not save notification to localStorage', e);
-    }
+    });
 
     onShowToast(`Notifikasi pengingat berhasil dikirim ke akun ${studentName}! 🔔`);
   };
@@ -347,41 +327,34 @@ export default function AdminScreen({
       return;
     }
 
-    const newNotifs: any[] = [];
+    const batchId = `remind-batch-${Date.now()}`;
     for (const sub of pending) {
-      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const notificationItem = {
-        id: notifId,
+      await pushNotification({
         targetUserId: sub.studentId || '',
         recipientName: sub.studentName,
-        senderName: activeUser?.name || 'Ustadz Pembimbing',
-        title: 'Pengingat Mutaba\'ah Ibadah',
+        targetHalaqah: activeUser?.halaqah,
+        senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+        title: "Pengingat Mutaba'ah Ibadah",
         message: `Mohon segera menuntaskan tugas "${task.title}". Barakallahu fikum.`,
-        time: 'Baru saja',
-        read: false,
         type: 'reminder',
-        createdAt: new Date().toISOString()
-      };
-      newNotifs.push(notificationItem);
-      try {
-        await setDoc(doc(db, 'notifications', notifId), notificationItem);
-      } catch (e) {
-        console.warn('Could not save notification to Firestore', e);
-      }
-    }
-
-    try {
-      const existing = JSON.parse(localStorage.getItem('noorworship_notifications') || '[]');
-      localStorage.setItem('noorworship_notifications', JSON.stringify([...newNotifs, ...existing]));
-    } catch (e) {
-      console.warn('Could not save notifications to localStorage', e);
+        batchId,
+      });
     }
 
     onShowToast(`Notifikasi pengingat serentak terkirim ke ${pending.length} akun karyawan yang belum mengerjakan! 🔔`);
   };
 
-  const handleApplaudStudent = (studentName: string) => {
-    onShowToast(`Apresiasi bintang terkirim ke ${studentName}! ⭐`);
+  const handleApplaudStudent = async (studentName: string, studentId?: string) => {
+    await pushNotification({
+      targetUserId: studentId || '',
+      recipientName: studentName,
+      targetHalaqah: activeUser?.halaqah,
+      senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+      title: `Apresiasi Bintang dari ${getUstadzTitle(activeUser)} ⭐`,
+      message: `MasyaAllah Tabarakallah, terima kasih atas kedisiplinan dan keistiqamahan ibadah Anda, ${studentName}! Pertahankan semangat Fastabiqul Khairat.`,
+      type: 'appreciation',
+    });
+    onShowToast(`Apresiasi bintang terkirim ke notifikasi ${studentName}! ⭐`);
   };
 
   const handleCopyWhatsAppBroadcast = (task: IbadahDirective) => {
@@ -393,7 +366,7 @@ export default function AdminScreen({
       `📋 *MUTABA'AH TUGAS IBADAH: ${task.title.toUpperCase()}*\n` +
       `🏷️ Tipe: ${task.type === 'yaumiyah' ? 'Yaumiyah (Harian)' : 'Usbu\'iyah (Mingguan)'} • Kategori: ${task.category}\n` +
       `🎯 Target: ${task.target}\n` +
-      `🕌 Halaqah: ${activeUser?.halaqah || 'Halaqah Al-Fajr'} • Pembimbing: ${activeUser?.name || 'Ustadz Farhan'}\n` +
+      `🕌 Halaqah: ${activeUser?.halaqah || 'Halaqah Al-Fajr'} • Pembimbing: ${formatSupervisorDisplayName(activeUser?.name, activeUser?.gender)}\n` +
       `📊 Kepatuhan: ${completed.length}/${submissions.length} Karyawan (${task.compliancePercent}%)\n\n` +
       `✅ *SUDAH MENGERJAKAN (${completed.length} Karyawan):*\n` +
       (completed.length > 0
@@ -418,7 +391,7 @@ export default function AdminScreen({
   const handlePublishRecitationTask = async () => {
     const finalSurah =
       recitationSurah === 'custom'
-        ? recitationCustomSurah.trim() || 'Surah Pilihan Ustadz'
+        ? recitationCustomSurah.trim() || `Surah Pilihan ${getUstadzTitle(activeUser)}`
         : recitationSurah;
 
     const title = `Setoran Tilawah & Tajwid: ${finalSurah} (Ayat ${recitationStartVerse}-${recitationEndVerse})`;
@@ -432,7 +405,7 @@ export default function AdminScreen({
     if (isYaumiyah) {
       if (recitationXp > 30) {
         onShowToast(
-          `Peringatan: Kuota tugas Ustadz tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu'iyah (Mingguan).`
+          `Peringatan: Kuota tugas ${getUstadzTitle(activeUser)} tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu'iyah (Mingguan).`
         );
         return;
       }
@@ -451,7 +424,7 @@ export default function AdminScreen({
 
       if (currentYaumiyahXp + recitationXp > 30) {
         onShowToast(
-          `Peringatan: Total tugas Yaumiyah (Harian) Ustadz untuk ${halaqahTarget} hari ini sudah ${currentYaumiyahXp} XP. Penambahan ${recitationXp} XP melebihi kuota harian 30 XP (Sisa kuota: ${remainingQuota} XP).`
+          `Peringatan: Total tugas Yaumiyah (Harian) ${getUstadzTitle(activeUser)} untuk ${halaqahTarget} hari ini sudah ${currentYaumiyahXp} XP. Penambahan ${recitationXp} XP melebihi kuota harian 30 XP (Sisa kuota: ${remainingQuota} XP).`
         );
         return;
       }
@@ -479,7 +452,7 @@ export default function AdminScreen({
       endVerse: recitationEndVerse,
       passingScore: recitationPassingScore,
       targetHalaqah: halaqahTarget,
-      createdBy: activeUser?.name || 'Ustadz Pembimbing',
+      createdBy: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
       createdAt: now.toISOString()
     };
 
@@ -516,9 +489,17 @@ export default function AdminScreen({
           studentAvatar: s.avatar || '',
           halaqah: s.halaqah || halaqahTarget,
           isCompleted: false,
-          notes: `Setoran ayat ${finalSurah} baru disiarkan ustadz`
+          notes: `Setoran ayat ${finalSurah} baru disiarkan ${getUstadzTitle(activeUser).toLowerCase()}`
         });
       }
+
+      await pushNotification({
+        targetHalaqah: halaqahTarget,
+        senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+        title: `Tugas Setoran Baru: ${finalSurah}`,
+        message: `${title} (+${recitationXp} XP). ${target}.`,
+        type: 'assignment',
+      });
 
       setDrawerType(null);
       onShowToast(
@@ -556,7 +537,7 @@ export default function AdminScreen({
     if (isYaumiyah) {
       if (newIbadahXp > 30) {
         onShowToast(
-          `Peringatan: Kuota tugas Ustadz tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu'iyah (Mingguan).`
+          `Peringatan: Kuota tugas ${getUstadzTitle(activeUser)} tipe Yaumiyah (Harian) maksimal 30 XP per hari. Untuk poin 50 XP, silakan gunakan tipe Usbu'iyah (Mingguan).`
         );
         return;
       }
@@ -575,7 +556,7 @@ export default function AdminScreen({
 
       if (currentYaumiyahXp + newIbadahXp > 30) {
         onShowToast(
-          `Peringatan: Total tugas Yaumiyah (Harian) Ustadz untuk ${halaqahTarget} hari ini sudah ${currentYaumiyahXp} XP. Penambahan ${newIbadahXp} XP melebihi kuota harian 30 XP (Sisa kuota: ${remainingQuota} XP).`
+          `Peringatan: Total tugas Yaumiyah (Harian) ${getUstadzTitle(activeUser)} untuk ${halaqahTarget} hari ini sudah ${currentYaumiyahXp} XP. Penambahan ${newIbadahXp} XP melebihi kuota harian 30 XP (Sisa kuota: ${remainingQuota} XP).`
         );
         return;
       }
@@ -598,7 +579,7 @@ export default function AdminScreen({
       validityDays,
       expiresAt: expDate.toISOString(),
       targetHalaqah: halaqahTarget,
-      createdBy: activeUser?.name || 'Ustadz Pembimbing',
+      createdBy: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
       createdAt: now.toISOString()
     };
 
@@ -635,9 +616,17 @@ export default function AdminScreen({
           studentAvatar: s.avatar || '',
           halaqah: s.halaqah || halaqahTarget,
           isCompleted: false,
-          notes: 'Tugas baru diterbitkan ustadz'
+          notes: `Tugas baru diterbitkan ${getUstadzTitle(activeUser).toLowerCase()}`
         });
       }
+
+      await pushNotification({
+        targetHalaqah: halaqahTarget,
+        senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+        title: `Tugas Ibadah ${newIbadahType === 'yaumiyah' ? 'Harian' : 'Mingguan'} Baru`,
+        message: `${title} (+${newIbadahXp} XP) • Target: ${target}.`,
+        type: 'worship',
+      });
 
       setDrawerType(null);
       onShowToast(
@@ -669,7 +658,7 @@ export default function AdminScreen({
                 <span className="material-symbols-outlined text-[16px] sm:text-[18px]">verified_user</span>
               </span>
               <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#86af99] font-bold truncate">
-                Konsol Pengawas Ustadz
+                Konsol Pengawas {getUstadzTitle(activeUser)}
               </span>
             </div>
             <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/10 text-white text-[10px] sm:text-xs font-semibold backdrop-blur-md shrink-0 whitespace-nowrap">
@@ -680,7 +669,7 @@ export default function AdminScreen({
 
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              {activeUser?.halaqah || 'Halaqah Binaan'} • Panel Ustadz
+              {activeUser?.halaqah || 'Halaqah Binaan'} • Panel {getUstadzTitle(activeUser)}
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
               Pemantauan mutaba&apos;ah ibadah yaumiyah/usbu&apos;iyah &amp; diagnostik tajwid karyawan
@@ -689,7 +678,7 @@ export default function AdminScreen({
 
           {/* Metric Trio Grid */}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
               <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Binaan</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
@@ -699,7 +688,7 @@ export default function AdminScreen({
               </div>
             </div>
 
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
               <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Tugas Aktif</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
@@ -709,7 +698,7 @@ export default function AdminScreen({
               </div>
             </div>
 
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
               <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Sesi Presensi</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
@@ -819,17 +808,16 @@ export default function AdminScreen({
                     className="p-3 sm:p-3.5 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/40 border border-[#1b4332]/10 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group min-w-0"
                   >
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-xs shrink-0"
+                      <PremiumInitialAvatar
+                        name={member.name}
+                        className="w-10 h-10 rounded-full ring-2 ring-white shadow-xs shrink-0"
                       />
                       <div className="min-w-0 flex-1">
                         <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate group-hover:text-[#012d1d]">
                           {member.name}
                         </h4>
                         <p className="text-[11px] text-[#414844] mt-0.5 truncate">
-                          Streak: <span className="font-semibold text-emerald-700">{member.streakDays || 5} hari</span> • XP: <span className="font-semibold text-[#012d1d]">{member.totalXp} XP</span>
+                          Streak: <span className="font-semibold text-emerald-700">{member.streakDays ?? 0} hari</span> • XP: <span className="font-semibold text-[#012d1d]">{member.totalXp ?? 0} XP</span>
                         </p>
                       </div>
                     </div>
@@ -850,7 +838,7 @@ export default function AdminScreen({
           {/* Rapid Directives */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-sm font-bold text-[#141b2b]">Instruksi Cepat Ustadz</span>
+              <span className="text-sm font-bold text-[#141b2b]">Instruksi Cepat {getUstadzTitle(activeUser)}</span>
               <button
                 onClick={() => onShowToast(`${ibadahDirectives.length} tugas ibadah halaqah sedang aktif`)}
                 className="text-xs text-[#012d1d] font-semibold hover:underline cursor-pointer shrink-0 whitespace-nowrap"
@@ -881,24 +869,26 @@ export default function AdminScreen({
                 </span>
               </button>
 
-              {/* Action 2: Recitation Assignment */}
+              {/* Action 2: Recitation Assignment (Locked) */}
               <button
-                onClick={() => setDrawerType('recitation')}
-                className="group text-left flex flex-row items-center gap-3 p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/5 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                type="button"
+                onClick={() => onShowToast('Fitur Setoran & Penilaian Tilawah sedang dikunci sementara 🔒')}
+                className="group text-left flex flex-row items-center gap-3 p-3 rounded-2xl bg-slate-50/90 shadow-2xs border border-slate-200 opacity-85 hover:opacity-100 transition-all cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#fed488]/40 flex items-center justify-center text-[#775a19] group-hover:bg-[#775a19] group-hover:text-white transition-colors shrink-0">
-                  <span className="material-symbols-outlined text-[18px]">assignment_add</span>
+                <div className="w-9 h-9 rounded-xl bg-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">lock</span>
                 </div>
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-[#141b2b] block leading-tight">
                     Tugaskan Setoran Ayat
                   </span>
-                  <span className="text-[10px] text-[#414844] mt-0.5 block truncate">
-                    Surah, ayat &amp; batas nilai
+                  <span className="text-[10px] text-slate-500 mt-0.5 block truncate">
+                    Fitur Tilawah sedang dikunci
                   </span>
                 </div>
-                <span className="ml-auto w-5 h-5 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844]">
-                  <span className="material-symbols-outlined text-[14px]">add</span>
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
+                  <span className="material-symbols-outlined text-[11px]">lock</span>
+                  <span>Dikunci</span>
                 </span>
               </button>
 
@@ -924,157 +914,6 @@ export default function AdminScreen({
               </button>
             </div>
           </div>
-
-
-      {/* Halaqah Members Modal */}
-      {selectedHalaqahGroup && (() => {
-        const groupObj = halaqahGroups.find(g => g.halaqahName === selectedHalaqahGroup);
-        if (!groupObj) return null;
-        return (
-          <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-[#1b4332]/10">
-              <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-                <div>
-                  <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
-                    Anggota Halaqah
-                  </span>
-                  <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
-                    {groupObj.halaqahName}
-                  </h3>
-                  <p className="text-xs text-[#414844]">
-                    Pembimbing: {groupObj.supervisor} • {groupObj.members.length} Karyawan
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedHalaqahGroup(null)}
-                  className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto py-2 space-y-2 pr-1">
-                {groupObj.members.map((member: any) => (
-                  <div
-                    key={member.id}
-                    onClick={() => {
-                      setSelectedHalaqahGroup(null);
-                      setSelectedStudentDetail(member);
-                    }}
-                    className="p-3 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 transition-all cursor-pointer flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-xs"
-                      />
-                      <div className="min-w-0">
-                        <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate group-hover:text-[#012d1d]">
-                          {member.name}
-                        </h4>
-                        <p className="text-[11px] text-[#414844] mt-0.5">
-                          Streak: <span className="font-semibold text-emerald-700">{member.streakDays || 5} hari</span> • XP: <span className="font-semibold text-[#012d1d]">{member.totalXp} XP</span>
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-[#012d1d] group-hover:underline flex items-center gap-0.5">
-                      <span>Detail</span>
-                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-3 border-t border-[#f1f3ff] flex justify-end">
-                <button
-                  onClick={() => setSelectedHalaqahGroup(null)}
-                  className="px-5 py-2.5 rounded-full bg-[#012d1d] text-white text-xs font-bold shadow-xs hover:bg-[#1b4332] cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Student Detail Modal */}
-      {selectedStudentDetail && (
-        <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10">
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
-              <div>
-                <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
-                  Profil &amp; Rekam Jejak Karyawan
-                </span>
-                <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
-                  Detail Karyawan
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedStudentDetail(null)}
-                className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            </div>
-
-            <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/8 space-y-2">
-              <img
-                src={selectedStudentDetail.avatar}
-                alt={selectedStudentDetail.name}
-                className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-md"
-              />
-              <div>
-                <h4 className="text-base font-bold text-[#141b2b]">
-                  {selectedStudentDetail.name}
-                </h4>
-                <p className="text-xs text-[#414844] mt-0.5">
-                  {selectedStudentDetail.halaqah} • Pembimbing: <span className="font-semibold text-[#141b2b]">{selectedStudentDetail.supervisor || 'Ustadz Farhan'}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
-                <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp || 1200}</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
-                <span className="text-[10px] font-semibold text-amber-800 uppercase block">Streak</span>
-                <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays || 7} Hari</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-center">
-                <span className="text-[10px] font-semibold text-indigo-800 uppercase block">Tajwid</span>
-                <span className="text-base font-extrabold text-indigo-950">{selectedStudentDetail.tajweedAcc || 94}%</span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 text-xs text-[#414844] bg-[#f1f3ff] p-3 rounded-xl">
-              <div className="flex justify-between">
-                <span>Status Keanggotaan:</span>
-                <strong className="text-[#141b2b]">Resmi Binaan Halaqah</strong>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-[#f1f3ff] flex justify-end">
-              <button
-                onClick={() => setSelectedStudentDetail(null)}
-                className="w-full py-3 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer text-center"
-              >
-                Tutup Detail
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-
-
-
-
 
       {/* Active Ibadah Usbu'iyah & Yaumiyah Directives */}
       <div className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 space-y-3.5">
@@ -1151,10 +990,15 @@ export default function AdminScreen({
             return (
               <div
                 key={task.id}
-                className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
+                onClick={() => {
+                  setSelectedTaskForSubmissions(task);
+                  setSubmissionFilter('all');
+                  setSubmissionSearch('');
+                }}
+                className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-3 transition-all cursor-pointer ${
                   isEffectivelyActive
                     ? 'bg-[#f9f9ff] border-[#1b4332]/8 hover:border-[#1b4332]/25 hover:shadow-xs'
-                    : 'bg-[#f8f9fc]/75 border-slate-200/80 opacity-85'
+                    : 'bg-[#f8f9fc]/75 border-slate-200/80 opacity-85 hover:opacity-100'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -1207,7 +1051,7 @@ export default function AdminScreen({
                     <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[11px] font-bold">
                       +{task.xp} XP
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(task)}
@@ -1251,12 +1095,11 @@ export default function AdminScreen({
                   <div className="flex items-center gap-1.5 min-w-0">
                     <div className="flex -space-x-1.5 overflow-hidden py-0.5 shrink-0">
                       {completedList.slice(0, 4).map((st) => (
-                        <img
+                        <PremiumInitialAvatar
                           key={st.studentId}
-                          src={st.studentAvatar}
-                          alt={st.studentName}
+                          name={st.studentName}
                           title={`${st.studentName} (Sudah: ${st.completedAt || 'Selesai'})`}
-                          className="inline-block h-6 w-6 rounded-full ring-2 ring-emerald-500 object-cover"
+                          className="h-6 w-6 rounded-full ring-2 ring-emerald-500"
                         />
                       ))}
                     </div>
@@ -1293,6 +1136,188 @@ export default function AdminScreen({
       </div>
         </>
       )}
+
+      {/* Halaqah Members Modal */}
+      {selectedHalaqahGroup && (() => {
+        const groupObj = halaqahGroups.find(g => g.halaqahName === selectedHalaqahGroup);
+        if (!groupObj) return null;
+        return (
+          <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-[#1b4332]/10">
+              <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
+                <div>
+                  <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                    Anggota Halaqah
+                  </span>
+                  <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
+                    {groupObj.halaqahName}
+                  </h3>
+                  <p className="text-xs text-[#414844]">
+                    Pembimbing: {groupObj.supervisor} • {groupObj.members.length} Karyawan
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedHalaqahGroup(null)}
+                  className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-2 space-y-2 pr-1">
+                {groupObj.members.map((member: any) => (
+                  <div
+                    key={member.id}
+                    onClick={() => {
+                      setSelectedHalaqahGroup(null);
+                      setSelectedStudentDetail(member);
+                    }}
+                    className="p-3 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/30 border border-[#1b4332]/10 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <PremiumInitialAvatar
+                        name={member.name}
+                        className="w-10 h-10 rounded-full ring-2 ring-white shadow-xs"
+                      />
+                      <div className="min-w-0">
+                        <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate group-hover:text-[#012d1d]">
+                          {member.name}
+                        </h4>
+                        <p className="text-[11px] text-[#414844] mt-0.5">
+                          Streak: <span className="font-semibold text-emerald-700">{member.streakDays ?? 0} hari</span> • XP: <span className="font-semibold text-[#012d1d]">{member.totalXp ?? 0} XP</span>
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-[#012d1d] group-hover:underline flex items-center gap-0.5">
+                      <span>Detail</span>
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-[#f1f3ff] flex justify-end">
+                <button
+                  onClick={() => setSelectedHalaqahGroup(null)}
+                  className="px-5 py-2.5 rounded-full bg-[#012d1d] text-white text-xs font-bold shadow-xs hover:bg-[#1b4332] cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Student Detail Modal */}
+      {selectedStudentDetail && (
+        <div
+          className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setSelectedStudentDetail(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
+              <div>
+                <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                  Profil &amp; Rekam Jejak Karyawan
+                </span>
+                <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
+                  Detail Karyawan Binaan
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedStudentDetail(null)}
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] flex items-center justify-center text-[#414844] hover:bg-[#e4e7ff] transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/8 space-y-2">
+              <PremiumInitialAvatar
+                name={selectedStudentDetail.name}
+                className="w-20 h-20 rounded-full ring-4 ring-white shadow-md"
+              />
+              <div>
+                <h4 className="text-base font-bold text-[#141b2b]">
+                  {selectedStudentDetail.name}
+                </h4>
+                <p className="text-xs text-[#414844] mt-0.5">
+                  {selectedStudentDetail.halaqah || activeUser.halaqah} • Pembimbing: <span className="font-semibold text-[#141b2b]">{formatSupervisorDisplayName(selectedStudentDetail.supervisor || activeUser.name, activeUser.gender)}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
+                <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp ?? 0}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                <span className="text-[10px] font-semibold text-amber-800 uppercase block">Streak</span>
+                <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays ?? 0} Hari</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                <span className="text-[10px] font-semibold text-slate-600 uppercase block">Tilawah</span>
+                <span className="text-xs font-bold text-slate-600 inline-flex items-center justify-center gap-0.5 mt-1">
+                  <span className="material-symbols-outlined text-[14px]">lock</span>
+                  <span>Dikunci</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-[#414844] bg-[#f1f3ff] p-3 rounded-xl">
+              <div className="flex justify-between">
+                <span>Status Keanggotaan:</span>
+                <strong className="text-[#141b2b]">Resmi Binaan Halaqah</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Kode Halaqah:</span>
+                <strong className="text-[#012d1d] font-mono">{selectedStudentDetail.halaqahCode || activeUser.halaqahCode || '-'}</strong>
+              </div>
+            </div>
+
+            {/* Quick Actions for Ustadz */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  handleRemindStudent(selectedStudentDetail.name, "Mutaba'ah Ibadah Harian", selectedStudentDetail.id);
+                  setSelectedStudentDetail(null);
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#fed488]/50 hover:bg-[#fed488] text-[#775a19] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">notifications_active</span>
+                <span>Ingatkan Ibadah</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleApplaudStudent(selectedStudentDetail.name);
+                  setSelectedStudentDetail(null);
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#c1ecd4]/70 hover:bg-[#c1ecd4] text-[#002114] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">celebration</span>
+                <span>Beri Apresiasi</span>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-[#f1f3ff] flex justify-end">
+              <button
+                onClick={() => setSelectedStudentDetail(null)}
+                className="w-full py-3 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer text-center"
+              >
+                Tutup Detail
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Directives Modal / Slide Tray */}
       {drawerType && (
@@ -1854,7 +1879,7 @@ export default function AdminScreen({
 
                 <div>
                   <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                    Target &amp; Petunjuk Teknis Ustadz
+                    Target &amp; Petunjuk Teknis {getUstadzTitle(activeUser)}
                   </label>
                   <input
                     type="text"
@@ -2057,7 +2082,7 @@ export default function AdminScreen({
 
               <div>
                 <label className="text-xs font-bold text-[#141b2b] mb-1 block">
-                  Target &amp; Petunjuk Ustadz
+                  Target &amp; Petunjuk {getUstadzTitle(activeUser)}
                 </label>
                 <input
                   type="text"
@@ -2246,10 +2271,9 @@ export default function AdminScreen({
                         {/* Student Info */}
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative shrink-0">
-                            <img
-                              src={sub.studentAvatar}
-                              alt={sub.studentName}
-                              className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-xs"
+                            <PremiumInitialAvatar
+                              name={sub.studentName}
+                              className="w-10 h-10 rounded-full ring-2 ring-white shadow-xs"
                             />
                             <span
                               className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white ${
@@ -2371,7 +2395,7 @@ export default function AdminScreen({
                   Konfirmasi Hapus Tugas Ibadah
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[#414844]">
-                  Tindakan ini memerlukan kepastian ustadz pembimbing
+                  Tindakan ini memerlukan kepastian {getUstadzTitle(activeUser).toLowerCase()} pembimbing
                 </p>
               </div>
             </div>

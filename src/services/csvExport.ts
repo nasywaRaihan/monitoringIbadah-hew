@@ -90,7 +90,7 @@ export const downloadPerColumnCSV = (
  * Column E: Passcode Login
  */
 export const downloadImportTemplateSheet = () => {
-  const headers = ['No', 'Nama Karyawan', 'Kelompok Halaqah', 'Ustadz Pembimbing', 'Passcode Login'];
+  const headers = ['No', 'Nama Karyawan', 'Kelompok Halaqah', 'Ustadz/ah Pembimbing', 'Passcode Login'];
   const sampleRows = [
     [1, 'Ahmad Fauzi', 'Halaqah Al-Fajr', 'Ustadz Farhan', '1234'],
     [2, 'Rizky Ramadhan', 'Hafiz Circle', 'Ustadz Tariq Mansoor', '1234'],
@@ -234,7 +234,7 @@ export const parseReciterFile = async (
       const cleanHalaqah = rawHalaqah ? String(rawHalaqah).trim() : 'Halaqah Al-Fajr';
 
       const rawSupervisor = supervisorIdx !== -1 ? row[supervisorIdx] : null;
-      const cleanSupervisor = rawSupervisor ? String(rawSupervisor).trim() : 'Ustadz Pembimbing';
+      const cleanSupervisor = rawSupervisor ? String(rawSupervisor).trim() : 'Ustadz/ah Pembimbing';
 
       const rawPasscode = passcodeIdx !== -1 ? row[passcodeIdx] : null;
       const cleanPasscode = rawPasscode ? String(rawPasscode).trim() : '1234';
@@ -245,7 +245,7 @@ export const parseReciterFile = async (
       records.push({
         name: cleanName,
         halaqah: cleanHalaqah || 'Halaqah Al-Fajr',
-        supervisor: cleanSupervisor || 'Ustadz Pembimbing',
+        supervisor: cleanSupervisor || 'Ustadz/ah Pembimbing',
         passcode: cleanPasscode || '1234',
         phone: cleanPhone
       });
@@ -289,7 +289,7 @@ export const parseReciterCSV = (rawText: string): { records: ImportedReciterReco
       records.push({
         name,
         halaqah: String(row[halaqahIdx >= 0 ? halaqahIdx : 2] || 'Halaqah Al-Fajr').trim(),
-        supervisor: String(row[supervisorIdx >= 0 ? supervisorIdx : 3] || 'Ustadz Pembimbing').trim(),
+        supervisor: String(row[supervisorIdx >= 0 ? supervisorIdx : 3] || 'Ustadz/ah Pembimbing').trim(),
         passcode: String(row[passcodeIdx >= 0 ? passcodeIdx : 4] || '1234').trim()
       });
     }

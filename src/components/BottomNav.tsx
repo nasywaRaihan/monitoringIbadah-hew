@@ -52,6 +52,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           const isActive =
             currentTab === item.id ||
             (item.id === 'dept-hx' && currentTab === 'hq-admin');
+          const isLockedTab = item.id === 'recitation';
           return (
             <button
               key={item.id}
@@ -71,8 +72,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   className="material-symbols-outlined text-[22px] transition-transform"
                   style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
                 >
-                  {item.icon}
+                  {isLockedTab ? 'lock' : item.icon}
                 </span>
+                {isLockedTab && (
+                  <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-extrabold leading-none">
+                    🔒
+                  </span>
+                )}
               </div>
 
               {/* Label */}

@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { BRAND_ASSETS } from '../data/mockData';
 import { ActiveUser } from '../types';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import {
+  verifyUstadzPasscode,
+  getUstadzPasscodeForHalaqah,
+  getLockoutRemainingSeconds,
+  recordFailedAuthAttempt,
+  resetFailedAuthAttempts
+} from '../services/securityService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -55,13 +63,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return parsed.map((h: any) => ({
             name: h.name,
             code: h.code || 'HL-1001',
-            pin: h.pin || '1234'
+            pin: getUstadzPasscodeForHalaqah(h.name, registeredUsers)
           }));
         }
       }
     } catch {}
     return [];
-  }, [isOpen]);
+  }, [isOpen, registeredUsers]);
 
   if (!isOpen) return null;
 
@@ -111,7 +119,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         );
         return;
       }
-      if (cleanPass === matchedCircle.pin || cleanPass === '1234') {
+      if (cleanPass === matchedCircle.pin) {
         onSelectUser({
           ...activeUser,
           halaqah: matchedCircle.name,
@@ -124,7 +132,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
         return;
       } else {
-        setJoinHalaqahError(`Password / PIN untuk ${matchedCircle.name} salah! (PIN: ${matchedCircle.pin})`);
+        setJoinHalaqahError(`Password / PIN untuk ${matchedCircle.name} tidak sesuai!`);
         return;
       }
     }
@@ -166,18 +174,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Handle Admin Passcode Login
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default admin passcodes accepted: 'admin123' or '1234'
-    if (adminPasscode === 'admin123' || adminPasscode === '1234') {
-      onSelectUser({
-        ...activeUser,
-        role: 'admin'
-      });
-      onShowToast('Passcode Ustadz terverifikasi. Masuk konsol supervisor.');
+    const remLock = getLockoutRemainingSeconds('ustadz');
+    if (remLock > 0) {
+      setAdminError(`Akses Ustadz/ah dikunci sementara. Tunggu ${remLock} detik.`);
+      return;
+    }
+
+    const cleanPass = adminPasscode.trim();
+    if (!cleanPass) {
+      setAdminError('Masukkan passcode Ustadz/ah terlebih dahulu.');
+      return;
+    }
+
+    const currentHalaqah = activeUser.halaqah || existingHalaqahs[0]?.name || '';
+    const isValidForCurrent = currentHalaqah
+      ? verifyUstadzPasscode(currentHalaqah, cleanPass, registeredUsers)
+      : false;
+    const matchedUstadzUser = registeredUsers.find(
+      (u) => u.role === 'admin' && u.passcode === cleanPass
+    );
+
+    if (isValidForCurrent || matchedUstadzUser) {
+      resetFailedAuthAttempts('ustadz');
+      onSelectUser(
+        matchedUstadzUser || {
+          ...activeUser,
+          role: 'admin'
+        }
+      );
+      onShowToast('Passcode Ustadz/ah terverifikasi. Masuk konsol supervisor.');
       setAdminPasscode('');
       setAdminError(null);
       onClose();
     } else {
-      setAdminError('Passcode Ustadz salah! (Gunakan default: 1234 atau admin123)');
+      const attempt = recordFailedAuthAttempt('ustadz');
+      if (attempt.locked) {
+        setAdminError(`Akses dikunci selama ${attempt.lockoutSeconds} detik karena 5x percobaan salah.`);
+      } else {
+        setAdminError(`Passcode Ustadz/ah tidak sesuai! Sisa percobaan: ${attempt.remainingAttempts}x.`);
+      }
     }
   };
 
@@ -255,7 +290,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[15px]">shield_person</span>
-            <span>Halaqoh (Ustadz)</span>
+            <span>Halaqoh (Ustadz/ah)</span>
           </button>
 
           <button
@@ -307,10 +342,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={u.avatar}
-                            alt={u.name}
-                            className="w-10 h-10 rounded-full object-cover shrink-0 shadow-sm ring-1 ring-[#012d1d]/10"
+                          <PremiumInitialAvatar
+                            name={u.name}
+                            role={u.role}
+                            className="w-10 h-10 rounded-full shrink-0 shadow-sm ring-1 ring-[#012d1d]/10"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -345,10 +380,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               /* Password Prompt Form */
               <form onSubmit={handleVerifyPasscodeAndSwitch} className="space-y-3.5">
                 <div className="flex items-center gap-2.5 pb-2 border-b border-[#f1f3ff]">
-                  <img
-                    src={userToUnlock.avatar}
-                    alt={userToUnlock.name}
-                    className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-[#012d1d]"
+                  <PremiumInitialAvatar
+                    name={userToUnlock.name}
+                    role={userToUnlock.role}
+                    className="w-11 h-11 rounded-full shrink-0 ring-2 ring-[#012d1d]"
                   />
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-[#141b2b] truncate">
@@ -539,15 +574,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           >
             <div className="pb-1 border-b border-[#f1f3ff]">
               <h3 className="text-sm font-bold text-[#141b2b]">
-                Portal Masuk Ustadz &amp; Pengurus
+                Portal Masuk Ustadz/ah &amp; Pengurus
               </h3>
               <p className="text-[11px] text-[#414844]">
-                Masukkan passcode Ustadz untuk membuka konsol absensi halaqah dan nilai tajwid.
+                Masukkan passcode Ustadz/ah untuk membuka konsol absensi halaqah dan nilai tajwid.
               </p>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#fed488]/30 border border-[#fed488] text-[11px] text-[#785a1a]">
-              💡 Passcode Ustadz default: <strong>1234</strong> atau <strong>admin123</strong>
+            <div className="p-2.5 rounded-xl bg-[#e9fbf2] border border-[#00452c]/20 text-[11px] text-[#00452c] flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[15px] shrink-0">shield_lock</span>
+              <span>Gunakan PIN Supervisor Ustadz/ah resmi yang ditetapkan oleh Direktorat Dept HX.</span>
             </div>
 
             <div className="flex flex-col gap-1">
@@ -555,7 +591,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span className="material-symbols-outlined text-[16px] text-[#012d1d]">
                   admin_panel_settings
                 </span>
-                Passcode Supervisor Ustadz
+                Passcode Supervisor Ustadz/ah
               </label>
               <div className="relative flex items-center">
                 <input
@@ -566,7 +602,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setAdminPasscode(e.target.value);
                     setAdminError(null);
                   }}
-                  placeholder="Masukkan passcode Ustadz..."
+                  placeholder="Masukkan passcode Ustadz/ah..."
                   className="w-full h-12 bg-[#f1f3ff] rounded-xl px-3 pr-10 text-sm font-bold text-[#141b2b] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#012d1d]"
                 />
                 <button
@@ -591,7 +627,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               className="w-full h-12 rounded-full bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-all mt-1"
             >
               <span className="material-symbols-outlined text-[18px]">shield_person</span>
-              <span>Buka Konsol Ustadz</span>
+              <span>Buka Konsol Ustadz/ah</span>
             </button>
           </form>
         )}

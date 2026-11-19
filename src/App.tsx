@@ -22,6 +22,11 @@ import {
   isDirectiveExpired
 } from './services/directiveLifecycle';
 import {
+  getUstadzTitle,
+  formatSupervisorDisplayName,
+  inferUstadzGender
+} from './services/ustadzTitle';
+import {
   initAuth,
   googleSignIn,
   logout
@@ -488,6 +493,7 @@ export default function App() {
 
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
   const [isDeptHXUnlocked, setIsDeptHXUnlocked] = useState<boolean>(() => {
@@ -596,22 +602,29 @@ export default function App() {
     passcode: string;
     phone?: string;
     role: 'member' | 'admin';
+    gender?: 'L' | 'P';
   }) => {
+    const inferredGender = newUserData.gender || inferUstadzGender(newUserData.name);
+    const formattedName =
+      newUserData.role === 'admin'
+        ? formatSupervisorDisplayName(newUserData.name, inferredGender)
+        : newUserData.name;
     const newUser: ActiveUser = {
       id: `user-${Date.now()}`,
-      name: newUserData.name,
+      name: formattedName,
       halaqah: newUserData.halaqah,
       halaqahCode: newUserData.halaqahCode,
       passcode: newUserData.passcode,
       phone: newUserData.phone,
       avatar: BRAND_ASSETS.currentUserAvatar,
       role: newUserData.role,
+      gender: inferredGender,
       totalXp: 50,
       streakDays: 1,
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
       hxStatus: 'Resmi Dept HX',
-      supervisor: 'Ustadz Pembimbing (SK Dept HX)'
+      supervisor: 'Ustadz/ah Pembimbing (SK Dept HX)'
     };
 
     setRegisteredUsers((prev) => [newUser, ...prev]);
@@ -646,7 +659,7 @@ export default function App() {
           newUser.id,
           newUser.name,
           newUser.halaqah,
-          newUser.role === 'admin' ? 'Ustadz / Supervisor' : 'Karyawan Baru (Dept HX)',
+          newUser.role === 'admin' ? `${getUstadzTitle(newUser)} / Supervisor` : 'Karyawan Baru (Dept HX)',
           '95.0%',
           '1/1',
           newUser.streakDays,
@@ -667,22 +680,29 @@ export default function App() {
     passcode: string;
     phone?: string;
     role: 'member' | 'admin';
+    gender?: 'L' | 'P';
   }) => {
+    const inferredGender = newUserData.gender || inferUstadzGender(newUserData.name);
+    const formattedName =
+      newUserData.role === 'admin'
+        ? formatSupervisorDisplayName(newUserData.name, inferredGender)
+        : newUserData.name;
     const newUser: ActiveUser = {
       id: `user-${Date.now()}`,
-      name: newUserData.name,
+      name: formattedName,
       halaqah: newUserData.halaqah,
       halaqahCode: newUserData.halaqahCode,
       passcode: newUserData.passcode || '1234',
       phone: newUserData.phone,
       avatar: BRAND_ASSETS.currentUserAvatar,
       role: newUserData.role,
+      gender: inferredGender,
       totalXp: 150,
       streakDays: 1,
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
       hxStatus: 'Resmi Dept HX',
-      supervisor: 'Ustadz Pembimbing (SK Dept HX)'
+      supervisor: 'Ustadz/ah Pembimbing (SK Dept HX)'
     };
 
     setRegisteredUsers((prev) => [newUser, ...prev]);
@@ -699,7 +719,7 @@ export default function App() {
           newUser.id,
           newUser.name,
           newUser.halaqah,
-          newUser.role === 'admin' ? 'Ustadz / Supervisor' : 'Karyawan Baru (Dept HX)',
+          newUser.role === 'admin' ? `${getUstadzTitle(newUser)} / Supervisor` : 'Karyawan Baru (Dept HX)',
           '95.0%',
           '1/1',
           newUser.streakDays,
@@ -710,6 +730,69 @@ export default function App() {
       } catch (e) {
         console.error('Error logging new user to Sheets:', e);
       }
+    }
+  };
+
+  const handleUpdateUserPasscode = async (
+    userId: string,
+    newPasscode: string,
+    role?: 'member' | 'admin' | 'dept-hx',
+    halaqahName?: string
+  ) => {
+    const cleanPin = newPasscode.trim();
+    if (!cleanPin) return;
+
+    setRegisteredUsers((prev) => {
+      const exists = prev.some(
+        (u) =>
+          u.id === userId ||
+          (role === 'dept-hx' && (u.role === 'dept-hx' || u.role === 'hq-admin')) ||
+          (role === 'admin' && halaqahName && u.role === 'admin' && u.halaqah.toLowerCase() === halaqahName.toLowerCase())
+      );
+
+      if (exists) {
+        return prev.map((u) => {
+          const isMatch =
+            u.id === userId ||
+            (role === 'dept-hx' && (u.role === 'dept-hx' || u.role === 'hq-admin')) ||
+            (role === 'admin' && halaqahName && u.role === 'admin' && u.halaqah.toLowerCase() === halaqahName.toLowerCase());
+          if (isMatch) {
+            setDoc(doc(db, 'users', u.id), { passcode: cleanPin }, { merge: true }).catch(() => {});
+            return { ...u, passcode: cleanPin };
+          }
+          return u;
+        });
+      }
+
+      if (role === 'admin' && halaqahName) {
+        const newUstadzUser: ActiveUser = {
+          id: userId,
+          name: `Ustadz/ah ${halaqahName}`,
+          halaqah: halaqahName,
+          halaqahCode: 'HX-001',
+          passcode: cleanPin,
+          avatar: BRAND_ASSETS.currentUserAvatar,
+          role: 'admin',
+          totalXp: 0,
+          streakDays: 0,
+          supervisor: 'Direktorat Dept HX',
+          assignedHalaqahBy: 'Dept HX',
+          hxAssignmentId: `HX-UST-${Date.now().toString().slice(-4)}`,
+          hxStatus: 'Resmi Dept HX'
+        };
+        setDoc(doc(db, 'users', newUstadzUser.id), newUstadzUser, { merge: true }).catch(() => {});
+        return [newUstadzUser, ...prev];
+      }
+
+      return prev;
+    });
+
+    if (
+      activeUser &&
+      (activeUser.id === userId ||
+        (role === 'dept-hx' && (activeUser.role === 'dept-hx' || activeUser.role === 'hq-admin')))
+    ) {
+      setActiveUser((prev) => ({ ...prev, passcode: cleanPin }));
     }
   };
 
@@ -732,7 +815,7 @@ export default function App() {
       if (!record.name || !record.name.trim()) continue;
       const cleanName = record.name.trim();
       const cleanHalaqah = (record.halaqah || 'Halaqah Utama').trim();
-      const cleanSupervisor = (record.supervisor || 'Ustadz Pembimbing').trim();
+      const cleanSupervisor = formatSupervisorDisplayName((record.supervisor || 'Ustadz/ah Pembimbing').trim());
       const cleanPasscode = (record.passcode || '1234').trim();
 
       let halaqahCode = 'HL-1001';
@@ -752,6 +835,7 @@ export default function App() {
         const randomCode = `${initials}-${Math.floor(1000 + Math.random() * 9000)}`;
         halaqahCode = randomCode;
         currentHalaqahs.push({
+          id: `halaqah-import-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           name: cleanHalaqah,
           code: randomCode,
           supervisor: cleanSupervisor,
@@ -850,7 +934,7 @@ export default function App() {
       'No',
       'Nama Karyawan',
       'Kelompok Halaqah',
-      'Ustadz Pembimbing',
+      'Ustadz/ah Pembimbing',
       'Status Akun',
       'Streak Hari',
       'Total XP',
@@ -860,8 +944,8 @@ export default function App() {
       idx + 1,
       u.name,
       u.halaqah,
-      u.supervisor || 'Ustadz Pembimbing',
-      u.role === 'admin' ? 'Ustadz / Pembimbing' : 'Karyawan Aktif',
+      formatSupervisorDisplayName(u.supervisor),
+      u.role === 'admin' ? `${getUstadzTitle(u)} / Pembimbing` : 'Karyawan Aktif',
       u.streakDays,
       u.totalXp,
       u.halaqahCode || '-'
@@ -1031,7 +1115,7 @@ export default function App() {
     );
 
     const streakResult = recordDailyActivityStreak(activeUser);
-    const newXp = totalXp + finalXp;
+    const newXp = Math.round((totalXp + finalXp) * 100) / 100;
     setTotalXp(newXp);
     setStreakDays(streakResult.streakDays);
 
@@ -1133,7 +1217,7 @@ export default function App() {
         id: directiveId,
         type: taskType,
         title: newTask.title,
-        target: newTask.note || 'Target amalan dari Ustadz',
+        target: newTask.note || `Target amalan dari ${getUstadzTitle(activeUser)}`,
         xp: newTask.xp || 15,
         compliancePercent: 0,
         status: 'Aktif',
@@ -1142,7 +1226,7 @@ export default function App() {
         validityDays,
         expiresAt: newTask.expiresAt || expDate.toISOString(),
         targetHalaqah: targetHalaqah,
-        createdBy: activeUser?.name || 'Ustadz Pembimbing',
+        createdBy: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
         createdAt: newTask.createdAt || now.toISOString()
       };
 
@@ -1169,7 +1253,7 @@ export default function App() {
           studentAvatar: s.avatar || '',
           halaqah: s.halaqah || targetHalaqah,
           isCompleted: false,
-          notes: 'Tugas baru diterbitkan ustadz'
+          notes: `Tugas baru diterbitkan ${getUstadzTitle(activeUser).toLowerCase()}`
         });
       }
 
@@ -1217,7 +1301,7 @@ export default function App() {
           return usr;
         })
       );
-      showToast(`Alhamdulillah! Nilai tilawah Ustadz untuk ${details?.studentName || 'Karyawan'} tersimpan (+${earnedXp} XP Klasemen).`);
+      showToast(`Alhamdulillah! Nilai tilawah ${getUstadzTitle(activeUser)} untuk ${details?.studentName || 'Karyawan'} tersimpan (+${earnedXp} XP Klasemen).`);
     } else if (!isDeptHX && !isUstadz) {
       // Regular employee self-tilawah submission (guided by Ustadz)
       const streakResult = recordDailyActivityStreak(activeUser);
@@ -1305,7 +1389,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f9f9ff] text-[#141b2b] flex flex-col font-sans selection:bg-[#c1ecd4] selection:text-[#012d1d]">
-      <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={0} currentRole={currentRole} activeUser={activeUser} />
+      <Header currentTab={currentTab} onOpenNotifications={() => setIsNotificationsOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onLogout={handleLogout} onOpenSplash={() => setIsSplashVisible(true)} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} unreadCount={unreadNotifCount} currentRole={currentRole} activeUser={activeUser} />
       <main className="flex-1 flex flex-col w-full">
         {currentTab === 'worship' && (
           <WorshipScreen
@@ -1326,8 +1410,8 @@ export default function App() {
         {currentTab === 'recitation' && <RecitationScreen onBack={() => { if (currentRole === 'admin') setCurrentTab('admin'); else if (currentRole === 'dept-hx' || currentRole === 'hq-admin') setCurrentTab('dept-hx'); else setCurrentTab('worship'); }} onSubmitRecitation={handleSubmitRecitation} onShowToast={showToast} currentRole={currentRole} activeUser={activeUser} registeredUsers={registeredUsers} googleToken={googleToken} spreadsheetId={spreadsheet?.id} />}
         {currentTab === 'leaderboard' && <LeaderboardScreen userXp={totalXp} userStreak={streakDays} onShowToast={showToast} activeUser={activeUser} onOpenAuth={() => setIsAuthOpen(true)} registeredUsers={registeredUsers} />}
         {currentTab === 'admin' && <AdminScreen onShowToast={showToast} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} onOpenAuth={() => setIsAuthOpen(true)} onAddHalaqahTask={handleAddTask} activeUser={activeUser} registeredUsers={registeredUsers} ibadahDirectives={ibadahDirectives} setIbadahDirectives={setIbadahDirectives} attendanceSessions={attendanceSessions} onSaveAttendanceSession={handleSaveAttendanceSession} onDeleteAttendanceSession={handleDeleteAttendanceSession} />}
-        {currentTab === 'students' && <HalaqahStudentsScreen activeUser={activeUser} registeredUsers={registeredUsers} onShowToast={showToast} />}
-        {(currentTab === 'dept-hx' || currentTab === 'hq-admin') && ((isDeptHXUnlocked || currentRole === 'dept-hx' || currentRole === 'hq-admin') ? <HQAdminScreen ibadahDirectives={ibadahDirectives} onShowToast={showToast} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} registeredUsers={registeredUsers} onOpenRegister={() => setIsAuthOpen(true)} onRegisterSantri={handleRegisterSantriByDeptHX} onDeleteSantri={handleDeleteSantriByDeptHX} onUpdateUserHalaqah={handleUpdateUserHalaqah} onRenameHalaqahForAll={handleRenameHalaqahForAll} onLockDeptHX={() => { setIsDeptHXUnlocked(false); setCurrentTab('leaderboard'); showToast('Akses Dept HX telah dikunci kembali.'); }} attendanceSessions={attendanceSessions} onSaveAttendanceSession={handleSaveAttendanceSession} onDeleteAttendanceSession={handleDeleteAttendanceSession} /> : (
+        {currentTab === 'students' && <HalaqahStudentsScreen activeUser={activeUser} registeredUsers={registeredUsers} attendanceSessions={attendanceSessions} onShowToast={showToast} />}
+        {(currentTab === 'dept-hx' || currentTab === 'hq-admin') && ((isDeptHXUnlocked || currentRole === 'dept-hx' || currentRole === 'hq-admin') ? <HQAdminScreen ibadahDirectives={ibadahDirectives} onShowToast={showToast} onOpenSheets={() => setIsSheetsModalOpen(true)} isSheetsConnected={!!googleToken && !!spreadsheet} registeredUsers={registeredUsers} onOpenRegister={() => setIsAuthOpen(true)} onRegisterSantri={handleRegisterSantriByDeptHX} onDeleteSantri={handleDeleteSantriByDeptHX} onUpdateUserHalaqah={handleUpdateUserHalaqah} onRenameHalaqahForAll={handleRenameHalaqahForAll} onLockDeptHX={() => { setIsDeptHXUnlocked(false); setCurrentTab('leaderboard'); showToast('Akses Dept HX telah dikunci kembali.'); }} attendanceSessions={attendanceSessions} onSaveAttendanceSession={handleSaveAttendanceSession} onDeleteAttendanceSession={handleDeleteAttendanceSession} onUpdateUserPasscode={handleUpdateUserPasscode} /> : (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto my-auto space-y-4 min-h-[55vh]">
             <div className="w-16 h-16 rounded-3xl bg-[#012d1d] text-[#fed488] flex items-center justify-center shadow-lg mx-auto"><span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span></div>
             <div><span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#1b4332]/10 text-[#00452c] text-xs font-bold uppercase tracking-wider mb-2"><span className="material-symbols-outlined text-[14px]">lock</span>Area Terbatas</span><h2 className="text-xl font-bold text-[#141b2b]">Otorisasi Dept HX Diperlukan</h2><p className="text-xs text-[#717973] mt-1.5 max-w-sm leading-relaxed">Halaman ini memuat kewenangan penataan struktur halaqah, manajemen amalan, dan penerbitan SK pembimbing. Masukkan kode otorisasi untuk mengakses.</p></div>
@@ -1335,11 +1419,25 @@ export default function App() {
           </div>
         ))}
       </main>
-      <BottomNav currentTab={currentTab} currentRole={currentRole} onChangeTab={(tab: TabType) => { if (tab === 'dept-hx' || tab === 'hq-admin') { if (!isDeptHXUnlocked && currentRole !== 'dept-hx' && currentRole !== 'hq-admin') { setIsDeptHXPinModalOpen(true); return; } } if (tab === 'admin' && currentRole === 'member') { showToast('Menu Dashboard hanya dapat diakses oleh Ustadz'); return; } if (tab === 'students' && currentRole === 'member') { showToast('Menu Karyawan hanya dapat diakses oleh Ustadz'); return; } if (tab === 'worship' && currentRole !== 'member') { return; } setCurrentTab(tab); }} />
-      <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} onAction={(action: string) => { if (action === 'open-recitation') { setCurrentTab('recitation'); } }} />
+      <BottomNav currentTab={currentTab} currentRole={currentRole} onChangeTab={(tab: TabType) => { if (tab === 'dept-hx' || tab === 'hq-admin') { if (!isDeptHXUnlocked && currentRole !== 'dept-hx' && currentRole !== 'hq-admin') { setIsDeptHXPinModalOpen(true); return; } } if (tab === 'admin' && currentRole === 'member') { showToast('Menu Dashboard hanya dapat diakses oleh Ustadz/ah'); return; } if (tab === 'students' && currentRole === 'member') { showToast('Menu Karyawan hanya dapat diakses oleh Ustadz/ah'); return; } if (tab === 'worship' && currentRole !== 'member') { return; } setCurrentTab(tab); }} />
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        activeUser={activeUser}
+        onUnreadCountChange={setUnreadNotifCount}
+        onAction={(action: string) => {
+          if (action === 'open-recitation') {
+            setCurrentTab('recitation');
+          } else if (action === 'open-worship') {
+            setCurrentTab('worship');
+          } else if (action === 'open-admin') {
+            setCurrentTab('admin');
+          }
+        }}
+      />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} activeUser={activeUser} registeredUsers={registeredUsers} onRegisterUser={handleRegisterUser} onSelectUser={handleSelectUser} onShowToast={showToast} />
       <GoogleSheetsModal isOpen={isSheetsModalOpen} onClose={() => setIsSheetsModalOpen(false)} user={googleUser} spreadsheet={spreadsheet} onConnectGoogle={handleConnectGoogle} onDisconnectGoogle={handleDisconnectGoogle} isConnecting={isConnectingGoogle} accessToken={googleToken} onShowToast={showToast} onImportReciters={handleImportReciters} onExportAll={handleExportAllReciters} />
-      <DeptHXPasscodeModal isOpen={isDeptHXPinModalOpen} onClose={() => { setIsDeptHXPinModalOpen(false); if (!isDeptHXUnlocked && (currentTab === 'dept-hx' || currentTab === 'hq-admin')) { setCurrentTab(currentRole === 'admin' ? 'admin' : 'worship'); } }} onSuccess={() => { setIsDeptHXUnlocked(true); setCurrentTab('dept-hx'); }} onShowToast={showToast} />
+      <DeptHXPasscodeModal isOpen={isDeptHXPinModalOpen} onClose={() => { setIsDeptHXPinModalOpen(false); if (!isDeptHXUnlocked && (currentTab === 'dept-hx' || currentTab === 'hq-admin')) { setCurrentTab(currentRole === 'admin' ? 'admin' : 'worship'); } }} onSuccess={() => { setIsDeptHXUnlocked(true); setCurrentTab('dept-hx'); }} onShowToast={showToast} registeredUsers={registeredUsers} />
       {toastMessage && (
         <div className="fixed bottom-20 inset-x-4 mx-auto w-fit max-w-md z-[90] bg-[#293040] text-[#edf0ff] px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
           <span className="material-symbols-outlined text-[17px] text-[#92f7c3] shrink-0">check_circle</span>

@@ -51,6 +51,42 @@ export function isFiveDailyFardhuPrayer(item?: {
   return false;
 }
 
+export const LATE_POINT_MULTIPLIER = 0.75; // 75% dari poin asli (pengurangan 25%)
+
+export function formatXpValue(xp: number): string {
+  const num = Number(xp) || 0;
+  const rounded = Math.round(num * 100) / 100;
+  return String(rounded);
+}
+
+export function calculateTaskXpWithLatePolicy(
+  originalXp: number,
+  isLate?: boolean
+): {
+  originalXp: number;
+  earnedXp: number;
+  deductedXp: number;
+  percentageReceived: number;
+} {
+  const safeOriginal = Math.max(0, Math.round((Number(originalXp) || 0) * 100) / 100);
+  if (!isLate) {
+    return {
+      originalXp: safeOriginal,
+      earnedXp: safeOriginal,
+      deductedXp: 0,
+      percentageReceived: 100
+    };
+  }
+  const earnedXp = Math.round(safeOriginal * LATE_POINT_MULTIPLIER * 100) / 100;
+  const deductedXp = Math.round((safeOriginal - earnedXp) * 100) / 100;
+  return {
+    originalXp: safeOriginal,
+    earnedXp,
+    deductedXp,
+    percentageReceived: 75
+  };
+}
+
 export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
   {
     id: 'paten-sholat-subuh',
@@ -63,8 +99,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Waktu Subuh s/d sebelum Terbit Matahari (Syuruq)',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Batas tepat waktu dari adzan Subuh sampai Syuruq. Pengisian lewat Syuruq dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Batas tepat waktu dari adzan Subuh sampai Syuruq. Pengisian terlambat mendapatkan 75% dari poin asli.',
     order: 1
   },
   {
@@ -76,8 +112,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Setelah Subuh hingga sebelum Ashar',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Membaca doa & dzikir pagi Al-Ma\'tsurat. Pengisian lewat Ashar dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Membaca doa & dzikir pagi Al-Ma\'tsurat. Pengisian terlambat (sore/malam hari) mendapatkan 75% dari poin asli (3.75 XP).',
     order: 2
   },
   {
@@ -89,8 +125,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Pagi hari hingga sebelum Dzuhur',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Minimal 2 rakaat shalat dhuha. Pengisian lewat Dzuhur dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Minimal 2 rakaat shalat dhuha. Pengisian lewat waktu Dzuhur mendapatkan 75% dari poin asli (7.5 XP).',
     order: 3
   },
   {
@@ -104,8 +140,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Waktu Dzuhur s/d sebelum Adzan Ashar',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Batas tepat waktu dari adzan Dzuhur sampai sebelum Ashar. Pengisian lewat batas dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Batas tepat waktu dari adzan Dzuhur sampai sebelum Ashar. Pengisian lewat batas mendapatkan 75% dari poin asli.',
     order: 4
   },
   {
@@ -119,8 +155,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Waktu Ashar s/d sebelum Adzan Maghrib',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Batas tepat waktu dari adzan Ashar sampai sebelum Maghrib. Pengisian lewat batas dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Batas tepat waktu dari adzan Ashar sampai sebelum Maghrib. Pengisian lewat batas mendapatkan 75% dari poin asli.',
     order: 5
   },
   {
@@ -132,8 +168,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Setelah Ashar hingga sebelum Isya’',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Membaca doa & dzikir petang Al-Ma\'tsurat. Pengisian lewat Isya\' dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Membaca doa & dzikir petang Al-Ma\'tsurat. Pengisian lewat Isya\' mendapatkan 75% dari poin asli (3.75 XP).',
     order: 6
   },
   {
@@ -147,8 +183,8 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Waktu Maghrib s/d sebelum Adzan Isya\'',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
-    note: 'Batas tepat waktu dari adzan Maghrib sampai sebelum Isya. Pengisian lewat batas dipotong 5 XP.',
+    penaltyLateXp: 25,
+    note: 'Batas tepat waktu dari adzan Maghrib sampai sebelum Isya. Pengisian lewat batas mendapatkan 75% dari poin asli.',
     order: 7
   },
   {
@@ -162,7 +198,7 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     timeWindowDescription: 'Waktu Isya\' s/d sebelum Subuh',
     isActive: true,
     recurrence: 'daily',
-    penaltyLateXp: 5,
+    penaltyLateXp: 25,
     note: 'Batas tepat waktu dari adzan Isya sampai tengah malam/Subuh.',
     order: 8
   },
@@ -213,14 +249,87 @@ export interface PrayerWindowStatus {
   timeRangeLabel: string;
 }
 
+export function resolveTaskPrayerId(
+  input?:
+    | StandardAmalanHX['prayerId']
+    | {
+        id?: string;
+        prayerId?: StandardAmalanHX['prayerId'];
+        title?: string;
+        note?: string;
+        timeWindowInfo?: string;
+        timeWindowDescription?: string;
+      }
+    | null
+): StandardAmalanHX['prayerId'] | undefined {
+  if (!input) return undefined;
+  if (typeof input === 'string') return input;
+  if (input.prayerId) return input.prayerId;
+
+  const combined = `${input.id || ''} ${input.title || ''} ${input.timeWindowInfo || ''} ${
+    input.timeWindowDescription || ''
+  }`.toLowerCase();
+
+  if (/\bdzikir\s+pagi\b|\bmatsurat\s+pagi\b|paten-dzikir-pagi/i.test(combined)) {
+    return 'dzikir-pagi';
+  }
+  if (/\bdzikir\s+(petang|sore)\b|\bmatsurat\s+(petang|sore)\b|paten-dzikir-petang/i.test(combined)) {
+    return 'dzikir-petang';
+  }
+  if (/\b(sh?olat|shalat)?\s*dhuha\b|paten-sholat-dhuha/i.test(combined)) {
+    return 'sholat-dhuha';
+  }
+  if (/\b(sh?olat|shalat)\s+subuh\b|paten-sholat-subuh/i.test(combined)) {
+    return 'subuh';
+  }
+  if (/\b(sh?olat|shalat)\s+(dzuhur|zhuhur|zuhur)\b|paten-sholat-dzuhur/i.test(combined)) {
+    return 'zhuhur';
+  }
+  if (/\b(sh?olat|shalat)\s+(ashar|asar)\b|paten-sholat-ashar/i.test(combined)) {
+    return 'ashar';
+  }
+  if (/\b(sh?olat|shalat)\s+(maghrib|magrib)\b|paten-sholat-maghrib/i.test(combined)) {
+    return 'maghrib';
+  }
+  if (/\b(sh?olat|shalat)\s+isya'?\b|paten-sholat-isya/i.test(combined)) {
+    return 'isya';
+  }
+
+  // Additional support for daily or weekly custom tasks with explicit time-of-day instructions
+  const noteAndWindow = `${input.title || ''} ${input.note || ''} ${input.timeWindowInfo || ''}`.toLowerCase();
+  if (/sebelum\s+(dzuhur|zhuhur|zuhur)/i.test(noteAndWindow)) {
+    return 'sholat-dhuha';
+  }
+  if (/sebelum\s+(ashar|asar)|\bpagi\s+hari\b/i.test(noteAndWindow)) {
+    return 'dzikir-pagi';
+  }
+  if (/sebelum\s+isya'?\b|\bsore\s+hari\b|\bpetang\b/i.test(noteAndWindow)) {
+    return 'dzikir-petang';
+  }
+
+  return undefined;
+}
+
 /**
- * Checks prayer window status based on prayerTimes for the day
+ * Checks prayer / amalan window status based on prayerTimes for the day
  */
 export function evaluatePrayerWindow(
-  prayerId: 'subuh' | 'zhuhur' | 'ashar' | 'maghrib' | 'isya' | 'dzikir-pagi' | 'sholat-dhuha' | 'dzikir-petang' | undefined,
+  prayerIdOrTask:
+    | StandardAmalanHX['prayerId']
+    | {
+        id?: string;
+        prayerId?: StandardAmalanHX['prayerId'];
+        title?: string;
+        note?: string;
+        timeWindowInfo?: string;
+        timeWindowDescription?: string;
+      }
+    | undefined,
   now: Date = new Date(),
   region: RegionLocation = DEFAULT_INDONESIAN_REGIONS[0]
 ): PrayerWindowStatus {
+  const prayerId = resolveTaskPrayerId(prayerIdOrTask);
+
   if (!prayerId) {
     return {
       isPrayer: false,
@@ -307,7 +416,7 @@ export function evaluatePrayerWindow(
       break;
   }
 
-  const timeRangeLabel = `${startLabel} - ${endLabel} WIB`;
+  const timeRangeLabel = `${startLabel} - ${endLabel} ${region.timezoneName || 'WIB'}`;
 
   if (currentMinutes < startMinutes) {
     return {
@@ -335,15 +444,15 @@ export function evaluatePrayerWindow(
     };
   }
 
-  // If passed endMinutes but still within the day
+  // If passed endMinutes (late completion within the day / week)
   return {
     isPrayer: true,
     isWithinWindow: false,
     isTooEarly: false,
     isLate: true,
     isExpiredDay: false,
-    penalty: 5,
-    statusLabel: 'Terlambat (-5 XP)',
+    penalty: 25,
+    statusLabel: 'Terlambat (75% dari Poin Asli)',
     timeRangeLabel
   };
 }
@@ -506,10 +615,17 @@ const STORAGE_KEY_PATEN = 'noorworship_standard_amalan_hx_v1';
 function sanitizeStandardAmalanItems(items: StandardAmalanHX[]): StandardAmalanHX[] {
   return items.map((item) => {
     const isFardhu5 = isFiveDailyFardhuPrayer(item);
+    const resolvedPrayerId = resolveTaskPrayerId(item);
+    const updatedNote = item.note
+      ? item.note.replace(/dipotong\s*5\s*XP/gi, 'mendapatkan 75% dari poin asli')
+      : item.note;
     return {
       ...item,
+      prayerId: resolvedPrayerId,
       hasJamaahOption: isFardhu5 ? true : false,
-      jamaahBonusXp: isFardhu5 ? (item.jamaahBonusXp ?? 5) : undefined
+      jamaahBonusXp: isFardhu5 ? (item.jamaahBonusXp ?? 5) : undefined,
+      penaltyLateXp: item.penaltyLateXp ? 25 : undefined,
+      note: updatedNote
     };
   });
 }

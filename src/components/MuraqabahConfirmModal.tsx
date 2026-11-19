@@ -1,6 +1,11 @@
 import React from 'react';
 import { DailyTask } from '../types';
-import { PrayerWindowStatus, isFiveDailyFardhuPrayer } from '../services/amalanPaten';
+import {
+  PrayerWindowStatus,
+  isFiveDailyFardhuPrayer,
+  calculateTaskXpWithLatePolicy,
+  formatXpValue
+} from '../services/amalanPaten';
 
 interface MuraqabahConfirmModalProps {
   isOpen: boolean;
@@ -27,18 +32,17 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
 
   // Pilihan Jamaah / Munfarid HANYA untuk 5 Sholat Wajib (Subuh, Dzuhur, Ashar, Maghrib, Isya')
   const isFardhuPrayer = isFiveDailyFardhuPrayer(task);
-  const isLate = prayerStatus?.isLate;
-  const penalty = isLate ? 5 : 0;
+  const isLate = Boolean(prayerStatus?.isLate);
 
-  // Calculate final XP
-  let calculatedXp = task.xp;
-  if (isFardhuPrayer) {
-    const base = 15;
-    const bonus = selectedPrayerMode === 'jamaah' ? 5 : 0;
-    calculatedXp = Math.max(0, base + bonus - penalty);
-  } else {
-    calculatedXp = Math.max(0, task.xp - penalty);
-  }
+  // Calculate original & final XP (75% of original points when late)
+  const originalXp = isFardhuPrayer
+    ? 15 + (selectedPrayerMode === 'jamaah' ? 5 : 0)
+    : task.xp;
+
+  const { earnedXp: calculatedXp, deductedXp } = calculateTaskXpWithLatePolicy(
+    originalXp,
+    isLate
+  );
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#141b2b]/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -163,18 +167,25 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
                 </span>
                 <span className="text-[10px] sm:text-[11px] opacity-80 block truncate">
                   {isLate
-                    ? 'Penyesuaian keterlambatan (-5 XP)'
+                    ? `Penyesuaian terlambat: 75% dari ${formatXpValue(originalXp)} XP (${formatXpValue(calculatedXp)} XP)`
                     : `Waktu pengisian: ${prayerStatus.timeRangeLabel}`}
                 </span>
               </div>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-xs font-bold block text-[#012d1d]">
-                +{calculatedXp} XP
-              </span>
+              <div className="flex items-center justify-end gap-1">
+                {isLate && (
+                  <span className="text-[10px] text-[#717973] line-through">
+                    +{formatXpValue(originalXp)} XP
+                  </span>
+                )}
+                <span className="text-xs font-bold block text-[#012d1d]">
+                  +{formatXpValue(calculatedXp)} XP
+                </span>
+              </div>
               {isLate && (
-                <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.2 rounded-full">
-                  -5 XP
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full">
+                  75% Poin (-{formatXpValue(deductedXp)} XP)
                 </span>
               )}
             </div>
@@ -243,7 +254,7 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
             >
               check_circle
             </span>
-            <span className="truncate">Bismillah, Saya Bersaksi Telah Mengerjakan (+{calculatedXp} XP)</span>
+            <span className="truncate">Bismillah, Saya Bersaksi Telah Mengerjakan (+{formatXpValue(calculatedXp)} XP)</span>
           </button>
         </div>
       </div>

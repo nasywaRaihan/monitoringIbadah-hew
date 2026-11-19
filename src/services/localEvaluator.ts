@@ -468,7 +468,7 @@ function synthesizeUstadzExplanation(
 
   let correctionSection = '';
   if (mistakes.length > 0) {
-    correctionSection = '\n\n📋 *Catatan dari Ustadz:*';
+    correctionSection = '\n\n📋 *Catatan dari Ustadz/ah:*';
     mistakes.slice(0, 3).forEach((m, idx) => {
       correctionSection += `\n${idx + 1}. Kata *"${m.word}"*: ${m.issue}.\n   💡 *Tips:* ${m.tip}`;
     });

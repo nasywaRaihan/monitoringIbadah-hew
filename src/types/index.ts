@@ -135,6 +135,7 @@ export interface ActiveUser {
   supervisor?: string;
   email?: string;
   phone?: string;
+  gender?: 'L' | 'P';
   avatar: string;
   role: 'member' | 'admin' | 'dept-hx' | 'hq-admin';
   totalXp: number;

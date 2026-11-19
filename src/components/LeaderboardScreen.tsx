@@ -3,6 +3,8 @@ import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestor
 import { db } from '../services/firebase';
 import { LeaderboardUser, ActiveUser } from '../types';
 import { DEFAULT_BASE_HALAQAHS, HalaqahDetail } from './HQAdminScreen';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
 
 interface LeaderboardScreenProps {
   userXp: number;
@@ -36,7 +38,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 }) => {
   const isDeptHX = activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin';
   const [scope, setScope] = useState<'group' | 'global'>('group');
-  const [, setSelectedMilestone] = useState<string | null>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<{
+    title: string;
+    desc: string;
+    xp: string;
+    icon: string;
+    tips: string;
+  } | null>(null);
+  const [selectedLeaderboardUser, setSelectedLeaderboardUser] = useState<LeaderboardUser | null>(null);
   const [liveUsers, setLiveUsers] = useState<ActiveUser[]>([]);
   
   // Sub-filter for Dept HX in "Per Halaqah" mode: 'all' or specific halaqah name
@@ -164,7 +173,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
       return {
         name,
         code: detail?.code || 'HF-DIR',
-        supervisor: detail?.supervisor || 'Ustadz Pembina',
+        supervisor: formatSupervisorDisplayName(detail?.supervisor) || 'Ustadz/ah Pembina',
         dept: detail?.dept || 'Dept Operasional',
         memberCount: members.length,
         totalXp,
@@ -211,7 +220,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <h4 className="text-xs sm:text-sm font-bold text-white flex items-center flex-wrap gap-1.5">
-                <span className="whitespace-nowrap">Mode Monitoring {activeUser?.role === 'admin' ? 'Ustadz' : 'Dept HX'}</span>
+                <span className="whitespace-nowrap">Mode Monitoring {activeUser?.role === 'admin' ? getUstadzTitle(activeUser) : 'Dept HX'}</span>
                 <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                   {scope === 'group' ? 'Monitoring Per Halaqah' : 'Monitoring Akumulasi Nasional'}
                 </span>
@@ -221,7 +230,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                   ? scope === 'group'
                     ? 'Memantau kompetisi sehat antar santri di tiap kelompok halaqah binaan secara terpisah.'
                     : 'Memantau klasemen agregat seluruh karyawan secara nasional lintas seluruh halaqah.'
-                  : 'Akun Ustadz berfungsi memantau. Poin & peringkat sepenuhnya milik santri/karyawan.'}
+                  : `Akun ${getUstadzTitle(activeUser)} berfungsi memantau. Poin & peringkat sepenuhnya milik santri/karyawan.`}
               </p>
             </div>
           </div>
@@ -233,12 +242,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         <div className="w-full bg-[#f1f3ff] rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3 border-2 border-[#1b4332]/20 shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <div className="flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1b4332] text-white font-bold text-[11px] sm:text-xs shrink-0 shadow-sm">
-              #{currentList.findIndex((u) => u.isCurrentUser) >= 0 ? currentList.findIndex((u) => u.isCurrentUser) + 1 : 4}
+              #{currentList.findIndex((u) => u.isCurrentUser) >= 0 ? currentList.findIndex((u) => u.isCurrentUser) + 1 : '-'}
             </div>
-            <img
-              alt={activeUser?.name || 'Karyawan'}
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover shrink-0 ring-2 ring-[#1b4332]/20 shadow-sm"
-              src={activeUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog'}
+            <PremiumInitialAvatar
+              name={activeUser?.name || 'Karyawan'}
+              role={activeUser?.role}
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full shrink-0 ring-2 ring-[#1b4332]/20 shadow-sm"
             />
             <div className="min-w-0 flex-1">
               <h4 className="text-xs sm:text-sm font-bold text-[#141b2b] truncate">{activeUser?.name}</h4>
@@ -418,8 +427,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                       <div className="text-sm font-bold text-[#fed488] tabular-nums leading-tight">
                         {hGroup.totalXp.toLocaleString()} XP
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-[#c1ecd4] leading-snug mt-0.5">
-                        {hGroup.memberCount} Anggota • Rata-rata {hGroup.avgAcc}% Tajwid
+                      <div className="text-[10px] sm:text-[11px] text-[#c1ecd4] leading-snug mt-0.5 flex items-center sm:justify-end gap-1">
+                        <span>{hGroup.memberCount} Anggota •</span>
+                        <span className="inline-flex items-center gap-0.5 opacity-85">
+                          <span className="material-symbols-outlined text-[11px]">lock</span>
+                          Tilawah Dikunci
+                        </span>
                       </div>
                     </div>
                     <button
@@ -445,14 +458,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                     hGroup.rankedList.map((user, idx) => (
                       <div
                         key={user.name + idx}
-                        onClick={() => onShowToast(`Melihat capaian ${user.name} (${user.xp} XP)`)}
+                        onClick={() => setSelectedLeaderboardUser(user)}
                         className={`w-full rounded-xl p-3 flex items-center justify-between gap-3 transition-all cursor-pointer ${
                           idx === 0
-                            ? 'bg-[#fef9ee] border border-[#fed488]/60'
+                            ? 'bg-[#fef9ee] border border-[#fed488]/60 hover:border-[#fed488]'
                             : idx === 1
-                            ? 'bg-[#f8f9fc] border border-[#dce2f7]'
+                            ? 'bg-[#f8f9fc] border border-[#dce2f7] hover:border-[#012d1d]/30'
                             : idx === 2
-                            ? 'bg-[#fffbf5] border border-[#ffdea5]/40'
+                            ? 'bg-[#fffbf5] border border-[#ffdea5]/40 hover:border-[#ffdea5]'
                             : 'bg-white hover:bg-[#f9f9ff] border border-gray-100'
                         }`}
                       >
@@ -478,10 +491,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                             )}
                           </div>
 
-                          <img
-                            className="w-9 h-9 rounded-full object-cover shrink-0 shadow-xs"
-                            alt={user.name}
-                            src={user.avatar}
+                          <PremiumInitialAvatar
+                            name={user.name}
+                            className="w-9 h-9 rounded-full shrink-0 shadow-xs"
                           />
 
                           <div className="min-w-0">
@@ -500,8 +512,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                                 <span className="material-symbols-outlined text-[13px]">local_fire_department</span>
                                 {user.streak} hari
                               </span>
-                              <span className="text-[10px] bg-[#f1f3ff] px-1.5 py-0.2 rounded-full text-[#414844]">
-                                {user.tajweedAcc}% Tajwid
+                              <span className="text-[10px] bg-[#f1f3ff] px-1.5 py-0.2 rounded-full text-[#717973] inline-flex items-center gap-0.5">
+                                <span className="material-symbols-outlined text-[11px]">lock</span>
+                                Tilawah Dikunci
                               </span>
                             </div>
                           </div>
@@ -589,10 +602,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 <div className="flex flex-col items-center min-w-0">
                   <div className="relative mb-2">
                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-[#dce2f7]/70 shadow-sm flex items-center justify-center">
-                      <img
-                        className="w-full h-full object-cover rounded-full"
-                        alt={top2.name}
-                        src={top2.avatar}
+                      <PremiumInitialAvatar
+                        name={top2.name}
+                        className="w-full h-full rounded-full"
                       />
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#dce2f7] text-[#141b2b] text-[10px] sm:text-[11px] font-bold rounded-full flex items-center justify-center shadow">
@@ -604,7 +616,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                     {top2.xp.toLocaleString()} XP
                   </span>
                   <span className="text-[9px] text-[#86af99] truncate max-w-full px-0.5">
-                    {top2.roleOrCircle || `${top2.tajweedAcc}% Tajwid`}
+                    {top2.roleOrCircle || '🔒 Tilawah Dikunci'}
                   </span>
                 </div>
               ) : (
@@ -620,10 +632,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                       crown
                     </span>
                     <div className="w-15 h-15 sm:w-18 sm:h-18 rounded-full p-1 bg-gradient-to-tr from-[#fed488] to-[#ffdea5] shadow-lg flex items-center justify-center ring-2 ring-[#fed488]/50">
-                      <img
-                        className="w-full h-full object-cover rounded-full"
-                        alt={top1.name}
-                        src={top1.avatar}
+                      <PremiumInitialAvatar
+                        name={top1.name}
+                        className="w-full h-full rounded-full"
                       />
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-[#fed488] text-[#785a1a] text-[11px] sm:text-xs font-bold rounded-full flex items-center justify-center shadow">
@@ -645,10 +656,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 <div className="flex flex-col items-center min-w-0">
                   <div className="relative mb-2">
                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-[#fed488]/40 shadow-sm flex items-center justify-center">
-                      <img
-                        className="w-full h-full object-cover rounded-full"
-                        alt={top3.name}
-                        src={top3.avatar}
+                      <PremiumInitialAvatar
+                        name={top3.name}
+                        className="w-full h-full rounded-full"
                       />
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#e9c176] text-[#261900] text-[10px] sm:text-[11px] font-bold rounded-full flex items-center justify-center shadow">
@@ -660,7 +670,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                     {top3.xp.toLocaleString()} XP
                   </span>
                   <span className="text-[9px] text-[#86af99] truncate max-w-full px-0.5">
-                    {top3.roleOrCircle || `${top3.tajweedAcc}% Tajwid`}
+                    {top3.roleOrCircle || '🔒 Tilawah Dikunci'}
                   </span>
                 </div>
               ) : (
@@ -669,97 +679,58 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
             </div>
           </div>
 
-          {/* Gamification Achievement Badges Horizontal Carousel */}
+          {/* Gamification Achievement Badges Horizontal Carousel (Locked) */}
           <div className="w-full space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[#775a19] text-[20px]">military_tech</span>
+                <span className="material-symbols-outlined text-[#717973] text-[20px]">lock</span>
                 <h3 className="text-sm font-bold text-[#141b2b]">Lencana Capaian Ibadah</h3>
               </div>
-              <span className="text-xs text-[#775a19] font-semibold">3 Terbuka</span>
+              <span className="inline-flex items-center gap-1 text-[11px] text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full font-bold">
+                <span className="material-symbols-outlined text-[13px]">lock</span>
+                Dikunci Sementara
+              </span>
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 no-scrollbar">
-              {/* Badge 1 */}
-              <div
-                onClick={() => {
-                  setSelectedMilestone('Master Itqan');
-                  onShowToast('Master Itqan: Membaca 10 Juz dengan akurasi makhraj di atas 90%');
-                }}
-                className="min-w-[210px] bg-white p-3.5 rounded-2xl flex items-start gap-3 shadow-sm border border-[#1b4332]/5 shrink-0 cursor-pointer hover:bg-[#f9f9ff] transition-all"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#fed488]/40 flex items-center justify-center text-[#775a19] shrink-0">
-                  <span
-                    className="material-symbols-outlined text-[22px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    menu_book
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#141b2b] truncate">Master Itqan</div>
-                  <div className="text-[11px] text-[#414844] line-clamp-2 mt-0.5">
-                    Membaca 10 Juz dengan akurasi &gt;90%
+              {[
+                {
+                  title: 'Master Itqan',
+                  desc: 'Lencana dikunci sementara selama fokus uji coba mutaba\'ah amalan.'
+                },
+                {
+                  title: 'Penjaga Masjid',
+                  desc: 'Lencana dikunci sementara selama fokus uji coba mutaba\'ah amalan.'
+                },
+                {
+                  title: 'Pembelajar Tanggap',
+                  desc: 'Lencana dikunci sementara selama fokus uji coba mutaba\'ah amalan.'
+                }
+              ].map((badgeItem) => (
+                <div
+                  key={badgeItem.title}
+                  onClick={() =>
+                    onShowToast('Fitur Lencana Capaian Ibadah sedang dikunci sementara 🔒')
+                  }
+                  className="min-w-[210px] bg-[#f1f3ff]/80 p-3.5 rounded-2xl flex items-start gap-3 shadow-xs border border-[#1b4332]/10 shrink-0 cursor-pointer opacity-80 select-none"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#dce2f7] flex items-center justify-center text-[#414844] shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">lock</span>
                   </div>
-                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#ffdea5]/50 text-[10px] text-[#775a19] font-bold">
-                    +350 XP
-                  </span>
-                </div>
-              </div>
-
-              {/* Badge 2 */}
-              <div
-                onClick={() => {
-                  setSelectedMilestone('Penjaga Masjid');
-                  onShowToast('Penjaga Masjid: 100% Kehadiran Subuh Berjamaah selama 7 hari berturut-turut');
-                }}
-                className="min-w-[210px] bg-white p-3.5 rounded-2xl flex items-start gap-3 shadow-sm border border-[#1b4332]/5 shrink-0 cursor-pointer hover:bg-[#f9f9ff] transition-all"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#c1ecd4] flex items-center justify-center text-[#012d1d] shrink-0">
-                  <span
-                    className="material-symbols-outlined text-[22px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    mosque
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#141b2b] truncate">Penjaga Masjid</div>
-                  <div className="text-[11px] text-[#414844] line-clamp-2 mt-0.5">
-                    100% Subuh Berjamaah 7 hari
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-[#141b2b] truncate flex items-center gap-1">
+                      <span>{badgeItem.title}</span>
+                    </div>
+                    <div className="text-[11px] text-[#717973] line-clamp-2 mt-0.5">
+                      {badgeItem.desc}
+                    </div>
+                    <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-white text-[10px] text-[#414844] font-bold border border-[#1b4332]/10">
+                      <span className="material-symbols-outlined text-[11px]">lock</span>
+                      Dikunci
+                    </span>
                   </div>
-                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[10px] text-[#012d1d] font-bold">
-                    +500 XP
-                  </span>
                 </div>
-              </div>
-
-              {/* Badge 3 */}
-              <div
-                onClick={() => {
-                  setSelectedMilestone('Pembelajar Tanggap');
-                  onShowToast('Pembelajar Tanggap: Berhasil memperbaiki catatan tajwid pada percobaan kedua');
-                }}
-                className="min-w-[210px] bg-white p-3.5 rounded-2xl flex items-start gap-3 shadow-sm border border-[#1b4332]/5 shrink-0 cursor-pointer hover:bg-[#f9f9ff] transition-all"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#dce2f7] flex items-center justify-center text-[#414844] shrink-0">
-                  <span
-                    className="material-symbols-outlined text-[22px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    bolt
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#141b2b] truncate">Pembelajar Tanggap</div>
-                  <div className="text-[11px] text-[#414844] line-clamp-2 mt-0.5">
-                    Perbaiki tajwid seketika pada uji ulang
-                  </div>
-                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#e9edff] text-[10px] text-[#414844] font-bold">
-                    +150 XP
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -786,17 +757,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 remainingReciters.map((user) => (
                   <div
                     key={user.name + user.rank}
-                    onClick={() => onShowToast(`Melihat profil tilawah ${user.name} (${user.xp} XP)`)}
-                    className="w-full bg-white rounded-2xl p-3.5 shadow-sm border border-[#1b4332]/5 flex items-center justify-between gap-3 hover:bg-[#f9f9ff] active:scale-[0.99] transition-all cursor-pointer"
+                    className="w-full bg-white rounded-2xl p-3.5 shadow-sm border border-[#1b4332]/5 flex items-center justify-between gap-3 select-none"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="text-xs font-bold text-[#414844] w-5 text-center shrink-0">
                         {user.rank}
                       </span>
-                      <img
-                        className="w-10 h-10 rounded-full object-cover shrink-0 shadow-sm"
-                        alt={user.name}
-                        src={user.avatar}
+                      <PremiumInitialAvatar
+                        name={user.name}
+                        className="w-10 h-10 rounded-full shrink-0 shadow-sm"
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -815,8 +784,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-xs text-[#414844]">
-                          <span className="px-1.5 py-0.2 bg-[#f1f3ff] rounded-full text-[10px] font-semibold text-[#414844]">
-                            {user.tajweedAcc}% rata-rata
+                          <span className="px-1.5 py-0.2 bg-[#f1f3ff] rounded-full text-[10px] font-semibold text-[#717973] inline-flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px]">lock</span>
+                            Tilawah Dikunci
                           </span>
                           <span className="text-[10px] text-[#00452c] font-semibold">
                             🔥 {user.streak} hari
@@ -855,6 +825,149 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Modal Detail Profil & Peringkat Karyawan */}
+      {selectedLeaderboardUser && (
+        <div
+          onClick={() => setSelectedLeaderboardUser(null)}
+          className="fixed inset-0 z-[65] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#1b4332]/15 space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
+                  Peringkat #{selectedLeaderboardUser.rank} • {selectedLeaderboardUser.badge || 'Karyawan'}
+                </span>
+                <h3 className="text-base font-bold text-[#141b2b] mt-1">
+                  Capaian Ibadah &amp; Tilawah
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLeaderboardUser(null)}
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2">
+              <div className="relative">
+                <PremiumInitialAvatar
+                  name={selectedLeaderboardUser.name}
+                  className="w-20 h-20 rounded-full ring-4 ring-white shadow-md"
+                />
+                <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-[#012d1d] text-[#fed488] text-[11px] font-extrabold shadow">
+                  #{selectedLeaderboardUser.rank}
+                </span>
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-[#141b2b]">
+                  {selectedLeaderboardUser.name}
+                </h4>
+                <p className="text-xs text-[#414844] mt-0.5">
+                  {selectedLeaderboardUser.roleOrCircle || activeHalaqahTarget}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
+                <span className="text-base font-extrabold text-emerald-950 tabular-nums">
+                  {selectedLeaderboardUser.xp.toLocaleString()}
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                <span className="text-[10px] font-semibold text-amber-800 uppercase block">Istiqamah</span>
+                <span className="text-base font-extrabold text-amber-950">
+                  {selectedLeaderboardUser.streak} Hari
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] font-semibold text-slate-600 uppercase block">Tilawah</span>
+                <span className="text-xs font-bold text-slate-600 inline-flex items-center justify-center gap-0.5 mt-1">
+                  <span className="material-symbols-outlined text-[14px]">lock</span>
+                  Dikunci
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedLeaderboardUser(null)}
+              className="w-full py-2.5 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Tutup Profil
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Lencana Capaian Ibadah */}
+      {selectedMilestone && (
+        <div
+          onClick={() => setSelectedMilestone(null)}
+          className="fixed inset-0 z-[65] bg-[#141b2b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#1b4332]/15 space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#fed488]/40 text-[#775a19] flex items-center justify-center">
+                  <span
+                    className="material-symbols-outlined text-[22px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {selectedMilestone.icon}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-[#775a19] uppercase tracking-wider block">
+                    Lencana Capaian Ibadah
+                  </span>
+                  <h3 className="text-base font-bold text-[#141b2b]">{selectedMilestone.title}</h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMilestone(null)}
+                className="w-8 h-8 rounded-full bg-[#f1f3ff] hover:bg-[#e4e7ff] text-[#414844] flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-2 text-xs text-[#414844] leading-relaxed">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#141b2b]">Apresiasi Poin:</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] font-bold">
+                  {selectedMilestone.xp}
+                </span>
+              </div>
+              <p>{selectedMilestone.desc}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-950">
+              <strong className="block mb-0.5">💡 Tips Meraih Lencana:</strong>
+              {selectedMilestone.tips}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMilestone(null)}
+              className="w-full py-2.5 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

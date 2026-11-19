@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ActiveUser, HalaqahAttendanceSession, MemberAttendance, AttendanceStatus, UstadzAttendanceStatus } from '../types';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
 
 interface HalaqahAttendanceManagerProps {
   activeUser: ActiveUser;
@@ -18,8 +20,10 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
   onDeleteSession,
   onShowToast
 }) => {
-  // Target Halaqah that this Ustadz leads (default to activeUser.halaqah)
+  // Target Halaqah that this Ustadz/ah leads (default to activeUser.halaqah)
   const targetHalaqah = activeUser.halaqah || 'Halaqah Al-Fajr';
+  const ustadzRoleLabel = getUstadzTitle(activeUser);
+  const ustadzDisplayName = formatSupervisorDisplayName(activeUser.name, activeUser.gender);
 
   // Get members belonging to this halaqah
   const halaqahMembers = useMemo(() => {
@@ -228,7 +232,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
       sessionTitle: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? 'Tidak Ada Halaqah' : (sessionTitle.trim() || 'Halaqah Rutin'),
       location: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? '-' : (sessionLocation.trim() || 'Masjid Al-Ikhlas'),
       ustadzId: activeUser.id,
-      ustadzName: activeUser.name || 'Ustadz',
+      ustadzName: ustadzDisplayName || 'Ustadz/ah',
       ustadzAvatar: activeUser.avatar || '',
       ustadzStatus: ustadzStatus,
       ustadzNotes: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? '-' : (ustadzNotes.trim() || ''),
@@ -279,7 +283,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
             <div className="min-w-0 flex-1">
               <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
                 <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9.5px] sm:text-[10px] font-extrabold uppercase tracking-wider whitespace-nowrap">
-                  Presensi Resmi Ustadz
+                  Presensi Resmi {ustadzRoleLabel}
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-[#92f7c3] font-bold whitespace-nowrap">
                   <span className="w-2 h-2 rounded-full bg-[#92f7c3] animate-ping shrink-0" />
@@ -290,7 +294,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                 Presensi {targetHalaqah}
               </h2>
               <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug break-words">
-                Ustadz Pembimbing: <strong>{activeUser.name}</strong> • Kode: <span className="font-mono text-[#fed488] font-bold">{activeUser.halaqahCode || 'HF-4092'}</span>
+                {ustadzRoleLabel} Pembimbing: <strong>{ustadzDisplayName}</strong> • Kode: <span className="font-mono text-[#fed488] font-bold">{activeUser.halaqahCode || 'HF-4092'}</span>
               </p>
             </div>
           </div>
@@ -412,7 +416,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#785a1a]">shield_person</span>
-                <h3 className="font-bold text-sm text-[#141b2b]">2. Presensi Ustadz Pembimbing ({activeUser.name})</h3>
+                <h3 className="font-bold text-sm text-[#141b2b]">2. Presensi {ustadzRoleLabel} Pembimbing ({ustadzDisplayName})</h3>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-[#fed488]/30 text-[#785a1a] text-[10px] font-bold">
                 Wajib Terisi
@@ -421,32 +425,32 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
 
             <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/10 space-y-3">
               <div className="flex items-center gap-3">
-                <img
-                  src={activeUser.avatar}
-                  alt={activeUser.name}
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-[#c1ecd4]"
+                <PremiumInitialAvatar
+                  name={ustadzDisplayName}
+                  role={activeUser.role}
+                  className="w-11 h-11 rounded-full ring-2 ring-[#c1ecd4]"
                 />
                 <div className="min-w-0">
                   <span className="font-bold text-sm text-[#141b2b] block truncate">
-                    {activeUser.name}
+                    {ustadzDisplayName}
                   </span>
                   <span className="text-xs text-[#717973] block truncate">
-                    Ustadz Pembimbing Resmi • {targetHalaqah}
+                    {ustadzRoleLabel} Pembimbing Resmi • {targetHalaqah}
                   </span>
                 </div>
               </div>
 
-              {/* Status Radio Buttons for Ustadz */}
+              {/* Status Radio Buttons for Ustadz/ah */}
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1.5">
-                  Status Kehadiran Ustadz Pembimbing:
+                  Status Kehadiran {ustadzRoleLabel} Pembimbing:
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { val: 'hadir' as const, label: '✓ Hadir Membina', color: 'bg-[#e9fbf2] text-[#00452c] border-[#92f7c3]' },
                     { val: 'izin' as const, label: '✉ Izin Dinas', color: 'bg-blue-50 text-blue-900 border-blue-200' },
                     { val: 'sakit' as const, label: '🏥 Sakit', color: 'bg-amber-50 text-amber-900 border-amber-200' },
-                    { val: 'pengganti' as const, label: '👤 Ustadz Pengganti', color: 'bg-purple-50 text-purple-900 border-purple-200' }
+                    { val: 'pengganti' as const, label: '👤 Ustadz/ah Pengganti', color: 'bg-purple-50 text-purple-900 border-purple-200' }
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -479,7 +483,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                 />
               </div>
 
-              {/* Tambahan Fields jika Ustadz Pengganti */}
+              {/* Tambahan Fields jika Ustadz/ah Pengganti */}
               {ustadzStatus === 'pengganti' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#f1f3ff]">
                   <div>
@@ -488,7 +492,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                       type="text"
                       value={penggantiName}
                       onChange={(e) => setPenggantiName(e.target.value)}
-                      placeholder="Nama ustadz pengganti..."
+                      placeholder="Nama ustadz/ah pengganti..."
                       className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#1b4332]/15 text-xs text-[#141b2b] focus:outline-none focus:ring-2 focus:ring-[#00452c]/30 font-medium"
                     />
                   </div>
@@ -578,10 +582,9 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                           <span className="text-xs font-mono font-bold text-[#717973] w-5 text-center">
                             {idx + 1}.
                           </span>
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-gray-200"
+                          <PremiumInitialAvatar
+                            name={member.name}
+                            className="w-10 h-10 rounded-full shrink-0 ring-1 ring-gray-200"
                           />
                           <div className="min-w-0">
                             <span className="font-bold text-xs sm:text-sm text-[#141b2b] truncate block">
@@ -686,7 +689,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
               <span className="material-symbols-outlined text-4xl text-[#717973]">event_busy</span>
               <h4 className="font-bold text-sm text-[#141b2b]">Belum ada riwayat sesi presensi</h4>
               <p className="text-xs text-[#717973] max-w-sm mx-auto">
-                Sesi presensi yang diisi oleh Ustadz akan tersimpan di sini dan langsung sinkron ke akun Dept HX.
+                Sesi presensi yang diisi oleh Ustadz/ah akan tersimpan di sini dan langsung sinkron ke akun Dept HX.
               </p>
               <button
                 type="button"
@@ -701,7 +704,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
               {halaqahHistory.map((session) => (
                 <div
                   key={session.id}
-                  className="p-4 rounded-3xl bg-white shadow-sm border border-[#1b4332]/10 hover:shadow-md transition-all space-y-3"
+                  onClick={() => setSelectedHistorySession(session)}
+                  className="p-4 rounded-3xl bg-white shadow-sm border border-[#1b4332]/10 hover:border-[#012d1d]/30 hover:shadow-md transition-all space-y-3 cursor-pointer"
                 >
                   {/* Header Row */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#f1f3ff]">
@@ -726,7 +730,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <div className="text-right">
                         <span className="text-base font-extrabold text-[#00452c] block">
                           {session.presentCount}/{session.totalMembers} Hadir
@@ -766,14 +770,14 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
 
                   {/* Ustadz Attendance Subcard */}
                   <div className="p-3 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/5 flex items-start gap-3">
-                    <img
-                      src={session.ustadzAvatar || activeUser.avatar}
-                      alt={session.ustadzName}
-                      className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-emerald-300"
+                    <PremiumInitialAvatar
+                      name={session.ustadzName}
+                      role="admin"
+                      className="w-9 h-9 rounded-full shrink-0 ring-1 ring-emerald-300"
                     />
                     <div className="min-w-0 flex-1 text-xs">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <strong className="text-[#141b2b]">{session.ustadzName}</strong>
+                        <strong className="text-[#141b2b]">{formatSupervisorDisplayName(session.ustadzName)}</strong>
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                             session.ustadzStatus === 'hadir'
@@ -783,7 +787,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                               : 'bg-amber-100 text-amber-900'
                           }`}
                         >
-                          Ustadz {session.ustadzStatus}
+                          {getUstadzTitle(session.ustadzName)} {session.ustadzStatus}
                         </span>
                       </div>
                       {session.ustadzNotes && (
@@ -830,14 +834,14 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
             {/* Ustadz Info */}
             <div className="p-3 rounded-2xl bg-[#e9fbf2] border border-[#92f7c3]/60 flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2.5">
-                <img
-                  src={selectedHistorySession.ustadzAvatar || activeUser.avatar}
-                  alt={selectedHistorySession.ustadzName}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white"
+                <PremiumInitialAvatar
+                  name={selectedHistorySession.ustadzName}
+                  role="admin"
+                  className="w-10 h-10 rounded-full ring-2 ring-white"
                 />
                 <div>
-                  <span className="text-[10px] text-[#717973] uppercase font-bold block">Ustadz Pembimbing:</span>
-                  <strong className="text-sm text-[#00452c]">{selectedHistorySession.ustadzName}</strong>
+                  <span className="text-[10px] text-[#717973] uppercase font-bold block">{getUstadzTitle(selectedHistorySession.ustadzName)} Pembimbing:</span>
+                  <strong className="text-sm text-[#00452c]">{formatSupervisorDisplayName(selectedHistorySession.ustadzName)}</strong>
                   <span className="text-[11px] text-[#414844] block">
                     {selectedHistorySession.ustadzNotes || 'Membina halaqah'}
                   </span>
@@ -875,13 +879,10 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                       <span className="font-mono text-[#717973] text-[11px] w-4 text-center">
                         {idx + 1}.
                       </span>
-                      {m.userAvatar && (
-                        <img
-                          src={m.userAvatar}
-                          alt={m.userName}
-                          className="w-7 h-7 rounded-full object-cover shrink-0"
-                        />
-                      )}
+                      <PremiumInitialAvatar
+                        name={m.userName}
+                        className="w-7 h-7 rounded-full shrink-0"
+                      />
                       <div className="min-w-0">
                         <span className="font-bold text-[#141b2b] block truncate">{m.userName}</span>
                         {m.notes && <span className="text-[10px] text-[#717973] block truncate">{m.notes}</span>}

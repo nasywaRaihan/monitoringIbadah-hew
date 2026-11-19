@@ -110,7 +110,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           assignedHalaqahBy: 'Import Dept HX',
           hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
           hxStatus: 'Resmi Dept HX',
-          supervisor: item.supervisor || 'Ustadz Pembimbing'
+          supervisor: item.supervisor || 'Ustadz/ah Pembimbing'
         }));
         localStorage.setItem(
           'noorworship_registered_users_prod_v1',
@@ -468,7 +468,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                   💡 Panduan Format Spreadsheet Per Kolom:
                 </span>
                 <p className="leading-relaxed">
-                  1. File template dibuat dalam format <strong>Sheet / Excel (.xlsx)</strong> asli, di mana <strong>Kolom A: No</strong>, <strong>Kolom B: Nama Karyawan</strong>, <strong>Kolom C: Kelompok Halaqah</strong>, <strong>Kolom D: Ustadz Pembimbing</strong>, dan <strong>Kolom E: Passcode Login</strong>. Data tidak akan menyatu dalam satu kolom.
+                  1. File template dibuat dalam format <strong>Sheet / Excel (.xlsx)</strong> asli, di mana <strong>Kolom A: No</strong>, <strong>Kolom B: Nama Karyawan</strong>, <strong>Kolom C: Kelompok Halaqah</strong>, <strong>Kolom D: Ustadz/ah Pembimbing</strong>, dan <strong>Kolom E: Passcode Login</strong>. Data tidak akan menyatu dalam satu kolom.
                 </p>
                 <p className="leading-relaxed">
                   2. Jika nama halaqah pada data belum terdaftar, sistem akan <strong>otomatis membuat kelompok halaqah baru</strong> untuk karyawan tersebut.
@@ -552,17 +552,15 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                   {/* Connected User Card */}
                   <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#f1f3ff]">
                     <div className="flex items-center gap-3 min-w-0">
-                      {user.photoURL ? (
-                        <img
-                          src={user.photoURL}
-                          alt={user.displayName || 'Google User'}
-                          className="w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-[#c1ecd4]"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-[#012d1d] text-white flex items-center justify-center font-bold shrink-0">
-                          {(user.displayName || user.email || 'G')[0].toUpperCase()}
-                        </div>
-                      )}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#012d1d] via-[#0e3a26] to-[#1b4332] text-[#fed488] ring-1 ring-[#fed488]/40 flex items-center justify-center font-extrabold text-xs tracking-wider uppercase shrink-0 shadow-sm">
+                        {(user.displayName || user.email || 'JT')
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((w: string) => w[0])
+                          .join('')
+                          .toUpperCase()}
+                      </div>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-[#141b2b] truncate">
                           {user.displayName || 'Pengguna Google'}

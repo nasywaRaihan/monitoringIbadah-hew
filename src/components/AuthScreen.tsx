@@ -1,6 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { ActiveUser } from '../types';
 import { BRAND_ASSETS } from '../data/mockData';
+import {
+  verifyDeptHXPasscode,
+  verifyUstadzPasscode,
+  getUstadzPasscodeForHalaqah,
+  getLockoutRemainingSeconds,
+  recordFailedAuthAttempt,
+  resetFailedAuthAttempts
+} from '../services/securityService';
+import { formatSupervisorDisplayName } from '../services/ustadzTitle';
 
 interface AuthScreenProps {
   registeredUsers: ActiveUser[];
@@ -46,8 +55,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               map.set(h.name, {
                 name: h.name,
                 code: h.code || 'HL-1001',
-                pin: h.pin || '1234',
-                supervisor: h.supervisor || 'Ustadz Pembimbing'
+                pin: getUstadzPasscodeForHalaqah(h.name, registeredUsers),
+                supervisor: formatSupervisorDisplayName(h.supervisor)
               });
             }
           });
@@ -60,8 +69,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         map.set(u.halaqah, {
           name: u.halaqah,
           code: u.halaqahCode || 'HL-1001',
-          pin: u.role === 'admin' ? u.passcode || '1234' : '1234',
-          supervisor: u.role === 'admin' ? u.name : u.supervisor || 'Ustadz Pembimbing'
+          pin: getUstadzPasscodeForHalaqah(u.halaqah, registeredUsers),
+          supervisor: u.role === 'admin' ? formatSupervisorDisplayName(u.name, u.gender) : formatSupervisorDisplayName(u.supervisor)
         });
       }
     });
@@ -100,6 +109,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     e.preventDefault();
     setSantriError(null);
 
+    const remLock = getLockoutRemainingSeconds('santri');
+    if (remLock > 0) {
+      setSantriError(`Akses dikunci sementara karena terlalu banyak percobaan gagal. Silakan tunggu ${remLock} detik.`);
+      return;
+    }
+
     const cleanIdentifier = santriIdentifier.trim().toLowerCase();
     const cleanPass = santriPassword.trim();
 
@@ -126,17 +141,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       if (!matched) {
         setIsSubmittingSantri(false);
         setSantriError(
-          'Nama karyawan belum terdaftar di database Dept HX. Silakan masuk ke tab Dept HX terlebih dahulu untuk mendaftarkan nama karyawan atau mengimpor dari Excel (.xlsx).'
+          'Nama karyawan belum terdaftar di database Dept HX. Silakan hubungi Dept HX untuk pendaftaran akun.'
         );
         return;
       }
 
       if (matched.passcode && matched.passcode !== cleanPass) {
         setIsSubmittingSantri(false);
-        setSantriError('PIN / Kata sandi tidak sesuai dengan data pendaftaran Dept HX.');
+        const attempt = recordFailedAuthAttempt('santri');
+        if (attempt.locked) {
+          setSantriError(`Akses dikunci selama ${attempt.lockoutSeconds} detik karena 5x percobaan PIN salah.`);
+        } else {
+          setSantriError(`PIN / Kata sandi tidak sesuai! Sisa percobaan: ${attempt.remainingAttempts}x.`);
+        }
         return;
       }
 
+      resetFailedAuthAttempts('santri');
       setIsSubmittingSantri(false);
       onShowToast(
         `Ahlan wa Sahlan, ${matched.name}! Anda masuk ke ${matched.halaqah}.`
@@ -150,6 +171,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     e.preventDefault();
     setUstadzError(null);
 
+    const remLock = getLockoutRemainingSeconds('ustadz');
+    if (remLock > 0) {
+      setUstadzError(`Akses Ustadz/ah dikunci sementara. Tunggu ${remLock} detik sebelum mencoba kembali.`);
+      return;
+    }
+
     const targetHalaqahName = selectedHalaqah || availableHalaqahs[0]?.name || '';
     if (!targetHalaqahName) {
       setUstadzError(
@@ -160,7 +187,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     const cleanPass = ustadzPasscode.trim();
     if (!cleanPass) {
-      setUstadzError('Masukkan PIN / Passcode Supervisor Ustadz');
+      setUstadzError('Masukkan PIN / Passcode Supervisor Ustadz/ah');
       return;
     }
 
@@ -172,30 +199,41 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         (u) => u.role === 'admin' && u.halaqah === targetHalaqahName
       );
 
-      const expectedPass = existingUstadz?.passcode || currentHalaqah?.pin || '1234';
-      if (cleanPass !== expectedPass && cleanPass !== '1234' && cleanPass !== 'admin123') {
+      if (!verifyUstadzPasscode(targetHalaqahName, cleanPass, registeredUsers)) {
         setIsSubmittingUstadz(false);
-        setUstadzError('Passcode supervisor salah! Silakan periksa kembali PIN Ustadz Anda.');
+        const attempt = recordFailedAuthAttempt('ustadz');
+        if (attempt.locked) {
+          setUstadzError(
+            `Akses dikunci selama ${attempt.lockoutSeconds} detik karena 5x percobaan PIN salah.`
+          );
+        } else {
+          setUstadzError(
+            `Passcode supervisor untuk ${targetHalaqahName} salah! Sisa percobaan: ${attempt.remainingAttempts}x.`
+          );
+        }
         return;
       }
 
+      resetFailedAuthAttempts('ustadz');
       setIsSubmittingUstadz(false);
 
-      const targetUstadz: ActiveUser = existingUstadz || {
-        id: `ustadz-${targetHalaqahName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-        name: currentHalaqah?.supervisor || 'Ustadz Pembimbing',
-        halaqah: targetHalaqahName,
-        halaqahCode: currentHalaqah?.code || 'HL-1001',
-        passcode: cleanPass,
-        avatar: BRAND_ASSETS.currentUserAvatar,
-        role: 'admin',
-        totalXp: 0,
-        streakDays: 0,
-        supervisor: 'Direktorat Dept HX',
-        assignedHalaqahBy: 'Dept HX',
-        hxAssignmentId: `HX-USTADZ-${currentHalaqah?.code || '001'}`,
-        hxStatus: 'Resmi Dept HX'
-      };
+      const targetUstadz: ActiveUser = existingUstadz
+        ? { ...existingUstadz, passcode: cleanPass }
+        : {
+            id: `ustadz-${targetHalaqahName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+            name: formatSupervisorDisplayName(currentHalaqah?.supervisor),
+            halaqah: targetHalaqahName,
+            halaqahCode: currentHalaqah?.code || 'HL-1001',
+            passcode: cleanPass,
+            avatar: BRAND_ASSETS.currentUserAvatar,
+            role: 'admin',
+            totalXp: 0,
+            streakDays: 0,
+            supervisor: 'Direktorat Dept HX',
+            assignedHalaqahBy: 'Dept HX',
+            hxAssignmentId: `HX-USTADZ-${currentHalaqah?.code || '001'}`,
+            hxStatus: 'Resmi Dept HX'
+          };
 
       onShowToast(
         `Ahlan wa Sahlan, ${targetUstadz.name}! Konsol Halaqah ${targetUstadz.halaqah} aktif.`
@@ -209,6 +247,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     e.preventDefault();
     setDeptHXError(null);
 
+    const remLock = getLockoutRemainingSeconds('dept-hx');
+    if (remLock > 0) {
+      setDeptHXError(`Otorisasi Dept HX terkunci sementara. Silakan tunggu ${remLock} detik.`);
+      return;
+    }
+
     const cleanPass = deptHXPasscode.trim();
     if (!cleanPass) {
       setDeptHXError('Masukkan kode otorisasi Dept HX');
@@ -218,13 +262,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsSubmittingDeptHX(true);
 
     setTimeout(() => {
-      const validCodes = ['hx2026', 'HX2026', '1234', 'HX-HQ-01', 'hx-hq-01', 'admin123'];
-      if (!validCodes.includes(cleanPass)) {
+      if (!verifyDeptHXPasscode(cleanPass, registeredUsers)) {
         setIsSubmittingDeptHX(false);
-        setDeptHXError('Kode otorisasi tidak valid! Gunakan kode resmi Dept HX.');
+        const attempt = recordFailedAuthAttempt('dept-hx');
+        if (attempt.locked) {
+          setDeptHXError(
+            `Otorisasi Dept HX dikunci selama ${attempt.lockoutSeconds} detik karena 5x percobaan gagal.`
+          );
+        } else {
+          setDeptHXError(
+            `Kode otorisasi tidak valid! Sisa percobaan: ${attempt.remainingAttempts}x.`
+          );
+        }
         return;
       }
 
+      resetFailedAuthAttempts('dept-hx');
       setIsSubmittingDeptHX(false);
 
       const deptUser = registeredUsers.find((u) => u.role === 'dept-hx' || u.role === 'hq-admin') || {
@@ -311,7 +364,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">groups</span>
-              <span>Ustadz</span>
+              <span>Ustadz/ah</span>
             </button>
 
             <button
@@ -394,7 +447,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       </span>
                     </p>
                     <p className="text-[10px] text-[#414844] mt-0.5">
-                      Pembimbing: {matchedSantri.supervisor || 'Ustadz Pembimbing'}
+                      Pembimbing: {formatSupervisorDisplayName(matchedSantri.supervisor)}
                     </p>
                   </div>
                 </div>
@@ -493,10 +546,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
                   <span className="material-symbols-outlined text-[18px]">shield_person</span>
-                  <span className="text-xs uppercase tracking-wider">Portal Masuk Supervisor Ustadz</span>
+                  <span className="text-xs uppercase tracking-wider">Portal Masuk Supervisor Ustadz/ah</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Pilih lingkaran halaqah binaan Anda dan masukkan PIN Ustadz untuk mengakses konsol evaluasi tajwid dan presensi halaqah.
+                  Pilih lingkaran halaqah binaan Anda dan masukkan PIN Ustadz/ah untuk mengakses konsol evaluasi tajwid dan presensi halaqah.
                 </p>
               </div>
 
@@ -538,7 +591,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-[#141b2b]">
-                    PIN / Passcode Supervisor Ustadz
+                    PIN / Passcode Supervisor Ustadz/ah
                   </label>
                 </div>
                 <div className="relative flex items-center">
@@ -553,7 +606,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setUstadzPasscode(e.target.value);
                       if (ustadzError) setUstadzError(null);
                     }}
-                    placeholder="Masukkan passcode supervisor Ustadz"
+                    placeholder="Masukkan passcode supervisor Ustadz/ah"
                     className="w-full pl-9.5 pr-10 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
                   <button
@@ -583,7 +636,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">shield_person</span>
-                    <span>Masuk Konsol Halaqah Ustadz</span>
+                    <span>Masuk Konsol Halaqah Ustadz/ah</span>
                   </>
                 )}
               </button>
@@ -601,7 +654,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span className="text-xs uppercase tracking-wider">Area Otoritas Direktorat Dept HX</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Akses khusus pengurus pusat untuk pendaftaran karyawan asli, pembuatan kelompok halaqah, penetapan Ustadz pembimbing, dan rekapitulasi mutaba&apos;ah.
+                  Akses khusus pengurus pusat untuk pendaftaran karyawan asli, pembuatan kelompok halaqah, penetapan Ustadz/ah pembimbing, dan rekapitulasi mutaba&apos;ah.
                 </p>
               </div>
 

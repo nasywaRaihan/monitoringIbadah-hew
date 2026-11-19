@@ -127,7 +127,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </p>
 
         <span className="text-[10px] text-white/40 mt-1">
-          Dikelola untuk kemudahan Karyawan &amp; Ustadz Pembimbing
+          Dikelola untuk kemudahan Karyawan &amp; Ustadz/ah Pembimbing
         </span>
       </div>
     </div>

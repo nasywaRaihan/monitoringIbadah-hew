@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { ActiveUser } from '../types';
+import { ActiveUser, HalaqahAttendanceSession } from '../types';
 import { downloadPerColumnCSV } from '../services/csvExport';
+import { pushNotification } from '../services/notificationService';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
 
 interface HalaqahStudentsScreenProps {
   activeUser?: ActiveUser;
   registeredUsers: ActiveUser[];
+  attendanceSessions?: HalaqahAttendanceSession[];
   onShowToast: (msg: string) => void;
   onDeleteStudent?: (studentId: string) => void;
 }
@@ -33,12 +37,14 @@ const DEFAULT_HALAQAH_STUDENTS: StudentPerformanceRecord[] = [];
 export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
   activeUser,
   registeredUsers,
+  attendanceSessions,
   onShowToast,
   onDeleteStudent
 }) => {
   const currentHalaqah = activeUser?.halaqah || 'Halaqah Binaan';
   const halaqahCode = activeUser?.halaqahCode || 'HL-1001';
-  const supervisorName = activeUser?.name || 'Ustadz Pembimbing';
+  const supervisorName = formatSupervisorDisplayName(activeUser?.name, activeUser?.gender);
+  const ustadzRoleLabel = getUstadzTitle(activeUser);
 
   // Merge registered members if any match current halaqah
   const [students, setStudents] = useState<StudentPerformanceRecord[]>(() => {
@@ -97,13 +103,57 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     onShowToast(`Data Karyawan "${student.name}" berhasil dihapus.`);
   };
 
+  // Helper to compute real halaqah attendance for a student from attendanceSessions
+  const computeStudentHalaqahAttendance = React.useCallback(
+    (studentId: string, studentName: string, studentHalaqah: string) => {
+      if (!attendanceSessions || attendanceSessions.length === 0) {
+        return { label: '0/0 Pertemuan', percent: 0 };
+      }
+      const normHalaqah = (studentHalaqah || currentHalaqah).toLowerCase();
+      const normName = (studentName || '').toLowerCase();
+
+      const matchingSessions = attendanceSessions.filter((session) => {
+        const sessionHalaqah = (session.halaqahName || '').toLowerCase();
+        const isSameHalaqah = sessionHalaqah === normHalaqah;
+        const hasStudent = (session.members || []).some(
+          (m) => m.userId === studentId || (m.userName || '').toLowerCase() === normName
+        );
+        return isSameHalaqah || hasStudent;
+      });
+
+      const total = matchingSessions.length;
+      if (total === 0) {
+        return { label: '0/0 Pertemuan', percent: 0 };
+      }
+
+      const hadirCount = matchingSessions.filter((session) => {
+        const memberRecord = (session.members || []).find(
+          (m) => m.userId === studentId || (m.userName || '').toLowerCase() === normName
+        );
+        return memberRecord?.status === 'hadir';
+      }).length;
+
+      const percent = Math.round((hadirCount / total) * 100);
+      return {
+        label: `${hadirCount}/${total} Hadir`,
+        percent
+      };
+    },
+    [attendanceSessions, currentHalaqah]
+  );
+
   // Merge dynamically registered users matching current halaqah
   const effectiveStudents = React.useMemo(() => {
     const map = new Map<string, StudentPerformanceRecord>();
 
-    // 1. Add stored/default students
+    // 1. Add stored/default students with real attendance synced
     students.forEach((st) => {
-      map.set(st.id, st);
+      const att = computeStudentHalaqahAttendance(st.id, st.name, st.halaqah);
+      map.set(st.id, {
+        ...st,
+        masjidAttendance: att.label,
+        masjidPercent: att.percent
+      });
     });
 
     // 2. Add registered users from Dept HX
@@ -117,31 +167,33 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
             activeUser?.role === 'dept-hx' ||
             activeUser?.role === 'hq-admin');
 
-        if (isMatch && !map.has(u.id)) {
+        if (isMatch) {
+          const existing = map.get(u.id);
+          const att = computeStudentHalaqahAttendance(u.id, u.name, uHalaqah);
           map.set(u.id, {
             id: u.id,
             name: u.name,
-            avatar: u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            avatar: u.avatar || existing?.avatar || '',
             halaqah: uHalaqah,
-            halaqahCode: u.halaqahCode || halaqahCode,
-            xp: u.totalXp || 0,
-            streak: u.streakDays || 0,
-            masjidAttendance: '20/20 Hadir',
-            masjidPercent: 100,
-            tajweedScore: 92,
-            lastSurah: 'Surah Al-Mulk (Ayat 1-10)',
-            status: 'Mumtaz',
-            completedDailyTasks: 4,
-            totalDailyTasks: 6,
-            recentNotes: `Karyawan resmi ${uHalaqah} terdaftar via Dept HX.`,
-            parentContact: u.phone || '-'
+            halaqahCode: u.halaqahCode || existing?.halaqahCode || halaqahCode,
+            xp: u.totalXp ?? existing?.xp ?? 0,
+            streak: u.streakDays ?? existing?.streak ?? 0,
+            masjidAttendance: att.label,
+            masjidPercent: att.percent,
+            tajweedScore: existing?.tajweedScore ?? 92,
+            lastSurah: existing?.lastSurah || 'Surah Al-Mulk (Ayat 1-10)',
+            status: existing?.status || 'Mumtaz',
+            completedDailyTasks: existing?.completedDailyTasks ?? 4,
+            totalDailyTasks: existing?.totalDailyTasks ?? 6,
+            recentNotes: existing?.recentNotes || `Karyawan resmi ${uHalaqah} terdaftar via Dept HX.`,
+            parentContact: u.phone || existing?.parentContact || '-'
           });
         }
       });
     }
 
     return Array.from(map.values());
-  }, [students, registeredUsers, currentHalaqah, halaqahCode, activeUser?.role]);
+  }, [students, registeredUsers, currentHalaqah, halaqahCode, activeUser?.role, computeStudentHalaqahAttendance]);
 
   const filteredStudents = effectiveStudents.filter((s) => {
     if (deletedStudentIds.includes(s.id) || deletedStudentIds.includes(s.name)) return false;
@@ -172,7 +224,18 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       );
       localStorage.setItem('noorworship_halaqah_students_prod_v1', JSON.stringify(updated));
     } catch {}
-    onShowToast(`Catatan bimbingan untuk ${selectedStudent.name} berhasil disimpan!`);
+    if (note) {
+      pushNotification({
+        targetUserId: selectedStudent.id,
+        recipientName: selectedStudent.name,
+        targetHalaqah: selectedStudent.halaqah,
+        senderName: supervisorName,
+        title: `Catatan Bimbingan ${ustadzRoleLabel}`,
+        message: note,
+        type: 'reminder',
+      });
+    }
+    onShowToast(`Catatan bimbingan untuk ${selectedStudent.name} berhasil disimpan & dikirim ke notifikasi!`);
     setSelectedStudent(null);
   };
 
@@ -183,7 +246,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       'Nama Karyawan',
       'Halaqah',
       'Kode Halaqah',
-      'Ustadz Pembimbing',
+      'Ustadz/ah Pembimbing',
       'Status Mutabaah',
       'Total XP',
       'Streak Hari',
@@ -192,7 +255,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       'Skor Tajwid Ujian',
       'Surah Terakhir',
       'Kontak Darurat',
-      'Catatan Ustadz'
+      'Catatan Ustadz/ah'
     ];
 
     const rows = students.map((s, idx) => [
@@ -219,13 +282,15 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     onShowToast(`File Excel rekap karyawan ${currentHalaqah} berhasil diunduh (per kolom rapi)!`);
   };
 
-  const avgAttendance = Math.round(
-    students.reduce((acc, s) => acc + s.masjidPercent, 0) / (students.length || 1)
-  );
-  const avgTajweed = (
-    students.reduce((acc, s) => acc + s.tajweedScore, 0) / (students.length || 1)
-  ).toFixed(1);
-  const mumtazCount = students.filter((s) => s.status === 'Mumtaz').length;
+  const avgAttendance = effectiveStudents.length > 0
+    ? Math.round(
+        effectiveStudents.reduce((acc, s) => acc + s.masjidPercent, 0) / effectiveStudents.length
+      )
+    : 0;
+  const mumtazCount = effectiveStudents.filter((s) => s.status === 'Mumtaz').length;
+  const activeSelectedStudent = selectedStudent
+    ? effectiveStudents.find((s) => s.id === selectedStudent.id) || selectedStudent
+    : null;
 
   return (
     <div className="flex flex-col w-full px-4 md:px-6 py-3 space-y-4 max-w-4xl mx-auto pb-28">
@@ -255,21 +320,21 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               {currentHalaqah}
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
-              Ustadz Pembimbing: <strong className="text-white">{supervisorName}</strong> • {students.length} Karyawan Binaan Aktif
+              {ustadzRoleLabel} Pembimbing: <strong className="text-white">{supervisorName}</strong> • {students.length} Karyawan Binaan Aktif
             </p>
           </div>
 
           {/* Quick Metrics */}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
               <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Mumtaz</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-[#ffdea5] tabular-nums leading-none">{mumtazCount}</span>
-                <span className="text-[10px] sm:text-xs text-[#ffdea5]/80 leading-tight">/{students.length}</span>
+                <span className="text-[10px] sm:text-xs text-[#ffdea5]/80 leading-tight">/{effectiveStudents.length}</span>
               </div>
             </div>
 
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
               <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Presensi Jamaah</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">{avgAttendance}%</span>
@@ -277,12 +342,12 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden">
-              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Rata-rata Tajwid</span>
-              <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
-                <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">{avgTajweed}%</span>
-                <span className="material-symbols-outlined text-[12px] sm:text-[13px] text-[#92f7c3] shrink-0">
-                  verified
+            <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Penilaian Tilawah</span>
+              <div className="flex items-center flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
+                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#ffdea5] leading-none">
+                  <span className="material-symbols-outlined text-[14px]">lock</span>
+                  <span>Dikunci</span>
                 </span>
               </div>
             </div>
@@ -367,14 +432,14 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
           return (
             <div
               key={student.id}
-              className="p-4 rounded-2xl bg-white border border-[#1b4332]/8 shadow-sm flex flex-col justify-between gap-3 hover:shadow-md transition-all"
+              onClick={() => handleOpenDetail(student)}
+              className="p-4 rounded-2xl bg-white border border-[#1b4332]/8 hover:border-[#012d1d]/30 shadow-sm flex flex-col justify-between gap-3 hover:shadow-md transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="w-12 h-12 rounded-full object-cover shrink-0 border border-[#1b4332]/10 shadow-2xs"
+                  <PremiumInitialAvatar
+                    name={student.name}
+                    className="w-12 h-12 rounded-full shrink-0 border border-[#1b4332]/10 shadow-2xs"
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -412,8 +477,9 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
 
               <div className="flex items-center justify-between text-xs pt-1 border-t border-[#f1f3ff]">
                 <div className="min-w-0 pr-2">
-                  <span className="text-[11px] text-[#414844] block truncate">
-                    📖 Terakhir: <strong>{student.lastSurah}</strong>
+                  <span className="text-[11px] text-[#717973] inline-flex items-center gap-1 truncate">
+                    <span className="material-symbols-outlined text-[13px]">lock</span>
+                    <span>Tilawah Dikunci</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -461,10 +527,9 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
           <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between pb-3 border-b border-[#f1f3ff]">
               <div className="flex items-center gap-3">
-                <img
-                  src={selectedStudent.avatar}
-                  alt={selectedStudent.name}
-                  className="w-12 h-12 rounded-full object-cover border border-[#1b4332]/10"
+                <PremiumInitialAvatar
+                  name={selectedStudent.name}
+                  className="w-12 h-12 rounded-full border border-[#1b4332]/10"
                 />
                 <div>
                   <h3 className="font-bold text-sm text-[#141b2b]">
@@ -490,41 +555,34 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2.5 rounded-xl bg-[#f1f3ff]">
-                  <span className="text-[10px] text-[#717973] block">Presensi Berjamaah</span>
+                  <span className="text-[10px] text-[#717973] block">Kehadiran Halaqah</span>
                   <span className="font-bold text-sm text-[#141b2b]">
-                    {selectedStudent.masjidAttendance}
+                    {activeSelectedStudent?.masjidAttendance || selectedStudent.masjidAttendance}
                   </span>
                   <div className="w-full bg-[#c1c8c2] h-1.5 rounded-full mt-1.5 overflow-hidden">
                     <div
-                      className="bg-[#00452c] h-full rounded-full"
-                      style={{ width: `${selectedStudent.masjidPercent}%` }}
+                      className="bg-[#00452c] h-full rounded-full transition-all duration-300"
+                      style={{ width: `${activeSelectedStudent?.masjidPercent ?? selectedStudent.masjidPercent}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-[#f1f3ff]">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
                   <span className="text-[10px] text-[#717973] block">Skor Ujian Tilawah</span>
-                  <span className="font-bold text-sm text-[#141b2b]">
-                    {selectedStudent.tajweedScore}%
+                  <span className="inline-flex items-center gap-1 font-bold text-xs text-slate-600 mt-1">
+                    <span className="material-symbols-outlined text-[15px]">lock</span>
+                    <span>Dikunci Sementara</span>
                   </span>
-                  <div className="w-full bg-[#c1c8c2] h-1.5 rounded-full mt-1.5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        selectedStudent.tajweedScore >= 90 ? 'bg-[#00452c]' : 'bg-[#e59b15]'
-                      }`}
-                      style={{ width: `${selectedStudent.tajweedScore}%` }}
-                    />
-                  </div>
                 </div>
               </div>
             </div>
 
 
 
-            {/* Catatan Bimbingan / Nasihat Ustadz */}
+            {/* Catatan Bimbingan / Nasihat Ustadz/ah */}
             <div>
               <label className="text-xs font-bold text-[#141b2b] mb-1.5 block">
-                Catatan Bimbingan &amp; Arahan Ustadz
+                Catatan Bimbingan &amp; Arahan {ustadzRoleLabel}
               </label>
               <textarea
                 rows={3}

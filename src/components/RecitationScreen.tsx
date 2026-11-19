@@ -4,6 +4,9 @@ import { ActiveUser } from '../types';
 import { logRecitationToSheets } from '../services/googleSheets';
 import { downloadPerColumnCSV } from '../services/csvExport';
 import { runLocalTarteelModel } from '../services/localEvaluator';
+import { pushNotification } from '../services/notificationService';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
 
 export interface RecitationExamRecord {
   id: string;
@@ -46,7 +49,7 @@ export const exportRecitationExamToExcel = (
     'Predikat Nilai',
     'Penguji',
     'Peran Penguji',
-    'Catatan Evaluasi Ustadz'
+    'Catatan Evaluasi Ustadz/ah'
   ];
 
   const rows = records.map((r, idx) => [
@@ -907,11 +910,11 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
         studentId: selectedStudent.id,
         studentName: selectedStudent.name,
         halaqah: selectedStudent.halaqah || 'Halaqah Al-Fajr',
-        examinerName: activeUser?.name || 'Ustadz Farhan',
+        examinerName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
         examinerRole:
           currentRole === 'dept-hx' || currentRole === 'hq-admin'
             ? 'Dept HX Pusat'
-            : 'Ustadz Pembimbing',
+            : `${getUstadzTitle(activeUser)} Pembimbing`,
         surah: currentAyah.surahName,
         ayah: currentAyah.surahName.includes('Ayat') ? currentAyah.surahName : `Ayat ${currentAyah.ayahNumber}`,
         totalScore: overallScore,
@@ -954,6 +957,18 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
         score: overallScore,
         studentId: selectedStudent.id,
         studentName: selectedStudent.name
+      });
+
+      await pushNotification({
+        targetUserId: selectedStudent.id,
+        recipientName: selectedStudent.name,
+        targetHalaqah: selectedStudent.halaqah,
+        senderName: formatSupervisorDisplayName(activeUser?.name, activeUser?.gender),
+        title: `Hasil Ujian Tilawah: ${currentAyah.surahName}`,
+        message: `Nilai ujian tilawah Anda: ${overallScore}% (${gradePredicate}). ${
+          customUstadzNote.trim() || ustadzFeedback
+        }`,
+        type: 'assignment',
       });
 
       onShowToast(
@@ -1212,7 +1227,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
           </div>
           {(customUstadzNote || ustadzFeedback) && (
             <div className="pt-1.5 border-t border-[#f1f3ff] text-left">
-              <span className="text-[10px] font-bold text-[#414844] block">Catatan Ustadz:</span>
+              <span className="text-[10px] font-bold text-[#414844] block">Catatan {getUstadzTitle(activeUser)}:</span>
               <p className="text-[11px] text-[#141b2b] italic">&ldquo;{customUstadzNote || ustadzFeedback}&rdquo;</p>
             </div>
           )}
@@ -1271,10 +1286,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
           {/* Modal Header */}
           <div className="p-4 sm:p-5 border-b border-[#f1f3ff] bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={student.avatar}
-                alt={student.name}
-                className="w-12 h-12 rounded-full object-cover ring-2 ring-[#c1ecd4] shrink-0"
+              <PremiumInitialAvatar
+                name={student.name}
+                className="w-12 h-12 rounded-full ring-2 ring-[#c1ecd4] shrink-0"
               />
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1284,7 +1298,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-[#86af99] truncate mt-0.5">
-                  Pembimbing: {student.supervisor || 'Ustadz Farhan'} • Riwayat Lengkap Ujian Tilawah
+                  Pembimbing: {formatSupervisorDisplayName(student.supervisor)} • Riwayat Lengkap Ujian Tilawah
                 </p>
               </div>
             </div>
@@ -1430,7 +1444,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                           rate_review
                         </span>
                         <p className="leading-relaxed">
-                          <span className="font-bold">Catatan Ustadz:</span> &ldquo;{record.ustadzNotes}&rdquo;
+                          <span className="font-bold">Catatan {getUstadzTitle(record.examinerName)}:</span> &ldquo;{record.ustadzNotes}&rdquo;
                         </p>
                       </div>
                     )}
@@ -1465,6 +1479,41 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       </div>
     );
   };
+
+  const isTilawahTemporarilyLocked = true;
+  if (isTilawahTemporarilyLocked) {
+    return (
+      <div className="flex flex-col w-full px-4 md:px-6 py-6 max-w-2xl mx-auto pb-28">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#1b4332]/10 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#f1f3ff] text-[#012d1d] flex items-center justify-center mx-auto shadow-inner border border-[#1b4332]/10">
+            <span className="material-symbols-outlined text-[34px] text-[#775a19]">lock</span>
+          </div>
+          <div className="space-y-1.5">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[13px]">lock</span>
+              Fitur Dikunci Sementara
+            </span>
+            <h2 className="text-lg sm:text-xl font-extrabold text-[#141b2b]">
+              Studio &amp; Penilaian Tilawah Sedang Dikunci
+            </h2>
+            <p className="text-xs sm:text-sm text-[#414844] max-w-md mx-auto leading-relaxed">
+              Seluruh fitur ujian tilawah, setoran ayat, serta perhitungan persentase dan rata-rata tajwid saat ini dikunci sementara karena sistem sedang difokuskan untuk uji coba <strong>Mutaba&apos;ah / Amalan Ibadah</strong>.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+              <span>Kembali ke Halaman Utama</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Examiner Initial View: SELECT SANTRI FIRST
   if (isExaminer && !selectedStudent) {
@@ -1505,7 +1554,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 Ujian &amp; Penilaian Tilawah Karyawan
               </span>
               <span className="text-xs text-[#86af99] font-medium hidden sm:inline">
-                Penguji: {activeUser?.name || 'Ustadz Pembimbing'}
+                Penguji: {formatSupervisorDisplayName(activeUser?.name, activeUser?.gender)}
               </span>
             </div>
 
@@ -1610,10 +1659,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 className="p-4 rounded-2xl bg-white border border-[#1b4332]/8 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-3 group"
               >
                 <div className="flex items-start gap-3">
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="w-12 h-12 rounded-full object-cover ring-2 ring-[#c1ecd4] shrink-0"
+                  <PremiumInitialAvatar
+                    name={student.name}
+                    className="w-12 h-12 rounded-full ring-2 ring-[#c1ecd4] shrink-0"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
@@ -1693,10 +1741,9 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
       {isExaminer && selectedStudent ? (
         <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#012d1d] to-[#1b4332] text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
-            <img
-              src={selectedStudent.avatar}
-              alt={selectedStudent.name}
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-white/30 shrink-0"
+            <PremiumInitialAvatar
+              name={selectedStudent.name}
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full ring-2 ring-white/30 shrink-0"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1711,7 +1758,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 {selectedStudent.name}
               </h2>
               <p className="text-[11px] sm:text-xs text-[#86af99] truncate">
-                Penguji: {activeUser?.name || 'Ustadz Pembimbing'} • Target: {currentAyah.surahName}
+                Penguji: {formatSupervisorDisplayName(activeUser?.name, activeUser?.gender)} • Target: {currentAyah.surahName}
               </p>
             </div>
           </div>
@@ -2384,7 +2431,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold text-[#141b2b]">
-                        Bimbingan Tahsin Ustadz Pembimbing
+                        Bimbingan Tahsin {getUstadzTitle(activeUser?.supervisor || activeUser)} Pembimbing
                       </h4>
                       <span className="text-[10px] text-[#414844] block">
                         Didukung Tarteel Model AI &bull; Riwayat Hafs &apos;an &apos;Ashim
@@ -2586,7 +2633,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#141b2b] flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-[#012d1d]">rate_review</span>
-                Catatan &amp; Evaluasi Ustadz untuk {selectedStudent.name}
+                Catatan &amp; Evaluasi {getUstadzTitle(activeUser)} untuk {selectedStudent.name}
               </span>
               <span className="text-[10px] text-[#00452c] font-semibold bg-[#c1ecd4] px-2 py-0.2 rounded-full">
                 Masuk ke Rekap Excel
@@ -2652,7 +2699,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 {currentRole === 'dept-hx' || currentRole === 'hq-admin'
                   ? `Simpan Evaluasi Dept HX (${overallScore}%) • Internal/Privat`
                   : isExaminer && selectedStudent
-                  ? `Simpan Nilai Ustadz ${selectedStudent.name} (${overallScore}%) • +150 XP Klasemen`
+                  ? `Simpan Nilai ${getUstadzTitle(activeUser)} ${selectedStudent.name} (${overallScore}%) • +150 XP Klasemen`
                   : `Kirim Hasil Setoran (${overallScore}%) • +150 XP Klasemen`}
               </span>
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -2666,7 +2713,7 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
                 {currentRole === 'dept-hx' || currentRole === 'hq-admin'
                   ? `Simpan Evaluasi Dept HX (Rekam Dulu)`
                   : isExaminer && selectedStudent
-                  ? `Simpan Nilai Ustadz ${selectedStudent.name} (Rekam Dulu)`
+                  ? `Simpan Nilai ${getUstadzTitle(activeUser)} ${selectedStudent.name} (Rekam Dulu)`
                   : 'Kirim Hasil Setoran (Rekam Dulu)'}
               </span>
             </>
@@ -2683,8 +2730,8 @@ export const RecitationScreen: React.FC<RecitationScreenProps> = ({
             : currentRole === 'dept-hx' || currentRole === 'hq-admin'
             ? 'Hasil evaluasi disimpan khusus di rekap internal Dept HX (privat, tidak menambah XP Klasemen).'
             : isExaminer
-            ? 'Hasil penilaian Ustadz tersimpan di buku nilai halaqah & menambah XP Klasemen Karyawan.'
-            : 'Hasil penilaian tersinkron otomatis ke buku nilai Ustadz Pembimbing & Klasemen.'}
+            ? `Hasil penilaian ${getUstadzTitle(activeUser)} tersimpan di buku nilai halaqah & menambah XP Klasemen Karyawan.`
+            : `Hasil penilaian tersinkron otomatis ke buku nilai ${getUstadzTitle(activeUser?.supervisor)} Pembimbing & Klasemen.`}
         </p>
       </section>
 

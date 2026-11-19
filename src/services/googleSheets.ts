@@ -122,7 +122,7 @@ async function initializeSheetHeaders(accessToken: string, spreadsheetId: string
           'Skor Tajwid',
           'Skor Kelancaran (Fluency)',
           'Tingkat Evaluasi',
-          'Catatan/Tip Ustadz'
+          'Catatan/Tip Ustadz/ah'
         ]
       ]
     },
@@ -133,7 +133,7 @@ async function initializeSheetHeaders(accessToken: string, spreadsheetId: string
           'ID Karyawan',
           'Nama Lengkap',
           'Kelompok Halaqah',
-          'Pembimbing / Ustadz',
+          'Pembimbing / Ustadz/ah',
           'Akurasi Tajwid (%)',
           'Streak (Hari)',
           'Total XP',

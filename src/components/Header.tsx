@@ -1,6 +1,8 @@
 import React from 'react';
 import { BRAND_ASSETS } from '../data/mockData';
 import { ActiveUser } from '../types';
+import { PremiumInitialAvatar } from './PremiumInitialAvatar';
+import { getUstadzTitle } from '../services/ustadzTitle';
 
 interface HeaderProps {
   currentTab: string;
@@ -23,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSplash,
   onOpenSheets,
   isSheetsConnected,
-  unreadCount = 2,
+  unreadCount = 0,
   currentRole,
   activeUser
 }) => {
@@ -33,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   const getSubhead = () => {
     switch (currentTab) {
       case 'worship':
-        return activeUser ? `Ibadah Harian • ${activeUser.name}` : 'Ibadah Harian';
+        return 'Ibadah Harian';
       case 'recitation':
         return isSantri
           ? (activeUser ? `Ujian Tilawah • ${activeUser.name}` : 'Sesi Ujian Tilawah')
@@ -41,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'leaderboard':
         return 'Peringkat Karyawan & Halaqah';
       case 'admin':
-        return 'Dashboard Supervisor Ustadz';
+        return `Dashboard Supervisor ${getUstadzTitle(activeUser)}`;
       case 'students':
         return activeUser?.halaqah ? `Karyawan Binaan • ${activeUser.halaqah}` : 'Daftar Karyawan Halaqah';
       case 'dept-hx':
@@ -85,12 +87,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <button
             aria-label="Notifikasi"
+            title={unreadCount > 0 ? `${unreadCount} pemberitahuan belum dibaca` : 'Pemberitahuan & Pengingat'}
             onClick={onOpenNotifications}
             className="w-11 h-11 flex items-center justify-center rounded-full text-[#414844] hover:text-[#012d1d] hover:bg-[#e9edff] active:scale-95 transition-all relative cursor-pointer"
           >
             <span className="material-symbols-outlined text-[22px]">notifications</span>
             {unreadCount > 0 && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#775a19] ring-2 ring-[#f9f9ff]" />
+              <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ba1a1a] text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-[#f9f9ff] shadow-2xs">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
             )}
           </button>
 
@@ -106,10 +111,10 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="Menu Akun Pengguna"
               className="relative w-11 h-11 flex items-center justify-center rounded-full active:scale-95 transition-transform cursor-pointer"
             >
-              <img
-                alt={activeUser?.name || 'Profile'}
-                className="w-9 h-9 rounded-full object-cover shadow-[0_0_8px_rgba(1,45,29,0.12)] ring-2 ring-[#c1ecd4]"
-                src={activeUser?.avatar || BRAND_ASSETS.currentUserAvatar}
+              <PremiumInitialAvatar
+                name={activeUser?.name || 'Pengguna'}
+                role={activeUser?.role || currentRole}
+                className="w-9 h-9 rounded-full shadow-[0_0_8px_rgba(1,45,29,0.18)] ring-2 ring-[#c1ecd4]"
               />
               <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[#53b889] ring-2 ring-white" />
             </button>
@@ -132,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <span className="inline-block px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
                         {activeUser?.role === 'admin'
-                          ? 'Ustadz Pembimbing'
+                          ? `${getUstadzTitle(activeUser)} Pembimbing`
                           : activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin'
                           ? 'Dept HX'
                           : 'Karyawan Aktif'}
