@@ -431,10 +431,30 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     onShowToast(`📢 Maklumat berhasil disiarkan khusus kepada seluruh anggota ${groupName}!`);
   };
 
+  const normalizePersonNameKey = (name?: string, role?: string): string => {
+    const raw = (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    if (!raw) return '';
+    if (role === 'admin') {
+      const stripped = raw.replace(/^(ustadz\/ah|ustadzah|ustadz|ust\.?)\s+/i, '').trim();
+      return stripped || raw;
+    }
+    return raw;
+  };
+
   const handleSaveNewHalaqah = () => {
-    const nameTrimmed = newHalaqahName.trim();
+    const nameTrimmed = newHalaqahName.trim().replace(/\s+/g, ' ');
     if (!nameTrimmed) {
       onShowToast('Mohon masukkan nama halaqah baru');
+      return;
+    }
+
+    const duplicateHalaqah = allHalaqahPresets.find(
+      (h) => h.name.trim().replace(/\s+/g, ' ').toLowerCase() === nameTrimmed.toLowerCase()
+    );
+    if (duplicateHalaqah) {
+      onShowToast(
+        `❌ Halaqah "${duplicateHalaqah.name}" sudah terdaftar! Nama halaqah yang sama tidak dapat diinput dua kali.`
+      );
       return;
     }
 
@@ -545,7 +565,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       setSelectedHalaqahGroup(null);
     }
     if (selectedGroup && selectedGroup.trim().toLowerCase() === targetLower) {
-      setSelectedGroup('Semua Halaqah');
+      setSelectedGroup('Semua Kelompok');
     }
     setDeletingHalaqahTarget(null);
     onShowToast(`Halaqah "${name}" berhasil dihapus oleh Departemen HX (Human Experience).`);
@@ -559,7 +579,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     if (!deletingStudentTarget) return;
     const student = deletingStudentTarget;
     setReciters((prev) => prev.filter((r) => r.id !== student.id && r.name !== student.name));
-    setDeletedStudentIds((prev) => [...prev, student.id, student.name]);
+    setDeletedStudentIds((prev) => [...prev, student.id]);
     if (onDeleteSantri) {
       onDeleteSantri(student.id);
     }
@@ -589,17 +609,31 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   };
 
   const handleQuickRegisterToHalaqah = (targetHalaqah: string, targetCode: string, supervisorName: string) => {
-    const trimmed = quickAddName.trim();
+    const trimmed = quickAddName.trim().replace(/\s+/g, ' ');
     if (!trimmed) {
       onShowToast('Mohon masukkan nama karyawan');
       return;
     }
 
-    const existingMember = allRecitersList.find(
-      (r: any) => r.name.toLowerCase() === trimmed.toLowerCase() && r.group && r.group !== 'Tanpa Halaqah' && r.group !== 'Belum Ada Halaqah'
+    const normalizedTarget = normalizePersonNameKey(trimmed, 'member');
+    const existingPerson = allStudentsList.find(
+      (s: any) => normalizePersonNameKey(s.name, s.role) === normalizedTarget
+    ) || allRecitersList.find(
+      (r: any) => normalizePersonNameKey(r.name, 'member') === normalizedTarget
     );
-    if (existingMember) {
-      onShowToast(`❌ Aturan: Karyawan "${trimmed}" sudah terdaftar di halaqah "${existingMember.group}". Satu karyawan tidak bisa masuk ke 2 halaqah sekaligus!`);
+
+    if (existingPerson) {
+      const currentGroup = existingPerson.halaqah || existingPerson.group || 'Tanpa Halaqah';
+      if (currentGroup && currentGroup !== 'Tanpa Halaqah' && currentGroup !== 'Belum Ada Halaqah') {
+        onShowToast(
+          `❌ Nama "${existingPerson.name}" sudah terdaftar di "${currentGroup}". Nama yang sama tidak dapat diinput dua kali!`
+        );
+        return;
+      }
+      // If the employee already exists in 'Tanpa Halaqah', assign them instead of creating a duplicate
+      handleAddExistingStudentToHalaqah(existingPerson, targetHalaqah, targetCode);
+      setQuickAddName('');
+      setHalaqahActiveTab('members');
       return;
     }
 
@@ -613,23 +647,23 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         passcode,
         role: 'member'
       });
+    } else {
+      const newEntry: ReciterProfile = {
+        id: `reciter-${Date.now()}`,
+        name: trimmed,
+        group: targetHalaqah,
+        supervisor: supervisorName,
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
+        status: 'Mumtaz',
+        tajweedAcc: 95.0,
+        streakDays: 1,
+        totalXp: '150',
+        currentActivity: `Anggota ${targetHalaqah}`,
+        lastActive: 'Baru didaftarkan'
+      };
+      setReciters((prev) => [newEntry, ...prev]);
     }
 
-    const newEntry: ReciterProfile = {
-      id: `reciter-${Date.now()}`,
-      name: trimmed,
-      group: targetHalaqah,
-      supervisor: supervisorName,
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
-      status: 'Mumtaz',
-      tajweedAcc: 95.0,
-      streakDays: 1,
-      totalXp: '150',
-      currentActivity: `Anggota ${targetHalaqah}`,
-      lastActive: 'Baru didaftarkan'
-    };
-
-    setReciters((prev) => [newEntry, ...prev]);
     setQuickAddName('');
     setHalaqahActiveTab('members');
     onShowToast(`🎉 Karyawan ${trimmed} berhasil didaftarkan langsung ke "${targetHalaqah}"!`);
@@ -1008,7 +1042,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             supervisor: formatSupervisorDisplayName(u.supervisor),
             phone: u.phone || ''
           };
-          const key = `${u.role}:${u.name.trim().toLowerCase()}`;
+          const key = `${u.role}:${normalizePersonNameKey(u.name, u.role)}`;
           const existing = byNameRole.get(key);
           if (!existing) {
             byNameRole.set(key, candidate);
@@ -1081,80 +1115,101 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   }, [allStudentsList, allHalaqahPresets, deletedHalaqahNames]);
 
   const allRecitersList = useMemo(() => {
-    const existingNames = new Set(reciters.map((r) => r.name.toLowerCase()));
-    const fromRegistered: ReciterProfile[] = (registeredUsers || [])
-      .filter(
-        (u) =>
-          u.role !== 'dept-hx' &&
-          u.role !== 'hq-admin' &&
-          !existingNames.has(u.name.toLowerCase()) &&
-          !deletedStudentIds.includes(u.id) &&
-          !deletedStudentIds.includes(u.name)
-      )
-      .map((u) => {
-        const rawHalaqah =
-          userHalaqahOverrides[u.id] !== undefined
-            ? userHalaqahOverrides[u.id]
-            : u.halaqah || 'Tanpa Halaqah';
-        const assignedHalaqah = isHalaqahDeleted(rawHalaqah) ? 'Tanpa Halaqah' : rawHalaqah;
-        return {
-          id: u.id,
-          name: u.name,
-          group: assignedHalaqah,
-          supervisor: u.role === 'admin' ? `${getUstadzTitle(u)} Pembimbing` : formatSupervisorDisplayName(u.supervisor),
-          avatar: u.avatar,
-          status: (u.totalXp >= 500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
-          tajweedAcc: 95.0,
-          streakDays: u.streakDays || 0,
-          totalXp: (u.totalXp || 0).toLocaleString(),
-          currentActivity:
-            u.role === 'admin'
-              ? `${getUstadzTitle(u)} Pembimbing ${assignedHalaqah} (${u.halaqahCode || 'HX-001'})`
-              : `Anggota ${assignedHalaqah} (Kode: ${u.halaqahCode || 'HX-001'})`,
-          lastActive: 'Terdaftar'
-        };
-      });
-
-    const mappedReciters = reciters.map((r) => {
-      const rawGroup =
-        userHalaqahOverrides[r.id] !== undefined ? userHalaqahOverrides[r.id] : r.group;
-      const assignedGroup = isHalaqahDeleted(rawGroup) ? 'Tanpa Halaqah' : rawGroup;
+    // Build directly from allStudentsList so "List Karyawan" is 100% synchronized with "Kelompok Halaqah"
+    const fromStudents: ReciterProfile[] = allStudentsList.map((st: any) => {
+      const assignedHalaqah = st.halaqah || 'Tanpa Halaqah';
+      const matchedPreset = allHalaqahPresets.find(
+        (p) => p.name.trim().toLowerCase() === assignedHalaqah.trim().toLowerCase()
+      );
+      const code = matchedPreset?.code || 'HX-001';
       return {
-        ...r,
-        group: assignedGroup
+        id: st.id,
+        name: st.name,
+        group: assignedHalaqah,
+        supervisor:
+          st.role === 'admin'
+            ? `${getUstadzTitle(st)} Pembimbing`
+            : formatSupervisorDisplayName(matchedPreset?.supervisor || st.supervisor),
+        avatar: st.avatar,
+        status: ((st.totalXp || 0) >= 500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
+        tajweedAcc: st.tajweedAcc || 95.0,
+        streakDays: st.streakDays || 0,
+        totalXp: (st.totalXp || 0).toLocaleString(),
+        currentActivity:
+          st.role === 'admin'
+            ? `${getUstadzTitle(st)} Pembimbing ${assignedHalaqah} (${code})`
+            : `Anggota ${assignedHalaqah} (Kode: ${code})`,
+        lastActive: 'Terdaftar'
       };
     });
 
-    const combined = [...fromRegistered, ...mappedReciters].filter(
-      (r) => !deletedStudentIds.includes(r.id) && !deletedStudentIds.includes(r.name)
-    );
-    const seenIds = new Set<string>();
-    return combined.filter((r) => {
-      if (!r.id || seenIds.has(r.id)) return false;
-      seenIds.add(r.id);
-      return true;
-    });
-  }, [registeredUsers, reciters, deletedStudentIds, userHalaqahOverrides]);
+    const existingNames = new Set(fromStudents.map((r) => r.name.trim().toLowerCase()));
+    const existingIds = new Set(fromStudents.map((r) => r.id));
+
+    const extraFromReciters = reciters
+      .filter(
+        (r) =>
+          r.id &&
+          !existingIds.has(r.id) &&
+          !existingNames.has(r.name.trim().toLowerCase()) &&
+          !deletedStudentIds.includes(r.id)
+      )
+      .map((r) => {
+        const rawGroup =
+          userHalaqahOverrides[r.id] !== undefined ? userHalaqahOverrides[r.id] : r.group;
+        const assignedGroup = isHalaqahDeleted(rawGroup) ? 'Tanpa Halaqah' : rawGroup;
+        return {
+          ...r,
+          group: assignedGroup
+        };
+      });
+
+    return [...fromStudents, ...extraFromReciters];
+  }, [allStudentsList, allHalaqahPresets, reciters, deletedStudentIds, userHalaqahOverrides, deletedHalaqahNames, halaqahList]);
 
   const groups = useMemo(() => {
     const base = [{ label: 'Semua Kelompok', count: String(allRecitersList.length) }];
     halaqahGroups.forEach((g) => {
       const countInReciters = allRecitersList.filter(
-        (r) => r.group.toLowerCase() === g.halaqahName.toLowerCase()
+        (r) => r.group.trim().toLowerCase() === g.halaqahName.trim().toLowerCase()
       ).length;
       base.push({
         label: g.halaqahName,
         count: String(countInReciters)
       });
     });
+    const unassignedCount = allRecitersList.filter(
+      (r) => !r.group || r.group === 'Tanpa Halaqah' || r.group === 'Belum Ada Halaqah'
+    ).length;
+    if (unassignedCount > 0) {
+      base.push({
+        label: 'Tanpa Halaqah',
+        count: String(unassignedCount)
+      });
+    }
     return base;
   }, [allRecitersList, halaqahGroups]);
 
+  // Automatically reset selectedGroup to 'Semua Kelompok' if the selected filter chip no longer exists
+  useEffect(() => {
+    if (
+      selectedGroup !== 'Semua Kelompok' &&
+      !groups.some((g) => g.label.toLowerCase() === selectedGroup.toLowerCase())
+    ) {
+      setSelectedGroup('Semua Kelompok');
+    }
+  }, [groups, selectedGroup]);
+
   const filteredReciters = useMemo(() => {
+    const hasActiveGroupFilter =
+      selectedGroup !== 'Semua Kelompok' &&
+      selectedGroup !== 'Semua Halaqah' &&
+      groups.some((g) => g.label.toLowerCase() === selectedGroup.toLowerCase());
+
     return allRecitersList.filter((item) => {
       // Group filter
-      if (selectedGroup !== 'Semua Kelompok') {
-        if (!item.group.toLowerCase().includes(selectedGroup.toLowerCase())) {
+      if (hasActiveGroupFilter) {
+        if (item.group.trim().toLowerCase() !== selectedGroup.trim().toLowerCase()) {
           return false;
         }
       }
@@ -1177,7 +1232,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       }
       return true;
     });
-  }, [allRecitersList, selectedGroup, selectedStatus, searchQuery]);
+  }, [allRecitersList, selectedGroup, selectedStatus, searchQuery, groups]);
 
   const handleExportCSV = () => {
     const headers = [
@@ -1206,12 +1261,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   };
 
   const handleAddReciter = () => {
-    if (!newReciterName.trim()) {
+    const cleanInputName = newReciterName.trim().replace(/\s+/g, ' ');
+    if (!cleanInputName) {
       onShowToast('Mohon masukkan nama lengkap');
       return;
     }
 
-    const groupName = (newReciterGroup || allHalaqahPresets[0]?.name || '').trim();
+    const groupName = (newReciterGroup || allHalaqahPresets[0]?.name || '').trim().replace(/\s+/g, ' ');
     if (!groupName) {
       onShowToast('Mohon pilih atau ketik nama Kelompok Halaqah terlebih dahulu');
       return;
@@ -1223,8 +1279,29 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
     const finalReciterName =
       newReciterRole === 'admin'
-        ? formatSupervisorDisplayName(newReciterName.trim(), newReciterGender)
-        : newReciterName.trim();
+        ? formatSupervisorDisplayName(cleanInputName, newReciterGender)
+        : cleanInputName;
+
+    // Prevent duplicate name registration
+    const targetPersonKey = normalizePersonNameKey(finalReciterName, newReciterRole);
+    const duplicateUser = allStudentsList.find(
+      (st: any) =>
+        st.role === newReciterRole &&
+        normalizePersonNameKey(st.name, st.role) === targetPersonKey
+    );
+
+    if (duplicateUser) {
+      const hasActiveGroup =
+        duplicateUser.halaqah &&
+        duplicateUser.halaqah !== 'Tanpa Halaqah' &&
+        duplicateUser.halaqah !== 'Belum Ada Halaqah';
+      if (hasActiveGroup) {
+        onShowToast(
+          `❌ Nama "${duplicateUser.name}" sudah terdaftar di "${duplicateUser.halaqah}". Nama yang sama tidak dapat diinput dua kali!`
+        );
+        return;
+      }
+    }
 
     if (!selectedPreset) {
       const autoCode = `HX-${Math.floor(1000 + Math.random() * 9000)}`;

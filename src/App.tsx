@@ -124,6 +124,68 @@ export default function App() {
     };
   };
 
+  const normalizePersonKey = (name?: string, role?: string): string => {
+    const raw = (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    if (!raw) return '';
+    if (role === 'admin') {
+      const stripped = raw.replace(/^(ustadz\/ah|ustadzah|ustadz|ust\.?)\s+/i, '').trim();
+      return `admin:${stripped || raw}`;
+    }
+    return `${role || 'member'}:${raw}`;
+  };
+
+  const deduplicateActiveUsers = (
+    users: ActiveUser[]
+  ): { unique: ActiveUser[]; duplicateIds: string[] } => {
+    const byKey = new Map<string, ActiveUser>();
+    const duplicateIds: string[] = [];
+
+    users.forEach((rawUser) => {
+      const u = normalizeDeptHXUser(rawUser);
+      if (!u || !u.id) return;
+      const key =
+        u.role === 'dept-hx' || u.role === 'hq-admin'
+          ? 'dept-hx'
+          : normalizePersonKey(u.name, u.role);
+      if (!key) return;
+
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, u);
+        return;
+      }
+
+      if (existing.id === u.id) {
+        byKey.set(key, { ...existing, ...u });
+        return;
+      }
+
+      const existingHasActiveHalaqah =
+        existing.halaqah &&
+        existing.halaqah !== 'Tanpa Halaqah' &&
+        existing.halaqah !== 'Belum Ada Halaqah';
+      const candidateHasActiveHalaqah =
+        u.halaqah &&
+        u.halaqah !== 'Tanpa Halaqah' &&
+        u.halaqah !== 'Belum Ada Halaqah';
+
+      if (candidateHasActiveHalaqah && !existingHasActiveHalaqah) {
+        duplicateIds.push(existing.id);
+        byKey.set(key, u);
+      } else if (
+        candidateHasActiveHalaqah === existingHasActiveHalaqah &&
+        (u.totalXp || 0) > (existing.totalXp || 0)
+      ) {
+        duplicateIds.push(existing.id);
+        byKey.set(key, u);
+      } else {
+        duplicateIds.push(u.id);
+      }
+    });
+
+    return { unique: Array.from(byKey.values()), duplicateIds };
+  };
+
   const LEGACY_DEMO_USER_IDS = new Set([
     'user-zubair',
     'user-farhan',
@@ -148,9 +210,8 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-            .filter((u: ActiveUser) => !LEGACY_DEMO_USER_IDS.has(u.id))
-            .map(normalizeDeptHXUser);
+          const filtered = parsed.filter((u: ActiveUser) => !LEGACY_DEMO_USER_IDS.has(u.id));
+          return deduplicateActiveUsers(filtered).unique;
         }
       }
     } catch (e) {
@@ -227,7 +288,13 @@ export default function App() {
         DEFAULT_USERS.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
         prev.filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id)).forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
         firestoreUsers.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        return Array.from(userMap.values());
+        const { unique, duplicateIds } = deduplicateActiveUsers(Array.from(userMap.values()));
+        if (duplicateIds.length > 0) {
+          duplicateIds.forEach((dupId) => {
+            deleteDoc(doc(db, 'users', dupId)).catch(() => {});
+          });
+        }
+        return unique;
       });
     });
     return () => unsub();
@@ -628,11 +695,29 @@ export default function App() {
     role: 'member' | 'admin';
     gender?: 'L' | 'P';
   }) => {
-    const inferredGender = newUserData.gender || inferUstadzGender(newUserData.name);
+    const cleanRawName = newUserData.name.trim().replace(/\s+/g, ' ');
+    const inferredGender = newUserData.gender || inferUstadzGender(cleanRawName);
     const formattedName =
       newUserData.role === 'admin'
-        ? formatSupervisorDisplayName(newUserData.name, inferredGender)
-        : newUserData.name;
+        ? formatSupervisorDisplayName(cleanRawName, inferredGender)
+        : cleanRawName;
+
+    const targetKey = normalizePersonKey(formattedName, newUserData.role);
+    const existingDuplicate = registeredUsers.find(
+      (u) =>
+        u.role !== 'dept-hx' &&
+        u.role !== 'hq-admin' &&
+        (normalizePersonKey(u.name, u.role) === targetKey ||
+          u.name.trim().replace(/\s+/g, ' ').toLowerCase() === formattedName.toLowerCase())
+    );
+
+    if (existingDuplicate) {
+      showToast(
+        `❌ Nama "${formattedName}" sudah terdaftar di sistem (${existingDuplicate.halaqah || 'Terdaftar'}). Nama yang sama tidak dapat diinput dua kali!`
+      );
+      return;
+    }
+
     const newUser: ActiveUser = {
       id: `user-${Date.now()}`,
       name: formattedName,
@@ -651,7 +736,7 @@ export default function App() {
       supervisor: 'Ustadz/ah Pembimbing (SK Dept HX)'
     };
 
-    setRegisteredUsers((prev) => [newUser, ...prev]);
+    setRegisteredUsers((prev) => deduplicateActiveUsers([newUser, ...prev]).unique);
     
     try {
       await setDoc(doc(db, 'users', newUser.id), newUser);
@@ -706,11 +791,56 @@ export default function App() {
     role: 'member' | 'admin';
     gender?: 'L' | 'P';
   }) => {
-    const inferredGender = newUserData.gender || inferUstadzGender(newUserData.name);
+    const cleanRawName = newUserData.name.trim().replace(/\s+/g, ' ');
+    const inferredGender = newUserData.gender || inferUstadzGender(cleanRawName);
     const formattedName =
       newUserData.role === 'admin'
-        ? formatSupervisorDisplayName(newUserData.name, inferredGender)
-        : newUserData.name;
+        ? formatSupervisorDisplayName(cleanRawName, inferredGender)
+        : cleanRawName;
+
+    const targetKey = normalizePersonKey(formattedName, newUserData.role);
+    const existingDuplicate = registeredUsers.find(
+      (u) =>
+        u.role !== 'dept-hx' &&
+        u.role !== 'hq-admin' &&
+        (normalizePersonKey(u.name, u.role) === targetKey ||
+          u.name.trim().replace(/\s+/g, ' ').toLowerCase() === formattedName.toLowerCase())
+    );
+
+    if (existingDuplicate) {
+      const hasActiveHalaqah =
+        existingDuplicate.halaqah &&
+        existingDuplicate.halaqah !== 'Tanpa Halaqah' &&
+        existingDuplicate.halaqah !== 'Belum Ada Halaqah';
+      if (hasActiveHalaqah) {
+        showToast(
+          `❌ Nama "${formattedName}" sudah terdaftar di "${existingDuplicate.halaqah}". Nama yang sama tidak dapat diinput dua kali!`
+        );
+        return;
+      }
+
+      // If existing user was in 'Tanpa Halaqah', update their existing record instead of creating a duplicate
+      const reassignedUser: ActiveUser = {
+        ...existingDuplicate,
+        name: formattedName,
+        halaqah: newUserData.halaqah,
+        halaqahCode: newUserData.halaqahCode,
+        passcode: newUserData.passcode || existingDuplicate.passcode || '1234',
+        phone: newUserData.phone || existingDuplicate.phone,
+        role: newUserData.role,
+        gender: inferredGender
+      };
+      setRegisteredUsers((prev) =>
+        deduplicateActiveUsers(prev.map((u) => (u.id === existingDuplicate.id ? reassignedUser : u))).unique
+      );
+      try {
+        await setDoc(doc(db, 'users', reassignedUser.id), reassignedUser, { merge: true });
+      } catch (e) {
+        console.error('Error updating existing santri in Firestore:', e);
+      }
+      return;
+    }
+
     const newUser: ActiveUser = {
       id: `user-${Date.now()}`,
       name: formattedName,
@@ -729,7 +859,7 @@ export default function App() {
       supervisor: 'Ustadz/ah Pembimbing (SK Dept HX)'
     };
 
-    setRegisteredUsers((prev) => [newUser, ...prev]);
+    setRegisteredUsers((prev) => deduplicateActiveUsers([newUser, ...prev]).unique);
 
     try {
       await setDoc(doc(db, 'users', newUser.id), newUser);
@@ -836,12 +966,23 @@ export default function App() {
     const newHalaqahNames: string[] = [];
     const importedHalaqahLowerSet = new Set<string>();
     const importedUserLowerNames = new Set<string>();
+    const seenExcelMemberKeys = new Set<string>();
+    let skippedDuplicateRows = 0;
 
     for (const record of records) {
       if (!record.name || !record.name.trim()) continue;
-      const cleanName = record.name.trim();
-      const cleanHalaqah = (record.halaqah || 'Halaqah Utama').trim();
-      const cleanSupervisor = formatSupervisorDisplayName((record.supervisor || 'Ustadz/ah Pembimbing').trim());
+      const cleanName = record.name.trim().replace(/\s+/g, ' ');
+      const memberKey = normalizePersonKey(cleanName, 'member');
+      if (seenExcelMemberKeys.has(memberKey)) {
+        skippedDuplicateRows++;
+        continue;
+      }
+      seenExcelMemberKeys.add(memberKey);
+
+      const cleanHalaqah = (record.halaqah || 'Halaqah Utama').trim().replace(/\s+/g, ' ');
+      const cleanSupervisor = formatSupervisorDisplayName(
+        (record.supervisor || 'Ustadz/ah Pembimbing').trim().replace(/\s+/g, ' ')
+      );
       const cleanPasscode = (record.passcode || '1234').trim();
 
       importedHalaqahLowerSet.add(cleanHalaqah.toLowerCase());
@@ -880,20 +1021,21 @@ export default function App() {
         }
       }
 
-      // Ensure Ustadz Pembimbing account is also registered/updated
-      const existingUstadz =
-        registeredUsers.find(
-          (u) =>
-            u.role === 'admin' &&
-            (u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase() ||
-              u.name.trim().toLowerCase() === cleanSupervisor.toLowerCase())
-        ) ||
-        createdOrUpdatedUsers.find(
-          (u) =>
-            u.role === 'admin' &&
-            (u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase() ||
-              u.name.trim().toLowerCase() === cleanSupervisor.toLowerCase())
-        );
+      // Ensure Ustadz Pembimbing account is also registered/updated without duplicating by name
+      const ustadzKey = normalizePersonKey(cleanSupervisor, 'admin');
+      const existingUstadzInBatch = createdOrUpdatedUsers.find(
+        (u) =>
+          u.role === 'admin' &&
+          (normalizePersonKey(u.name, 'admin') === ustadzKey ||
+            u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase())
+      );
+      const existingUstadzInState = registeredUsers.find(
+        (u) =>
+          u.role === 'admin' &&
+          (normalizePersonKey(u.name, 'admin') === ustadzKey ||
+            u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase())
+      );
+      const existingUstadz = existingUstadzInBatch || existingUstadzInState;
 
       if (!existingUstadz && cleanSupervisor) {
         const ustadzUser: ActiveUser = {
@@ -917,7 +1059,7 @@ export default function App() {
         } catch (err) {
           console.warn('Firestore ustadz save notice:', err);
         }
-      } else if (existingUstadz && existingUstadz.halaqah !== cleanHalaqah) {
+      } else if (existingUstadz && !existingUstadzInBatch) {
         const updatedUstadz: ActiveUser = {
           ...existingUstadz,
           name: cleanSupervisor,
@@ -932,9 +1074,9 @@ export default function App() {
         }
       }
 
-      // Check if employee with same name already exists (e.g. from previous import before halaqah deletion)
+      // Check if employee with same name already exists in registeredUsers
       const existingMember = registeredUsers.find(
-        (u) => u.role === 'member' && u.name.trim().toLowerCase() === cleanName.toLowerCase()
+        (u) => u.role === 'member' && normalizePersonKey(u.name, 'member') === memberKey
       );
 
       const memberUser: ActiveUser = existingMember
@@ -998,8 +1140,10 @@ export default function App() {
         if (savedDelS) {
           const parsedDelS = JSON.parse(savedDelS);
           if (Array.isArray(parsedDelS)) {
+            const importedIdsSet = new Set(createdOrUpdatedUsers.map((u) => u.id));
             const cleanedDelS = parsedDelS.filter(
-              (s: string) => !importedUserLowerNames.has(s.trim().toLowerCase())
+              (s: string) =>
+                !importedIdsSet.has(s) && !importedUserLowerNames.has(s.trim().toLowerCase())
             );
             localStorage.setItem(
               'noorworship_deleted_student_ids_prod_v1',
@@ -1026,18 +1170,18 @@ export default function App() {
         }
       } catch {}
 
-      // 4. Update registeredUsers state (replacing any updated users by ID or name+role)
+      // 4. Update registeredUsers state with strict name deduplication and purge any old duplicate Firestore docs
       setRegisteredUsers((prev) => {
-        const updatedIds = new Set(createdOrUpdatedUsers.map((u) => u.id));
-        const updatedNameRoles = new Set(
-          createdOrUpdatedUsers.map((u) => `${u.role}:${u.name.trim().toLowerCase()}`)
-        );
-        const remaining = prev.filter(
-          (u) =>
-            !updatedIds.has(u.id) &&
-            !updatedNameRoles.has(`${u.role}:${u.name.trim().toLowerCase()}`)
-        );
-        return [...createdOrUpdatedUsers, ...remaining];
+        const { unique, duplicateIds } = deduplicateActiveUsers([
+          ...createdOrUpdatedUsers,
+          ...prev
+        ]);
+        if (duplicateIds.length > 0) {
+          duplicateIds.forEach((dupId) => {
+            deleteDoc(doc(db, 'users', dupId)).catch(() => {});
+          });
+        }
+        return unique;
       });
 
       try {
@@ -1050,7 +1194,9 @@ export default function App() {
       }
       window.dispatchEvent(new Event('noorworship_halaqah_updated'));
       showToast(
-        `Alhamdulillah! Berhasil mengimpor ${records.length} data karyawan${
+        `Alhamdulillah! Berhasil mengimpor ${seenExcelMemberKeys.size} data karyawan unik${
+          skippedDuplicateRows > 0 ? ` (${skippedDuplicateRows} nama ganda dilewati)` : ''
+        }${
           newHalaqahNames.length > 0
             ? ` dan mendaftarkan ${newHalaqahNames.length} halaqah baru`
             : ''
