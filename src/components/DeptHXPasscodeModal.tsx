@@ -143,10 +143,10 @@ export const DeptHXPasscodeModal: React.FC<DeptHXPasscodeModalProps> = ({
             Proteksi Keamanan Ketat
           </span>
           <h3 className="text-base font-bold text-white tracking-tight">
-            Otorisasi Direktorat Dept HX
+            Otorisasi Departemen HX (Human Experience)
           </h3>
           <p className="text-xs text-[#c1ecd4]/85 mt-1 leading-relaxed max-w-xs mx-auto">
-            Halaman ini khusus untuk Direktorat Dept HX. Masukkan Kode Otorisasi Master untuk melanjutkan.
+            Halaman ini khusus untuk Departemen HX (Human Experience). Masukkan Kode Otorisasi Master untuk melanjutkan.
           </p>
         </div>
 

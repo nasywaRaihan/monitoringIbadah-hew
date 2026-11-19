@@ -583,7 +583,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div className="p-2.5 rounded-xl bg-[#e9fbf2] border border-[#00452c]/20 text-[11px] text-[#00452c] flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[15px] shrink-0">shield_lock</span>
-              <span>Gunakan PIN Supervisor Ustadz/ah resmi yang ditetapkan oleh Direktorat Dept HX.</span>
+              <span>Gunakan PIN Supervisor Ustadz/ah resmi yang ditetapkan oleh Departemen HX (Human Experience).</span>
             </div>
 
             <div className="flex flex-col gap-1">

@@ -175,7 +175,7 @@ export function updateDeptHXPasscode(
     localStorage.setItem(DEPT_HX_PASSCODE_KEY, cleanNew);
     localStorage.setItem(DEPT_HX_CUSTOM_SET_KEY, 'true');
     addSecurityAuditLog(
-      'Direktorat Dept HX',
+      'Departemen HX (Human Experience)',
       'Mengubah Kode Otorisasi Master Dept HX',
       'Portal Dept HX Pusat'
     );
@@ -331,7 +331,7 @@ export function updateUstadzPasscodeForHalaqah(
     }
 
     addSecurityAuditLog(
-      'Direktorat Dept HX',
+      'Departemen HX (Human Experience)',
       'Memperbarui PIN / Passcode Supervisor Ustadz/ah',
       cleanHalaqah
     );

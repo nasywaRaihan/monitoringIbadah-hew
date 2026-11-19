@@ -44,6 +44,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   // Dynamically load registered Halaqahs created by Dept HX
   const availableHalaqahs = useMemo(() => {
     const map = new Map<string, { name: string; code: string; pin: string; supervisor: string }>();
+    let deletedNames: string[] = [];
+    try {
+      const savedDel = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
+      if (savedDel) {
+        const parsedDel = JSON.parse(savedDel);
+        if (Array.isArray(parsedDel)) deletedNames = parsedDel.map((d: string) => d.trim().toLowerCase());
+      }
+    } catch {}
+
+    const isInvalidHalaqah = (hName?: string) => {
+      if (!hName) return true;
+      const clean = hName.trim();
+      const lower = clean.toLowerCase();
+      return (
+        !clean ||
+        clean === 'Dept HX Pusat' ||
+        clean === 'Tanpa Halaqah' ||
+        clean === 'Belum Ada Halaqah' ||
+        deletedNames.includes(lower)
+      );
+    };
 
     try {
       const saved = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
@@ -51,7 +72,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           parsed.forEach((h: any) => {
-            if (h && h.name) {
+            if (h && h.name && !isInvalidHalaqah(h.name)) {
               map.set(h.name, {
                 name: h.name,
                 code: h.code || 'HL-1001',
@@ -65,7 +86,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     } catch {}
 
     registeredUsers.forEach((u) => {
-      if (u.halaqah && u.halaqah !== 'Dept HX Pusat' && !map.has(u.halaqah)) {
+      if (u.halaqah && !isInvalidHalaqah(u.halaqah) && !map.has(u.halaqah)) {
         map.set(u.halaqah, {
           name: u.halaqah,
           code: u.halaqahCode || 'HL-1001',
@@ -229,7 +250,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             role: 'admin',
             totalXp: 0,
             streakDays: 0,
-            supervisor: 'Direktorat Dept HX',
+            supervisor: 'Departemen HX (Human Experience)',
             assignedHalaqahBy: 'Dept HX',
             hxAssignmentId: `HX-USTADZ-${currentHalaqah?.code || '001'}`,
             hxStatus: 'Resmi Dept HX'
@@ -280,23 +301,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       resetFailedAuthAttempts('dept-hx');
       setIsSubmittingDeptHX(false);
 
-      const deptUser = registeredUsers.find((u) => u.role === 'dept-hx' || u.role === 'hq-admin') || {
-        id: 'user-dept-hx',
-        name: 'Direktorat Dept HX',
-        halaqah: 'Dept HX Pusat',
-        halaqahCode: 'HX-HQ-01',
-        passcode: cleanPass,
-        avatar: BRAND_ASSETS.currentUserAvatar,
-        role: 'dept-hx',
-        totalXp: 0,
-        streakDays: 0,
-        supervisor: 'Direktorat Dept HX Pusat',
-        assignedHalaqahBy: 'Dept HX',
-        hxAssignmentId: 'HX-2026-HQ',
-        hxStatus: 'Resmi Dept HX'
-      };
+      const foundDeptUser = registeredUsers.find((u) => u.role === 'dept-hx' || u.role === 'hq-admin');
+      const deptUser: ActiveUser = foundDeptUser
+        ? {
+            ...foundDeptUser,
+            name: 'Departemen HX (Human Experience)',
+            supervisor: 'Departemen HX (Human Experience)'
+          }
+        : {
+            id: 'user-dept-hx',
+            name: 'Departemen HX (Human Experience)',
+            halaqah: 'Dept HX Pusat',
+            halaqahCode: 'HX-HQ-01',
+            passcode: cleanPass,
+            avatar: BRAND_ASSETS.currentUserAvatar,
+            role: 'dept-hx',
+            totalXp: 0,
+            streakDays: 0,
+            supervisor: 'Departemen HX (Human Experience)',
+            assignedHalaqahBy: 'Dept HX',
+            hxAssignmentId: 'HX-2026-HQ',
+            hxStatus: 'Resmi Dept HX'
+          };
 
-      onShowToast('Otorisasi Berhasil! Selamat datang di Portal Direktorat Dept HX.');
+      onShowToast('Otorisasi Berhasil! Selamat datang di Portal Departemen HX (Human Experience).');
       onLoginSuccess(deptUser);
     }, 300);
   };
@@ -395,7 +423,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span className="text-xs uppercase tracking-wider">Portal Masuk Karyawan</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Masukkan <strong>Nama Lengkap Karyawan</strong> dan <strong>PIN</strong> yang telah didaftarkan oleh Direktorat Dept HX.
+                  Masukkan <strong>Nama Lengkap Karyawan</strong> dan <strong>PIN</strong> yang telah didaftarkan oleh Departemen HX (Human Experience).
                 </p>
               </div>
 
@@ -499,7 +527,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <button
                   type="button"
                   onClick={() =>
-                    onShowToast('Silakan hubungi pengurus Direktorat Dept HX untuk informasi PIN akun Anda.')
+                    onShowToast('Silakan hubungi pengurus Departemen HX (Human Experience) untuk informasi PIN akun Anda.')
                   }
                   className="text-xs text-[#012d1d] hover:underline font-semibold cursor-pointer"
                 >
@@ -651,7 +679,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
                   <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                  <span className="text-xs uppercase tracking-wider">Area Otoritas Direktorat Dept HX</span>
+                  <span className="text-xs uppercase tracking-wider">Area Otoritas Departemen HX (Human Experience)</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
                   Akses khusus pengurus pusat untuk pendaftaran karyawan asli, pembuatan kelompok halaqah, penetapan Ustadz/ah pembimbing, dan rekapitulasi mutaba&apos;ah.

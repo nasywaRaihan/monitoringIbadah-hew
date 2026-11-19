@@ -153,6 +153,23 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             setHalaqahList(parsed);
           }
         }
+        const savedDelH = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
+        if (savedDelH) {
+          const parsedDelH = JSON.parse(savedDelH);
+          if (Array.isArray(parsedDelH)) setDeletedHalaqahNames(parsedDelH);
+        }
+        const savedDelS = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+        if (savedDelS) {
+          const parsedDelS = JSON.parse(savedDelS);
+          if (Array.isArray(parsedDelS)) setDeletedStudentIds(parsedDelS);
+        }
+        const savedOverrides = localStorage.getItem('noorworship_user_halaqah_overrides_prod_v1');
+        if (savedOverrides) {
+          const parsedOverrides = JSON.parse(savedOverrides);
+          if (parsedOverrides && typeof parsedOverrides === 'object') {
+            setUserHalaqahOverrides(parsedOverrides);
+          }
+        }
       } catch (e) {
         console.warn(e);
       }
@@ -217,12 +234,66 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     }
   }, [userHalaqahOverrides]);
 
+  // Self-heal: if a halaqah is present in halaqahList (e.g. newly imported or created),
+  // automatically remove it from deletedHalaqahNames and clear stale 'Tanpa Halaqah' overrides
+  useEffect(() => {
+    if (!halaqahList || halaqahList.length === 0) return;
+    const activeLowerNames = new Set(
+      halaqahList
+        .filter((h) => h && h.name)
+        .map((h) => h.name.trim().toLowerCase())
+    );
+
+    setDeletedHalaqahNames((prev) => {
+      if (!prev.some((d) => activeLowerNames.has(d.trim().toLowerCase()))) return prev;
+      const cleaned = prev.filter((d) => !activeLowerNames.has(d.trim().toLowerCase()));
+      try {
+        localStorage.setItem('noorworship_deleted_halaqah_names_prod_v1', JSON.stringify(cleaned));
+      } catch {}
+      return cleaned;
+    });
+
+    if (registeredUsers && registeredUsers.length > 0) {
+      setUserHalaqahOverrides((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        registeredUsers.forEach((u) => {
+          if (
+            u.halaqah &&
+            activeLowerNames.has(u.halaqah.trim().toLowerCase()) &&
+            next[u.id] === 'Tanpa Halaqah'
+          ) {
+            delete next[u.id];
+            changed = true;
+          }
+        });
+        if (changed) {
+          try {
+            localStorage.setItem('noorworship_user_halaqah_overrides_prod_v1', JSON.stringify(next));
+          } catch {}
+          return next;
+        }
+        return prev;
+      });
+    }
+  }, [halaqahList, registeredUsers]);
+
+  const isHalaqahDeleted = (name?: string) => {
+    if (!name) return false;
+    const clean = name.trim().toLowerCase();
+    // If the halaqah currently exists in halaqahList, it is active (not deleted)
+    if (halaqahList.some((h) => h?.name && h.name.trim().toLowerCase() === clean)) {
+      return false;
+    }
+    return deletedHalaqahNames.some((d) => d.trim().toLowerCase() === clean);
+  };
+
   // Active presets filtered by deleted list and deduplicated by name with guaranteed id
   const allHalaqahPresets = useMemo(() => {
     const seen = new Set<string>();
     const result: typeof halaqahList = [];
     halaqahList.forEach((h, idx) => {
-      if (!h?.name || deletedHalaqahNames.includes(h.name)) return;
+      if (!h?.name || isHalaqahDeleted(h.name)) return;
       const key = h.name.trim().toLowerCase();
       if (seen.has(key)) return;
       seen.add(key);
@@ -333,7 +404,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     // Push a halaqah-wide notification
     await pushNotification({
       targetHalaqah: groupName,
-      senderName: 'Direktorat Dept HX',
+      senderName: 'Departemen HX (Human Experience)',
       title: `Maklumat Khusus: ${groupName}`,
       message: text,
       type: 'broadcast',
@@ -348,7 +419,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         targetUserId: user.id,
         recipientName: user.name,
         targetHalaqah: groupName,
-        senderName: 'Direktorat Dept HX',
+        senderName: 'Departemen HX (Human Experience)',
         title: `Maklumat Khusus: ${groupName}`,
         message: text,
         type: 'broadcast',
@@ -380,7 +451,14 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       dept: newHalaqahDept.trim() || 'Dept HX'
     };
 
-    setHalaqahList((prev) => [newHalaqahItem, ...prev]);
+    // If this halaqah name was previously deleted, remove it from deletedHalaqahNames
+    setDeletedHalaqahNames((prev) =>
+      prev.filter((d) => d.trim().toLowerCase() !== nameTrimmed.toLowerCase())
+    );
+    setHalaqahList((prev) => [
+      newHalaqahItem,
+      ...prev.filter((h) => h.name.trim().toLowerCase() !== nameTrimmed.toLowerCase())
+    ]);
     setShowAddHalaqahModal(false);
     setNewHalaqahName('');
     setNewHalaqahCode('');
@@ -398,14 +476,79 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
   const confirmDeleteHalaqah = () => {
     if (!deletingHalaqahTarget) return;
-    const name = deletingHalaqahTarget;
-    setHalaqahList((prev) => prev.filter((h) => h.name !== name));
-    setDeletedHalaqahNames((prev) => [...prev, name]);
-    if (selectedHalaqahGroup === name) {
+    const name = deletingHalaqahTarget.trim();
+    const targetLower = name.toLowerCase();
+
+    // 1. Remove from halaqahList & persist immediately
+    setHalaqahList((prev) => {
+      const updated = prev.filter((h) => h.name.trim().toLowerCase() !== targetLower);
+      try {
+        localStorage.setItem('noorworship_unified_halaqahs_prod_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. Track in deletedHalaqahNames & persist immediately
+    setDeletedHalaqahNames((prev) => {
+      const next = prev.some((d) => d.trim().toLowerCase() === targetLower) ? prev : [...prev, name];
+      try {
+        localStorage.setItem('noorworship_deleted_halaqah_names_prod_v1', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 3. Move any member or ustadz in this halaqah to 'Tanpa Halaqah' so it isn't recreated
+    setUserHalaqahOverrides((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((uid) => {
+        if (next[uid] && next[uid].trim().toLowerCase() === targetLower) {
+          next[uid] = 'Tanpa Halaqah';
+        }
+      });
+      if (registeredUsers) {
+        registeredUsers.forEach((u) => {
+          if (u.halaqah && u.halaqah.trim().toLowerCase() === targetLower) {
+            next[u.id] = 'Tanpa Halaqah';
+          }
+        });
+      }
+      return next;
+    });
+
+    setReciters((prev) =>
+      prev.map((r) =>
+        r.group && r.group.trim().toLowerCase() === targetLower
+          ? { ...r, group: 'Tanpa Halaqah' }
+          : r
+      )
+    );
+
+    // 4. Update registeredUsers & Firestore in App.tsx
+    if (onRenameHalaqahForAll) {
+      onRenameHalaqahForAll(name, 'Tanpa Halaqah', '-');
+    }
+
+    // 5. Remove custom Ustadz PIN entry for this halaqah if present
+    try {
+      const pinsMap = getUstadzPinsMap();
+      Object.keys(pinsMap).forEach((k) => {
+        if (k.trim().toLowerCase() === targetLower) {
+          delete pinsMap[k];
+        }
+      });
+      localStorage.setItem('noorworship_ustadz_pins_prod_v1', JSON.stringify(pinsMap));
+    } catch {}
+
+    window.dispatchEvent(new Event('noorworship_halaqah_updated'));
+
+    if (selectedHalaqahGroup && selectedHalaqahGroup.trim().toLowerCase() === targetLower) {
       setSelectedHalaqahGroup(null);
     }
+    if (selectedGroup && selectedGroup.trim().toLowerCase() === targetLower) {
+      setSelectedGroup('Semua Halaqah');
+    }
     setDeletingHalaqahTarget(null);
-    onShowToast(`Halaqah "${name}" berhasil dihapus oleh Dept HX.`);
+    onShowToast(`Halaqah "${name}" berhasil dihapus oleh Departemen HX (Human Experience).`);
   };
 
   const handleDeleteStudent = (student: { id: string; name: string }) => {
@@ -843,16 +986,17 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   };
 
   const allStudentsList = useMemo(() => {
-    const map = new Map();
+    const byNameRole = new Map<string, any>();
     if (registeredUsers) {
       registeredUsers.forEach((u) => {
         if (u.role === 'dept-hx' || u.role === 'hq-admin') return;
-        if (!deletedStudentIds.includes(u.id) && !deletedStudentIds.includes(u.name)) {
-          const assignedHalaqah =
+        if (!deletedStudentIds.includes(u.id)) {
+          const rawHalaqah =
             userHalaqahOverrides[u.id] !== undefined
               ? userHalaqahOverrides[u.id]
               : u.halaqah || 'Tanpa Halaqah';
-          map.set(u.id, {
+          const assignedHalaqah = isHalaqahDeleted(rawHalaqah) ? 'Tanpa Halaqah' : rawHalaqah;
+          const candidate = {
             id: u.id,
             name: u.name,
             avatar: u.avatar,
@@ -863,12 +1007,30 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             role: u.role,
             supervisor: formatSupervisorDisplayName(u.supervisor),
             phone: u.phone || ''
-          });
+          };
+          const key = `${u.role}:${u.name.trim().toLowerCase()}`;
+          const existing = byNameRole.get(key);
+          if (!existing) {
+            byNameRole.set(key, candidate);
+          } else {
+            // Prefer the record assigned to an active halaqah over 'Tanpa Halaqah'
+            const existingHasHalaqah =
+              existing.halaqah &&
+              existing.halaqah !== 'Tanpa Halaqah' &&
+              existing.halaqah !== 'Belum Ada Halaqah';
+            const candidateHasHalaqah =
+              candidate.halaqah &&
+              candidate.halaqah !== 'Tanpa Halaqah' &&
+              candidate.halaqah !== 'Belum Ada Halaqah';
+            if (candidateHasHalaqah && !existingHasHalaqah) {
+              byNameRole.set(key, candidate);
+            }
+          }
         }
       });
     }
-    return Array.from(map.values());
-  }, [registeredUsers, deletedStudentIds, userHalaqahOverrides]);
+    return Array.from(byNameRole.values());
+  }, [registeredUsers, deletedStudentIds, userHalaqahOverrides, deletedHalaqahNames, halaqahList]);
 
   const halaqahGroups = useMemo(() => {
     const groupsMap: Record<string, any[]> = {};
@@ -880,7 +1042,15 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
     allStudentsList.forEach((st: any) => {
       const h = st.halaqah;
-      if (!h || h === 'Dept HX Pusat' || h === 'Tanpa Halaqah') return;
+      if (
+        !h ||
+        h === 'Dept HX Pusat' ||
+        h === 'Tanpa Halaqah' ||
+        h === 'Belum Ada Halaqah' ||
+        isHalaqahDeleted(h)
+      ) {
+        return;
+      }
       if (!groupsMap[h]) groupsMap[h] = [];
       if (st.role === 'member') {
         groupsMap[h].push(st);
@@ -908,7 +1078,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         compliance: 100
       };
     });
-  }, [allStudentsList, allHalaqahPresets]);
+  }, [allStudentsList, allHalaqahPresets, deletedHalaqahNames]);
 
   const allRecitersList = useMemo(() => {
     const existingNames = new Set(reciters.map((r) => r.name.toLowerCase()));
@@ -922,10 +1092,11 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           !deletedStudentIds.includes(u.name)
       )
       .map((u) => {
-        const assignedHalaqah =
+        const rawHalaqah =
           userHalaqahOverrides[u.id] !== undefined
             ? userHalaqahOverrides[u.id]
             : u.halaqah || 'Tanpa Halaqah';
+        const assignedHalaqah = isHalaqahDeleted(rawHalaqah) ? 'Tanpa Halaqah' : rawHalaqah;
         return {
           id: u.id,
           name: u.name,
@@ -945,8 +1116,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       });
 
     const mappedReciters = reciters.map((r) => {
-      const assignedGroup =
+      const rawGroup =
         userHalaqahOverrides[r.id] !== undefined ? userHalaqahOverrides[r.id] : r.group;
+      const assignedGroup = isHalaqahDeleted(rawGroup) ? 'Tanpa Halaqah' : rawGroup;
       return {
         ...r,
         group: assignedGroup
@@ -1069,7 +1241,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         location: 'Masjid Al-Ikhlas',
         dept: 'Dept HX'
       };
-      setHalaqahList((prev) => [createdHalaqah, ...prev]);
+      setDeletedHalaqahNames((prev) =>
+        prev.filter((d) => d.trim().toLowerCase() !== groupName.toLowerCase())
+      );
+      setHalaqahList((prev) => [
+        createdHalaqah,
+        ...prev.filter((h) => h.name.trim().toLowerCase() !== groupName.toLowerCase())
+      ]);
       selectedPreset = createdHalaqah;
     }
 
@@ -1081,7 +1259,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         pinsMap[selectedPreset.name] = finalPasscode;
         localStorage.setItem('noorworship_ustadz_pins_prod_v1', JSON.stringify(pinsMap));
         addSecurityAuditLog(
-          'Direktorat Dept HX',
+          'Departemen HX (Human Experience)',
           `Menetapkan PIN Supervisor ${getUstadzTitle(finalReciterName, newReciterGender)} Baru (${finalReciterName})`,
           selectedPreset.name
         );
@@ -1397,8 +1575,21 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                           Pembimbing: <span className="font-semibold text-[#141b2b]">{group.supervisor}</span>
                         </p>
                       </div>
-                      <div className="w-10 h-10 rounded-xl bg-[#012d1d] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                        <span className="material-symbols-outlined text-[20px]">groups</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteHalaqah(group.halaqahName);
+                          }}
+                          title={`Hapus Halaqah ${group.halaqahName}`}
+                          className="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/70 flex items-center justify-center shadow-2xs active:scale-95 transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                        <div className="w-10 h-10 rounded-xl bg-[#012d1d] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                          <span className="material-symbols-outlined text-[20px]">groups</span>
+                        </div>
                       </div>
                     </div>
 

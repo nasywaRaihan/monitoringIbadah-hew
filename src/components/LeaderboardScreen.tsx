@@ -111,10 +111,33 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
   // Unique list of halaqah names found in halaqahDetailsList + allEmployees
   const allHalaqahNames = useMemo<string[]>(() => {
+    let deletedNames: string[] = [];
+    try {
+      const savedDel = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
+      if (savedDel) {
+        const parsedDel = JSON.parse(savedDel);
+        if (Array.isArray(parsedDel)) deletedNames = parsedDel.map((d: string) => d.trim().toLowerCase());
+      }
+    } catch {}
+
+    const isInvalid = (name?: string) => {
+      if (!name) return true;
+      const clean = name.trim();
+      return (
+        !clean ||
+        clean === 'Dept HX Pusat' ||
+        clean === 'Tanpa Halaqah' ||
+        clean === 'Belum Ada Halaqah' ||
+        deletedNames.includes(clean.toLowerCase())
+      );
+    };
+
     const names = new Set<string>();
-    halaqahDetailsList.forEach((h) => names.add(h.name));
+    halaqahDetailsList.forEach((h) => {
+      if (!isInvalid(h.name)) names.add(h.name);
+    });
     allEmployees.forEach((u) => {
-      if (u.halaqah) names.add(u.halaqah);
+      if (u.halaqah && !isInvalid(u.halaqah)) names.add(u.halaqah);
     });
     return Array.from(names);
   }, [halaqahDetailsList, allEmployees]);

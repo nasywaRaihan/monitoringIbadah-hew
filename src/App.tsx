@@ -85,11 +85,11 @@ export default function App() {
     }
   });
 
-  // Official Bootstrap Account for Direktorat Dept HX (No dummy employees)
+  // Official Bootstrap Account for Departemen HX (Human Experience) (No dummy employees)
   const DEFAULT_USERS: ActiveUser[] = [
     {
       id: 'user-dept-hx',
-      name: 'Direktorat Dept HX',
+      name: 'Departemen HX (Human Experience)',
       halaqah: 'Dept HX Pusat',
       halaqahCode: 'HX-HQ-01',
       passcode: 'hx2026',
@@ -97,12 +97,32 @@ export default function App() {
       role: 'dept-hx',
       totalXp: 0,
       streakDays: 0,
-      supervisor: 'Direktorat Dept HX Pusat',
+      supervisor: 'Departemen HX (Human Experience)',
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: 'HX-2026-HQ',
       hxStatus: 'Resmi Dept HX'
     }
   ];
+
+  const normalizeDeptHXUser = (u: ActiveUser): ActiveUser => {
+    if (!u) return u;
+    const isDeptHXAccount =
+      u.id === 'user-dept-hx' ||
+      u.role === 'dept-hx' ||
+      u.role === 'hq-admin' ||
+      (u.name && u.name.toLowerCase().includes('direktorat dept hx'));
+    const hasLegacySup =
+      u.supervisor && u.supervisor.toLowerCase().includes('direktorat dept hx');
+    if (!isDeptHXAccount && !hasLegacySup) return u;
+    return {
+      ...u,
+      name: isDeptHXAccount ? 'Departemen HX (Human Experience)' : u.name,
+      supervisor:
+        isDeptHXAccount || hasLegacySup
+          ? 'Departemen HX (Human Experience)'
+          : u.supervisor
+    };
+  };
 
   const LEGACY_DEMO_USER_IDS = new Set([
     'user-zubair',
@@ -128,7 +148,9 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter((u: ActiveUser) => !LEGACY_DEMO_USER_IDS.has(u.id));
+          return parsed
+            .filter((u: ActiveUser) => !LEGACY_DEMO_USER_IDS.has(u.id))
+            .map(normalizeDeptHXUser);
         }
       }
     } catch (e) {
@@ -142,7 +164,9 @@ export default function App() {
       const saved = localStorage.getItem('noorworship_active_user_prod_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id && !LEGACY_DEMO_USER_IDS.has(parsed.id)) return parsed;
+        if (parsed && parsed.id && !LEGACY_DEMO_USER_IDS.has(parsed.id)) {
+          return normalizeDeptHXUser(parsed);
+        }
       }
     } catch (e) {
       console.warn('Could not load active user from localStorage', e);
@@ -200,9 +224,9 @@ export default function App() {
 
       setRegisteredUsers((prev) => {
         const userMap = new Map<string, ActiveUser>();
-        DEFAULT_USERS.forEach((u) => userMap.set(u.id, u));
-        prev.filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id)).forEach((u) => userMap.set(u.id, u));
-        firestoreUsers.forEach((u) => userMap.set(u.id, u));
+        DEFAULT_USERS.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+        prev.filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id)).forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+        firestoreUsers.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
         return Array.from(userMap.values());
       });
     });
@@ -775,7 +799,7 @@ export default function App() {
           role: 'admin',
           totalXp: 0,
           streakDays: 0,
-          supervisor: 'Direktorat Dept HX',
+          supervisor: 'Departemen HX (Human Experience)',
           assignedHalaqahBy: 'Dept HX',
           hxAssignmentId: `HX-UST-${Date.now().toString().slice(-4)}`,
           hxStatus: 'Resmi Dept HX'
@@ -808,8 +832,10 @@ export default function App() {
       currentHalaqahs = [...DEFAULT_BASE_HALAQAHS];
     }
 
-    const createdUsers: ActiveUser[] = [];
+    const createdOrUpdatedUsers: ActiveUser[] = [];
     const newHalaqahNames: string[] = [];
+    const importedHalaqahLowerSet = new Set<string>();
+    const importedUserLowerNames = new Set<string>();
 
     for (const record of records) {
       if (!record.name || !record.name.trim()) continue;
@@ -818,12 +844,16 @@ export default function App() {
       const cleanSupervisor = formatSupervisorDisplayName((record.supervisor || 'Ustadz/ah Pembimbing').trim());
       const cleanPasscode = (record.passcode || '1234').trim();
 
+      importedHalaqahLowerSet.add(cleanHalaqah.toLowerCase());
+      importedUserLowerNames.add(cleanName.toLowerCase());
+
       let halaqahCode = 'HL-1001';
       const existingHalaqah = currentHalaqahs.find(
-        (h) => h.name.toLowerCase() === cleanHalaqah.toLowerCase()
+        (h) => h?.name && h.name.trim().toLowerCase() === cleanHalaqah.toLowerCase()
       );
       if (existingHalaqah) {
         halaqahCode = existingHalaqah.code;
+        existingHalaqah.supervisor = cleanSupervisor;
       } else {
         const words = cleanHalaqah.split(/\s+/);
         const initials =
@@ -850,16 +880,22 @@ export default function App() {
         }
       }
 
-      // Ensure Ustadz Pembimbing account is also registered if not yet present
-      const ustadzExists =
-        registeredUsers.some(
-          (u) => u.role === 'admin' && u.halaqah.toLowerCase() === cleanHalaqah.toLowerCase()
+      // Ensure Ustadz Pembimbing account is also registered/updated
+      const existingUstadz =
+        registeredUsers.find(
+          (u) =>
+            u.role === 'admin' &&
+            (u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase() ||
+              u.name.trim().toLowerCase() === cleanSupervisor.toLowerCase())
         ) ||
-        createdUsers.some(
-          (u) => u.role === 'admin' && u.halaqah.toLowerCase() === cleanHalaqah.toLowerCase()
+        createdOrUpdatedUsers.find(
+          (u) =>
+            u.role === 'admin' &&
+            (u.halaqah.trim().toLowerCase() === cleanHalaqah.toLowerCase() ||
+              u.name.trim().toLowerCase() === cleanSupervisor.toLowerCase())
         );
 
-      if (!ustadzExists && cleanSupervisor) {
+      if (!existingUstadz && cleanSupervisor) {
         const ustadzUser: ActiveUser = {
           id: `user-ustadz-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           name: cleanSupervisor,
@@ -873,43 +909,137 @@ export default function App() {
           assignedHalaqahBy: 'SK Dept HX',
           hxAssignmentId: `HX-UST-${Date.now().toString().slice(-4)}`,
           hxStatus: 'Resmi Dept HX',
-          supervisor: 'Direktorat Dept HX'
+          supervisor: 'Departemen HX (Human Experience)'
         };
-        createdUsers.push(ustadzUser);
+        createdOrUpdatedUsers.push(ustadzUser);
         try {
           await setDoc(doc(db, 'users', ustadzUser.id), ustadzUser);
         } catch (err) {
           console.warn('Firestore ustadz save notice:', err);
         }
+      } else if (existingUstadz && existingUstadz.halaqah !== cleanHalaqah) {
+        const updatedUstadz: ActiveUser = {
+          ...existingUstadz,
+          name: cleanSupervisor,
+          halaqah: cleanHalaqah,
+          halaqahCode: halaqahCode
+        };
+        createdOrUpdatedUsers.push(updatedUstadz);
+        try {
+          await setDoc(doc(db, 'users', updatedUstadz.id), updatedUstadz, { merge: true });
+        } catch (err) {
+          console.warn('Firestore ustadz update notice:', err);
+        }
       }
 
-      const newUser: ActiveUser = {
-        id: `user-import-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        name: cleanName,
-        halaqah: cleanHalaqah,
-        halaqahCode: halaqahCode,
-        passcode: cleanPasscode,
-        phone: record.phone || '',
-        avatar: BRAND_ASSETS.currentUserAvatar,
-        role: 'member',
-        totalXp: 0,
-        streakDays: 0,
-        assignedHalaqahBy: 'Import Dept HX',
-        hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
-        hxStatus: 'Resmi Dept HX',
-        supervisor: cleanSupervisor
-      };
+      // Check if employee with same name already exists (e.g. from previous import before halaqah deletion)
+      const existingMember = registeredUsers.find(
+        (u) => u.role === 'member' && u.name.trim().toLowerCase() === cleanName.toLowerCase()
+      );
 
-      createdUsers.push(newUser);
+      const memberUser: ActiveUser = existingMember
+        ? {
+            ...existingMember,
+            name: cleanName,
+            halaqah: cleanHalaqah,
+            halaqahCode: halaqahCode,
+            passcode: cleanPasscode,
+            phone: record.phone || existingMember.phone || '',
+            assignedHalaqahBy: 'Import Dept HX',
+            hxStatus: 'Resmi Dept HX',
+            supervisor: cleanSupervisor
+          }
+        : {
+            id: `user-import-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: cleanName,
+            halaqah: cleanHalaqah,
+            halaqahCode: halaqahCode,
+            passcode: cleanPasscode,
+            phone: record.phone || '',
+            avatar: BRAND_ASSETS.currentUserAvatar,
+            role: 'member',
+            totalXp: 0,
+            streakDays: 0,
+            assignedHalaqahBy: 'Import Dept HX',
+            hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
+            hxStatus: 'Resmi Dept HX',
+            supervisor: cleanSupervisor
+          };
+
+      createdOrUpdatedUsers.push(memberUser);
       try {
-        await setDoc(doc(db, 'users', newUser.id), newUser);
+        await setDoc(doc(db, 'users', memberUser.id), memberUser, { merge: true });
       } catch (err) {
         console.warn('Firestore user save notice:', err);
       }
     }
 
-    if (createdUsers.length > 0) {
-      setRegisteredUsers((prev) => [...createdUsers, ...prev]);
+    if (createdOrUpdatedUsers.length > 0) {
+      // 1. Remove imported halaqah names from deletedHalaqahNames in localStorage
+      try {
+        const savedDelH = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
+        if (savedDelH) {
+          const parsedDelH = JSON.parse(savedDelH);
+          if (Array.isArray(parsedDelH)) {
+            const cleanedDelH = parsedDelH.filter(
+              (d: string) => !importedHalaqahLowerSet.has(d.trim().toLowerCase())
+            );
+            localStorage.setItem(
+              'noorworship_deleted_halaqah_names_prod_v1',
+              JSON.stringify(cleanedDelH)
+            );
+          }
+        }
+      } catch {}
+
+      // 2. Remove imported user names/IDs from deletedStudentIds in localStorage
+      try {
+        const savedDelS = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+        if (savedDelS) {
+          const parsedDelS = JSON.parse(savedDelS);
+          if (Array.isArray(parsedDelS)) {
+            const cleanedDelS = parsedDelS.filter(
+              (s: string) => !importedUserLowerNames.has(s.trim().toLowerCase())
+            );
+            localStorage.setItem(
+              'noorworship_deleted_student_ids_prod_v1',
+              JSON.stringify(cleanedDelS)
+            );
+          }
+        }
+      } catch {}
+
+      // 3. Clear any stale userHalaqahOverrides for imported users
+      try {
+        const savedOverrides = localStorage.getItem('noorworship_user_halaqah_overrides_prod_v1');
+        if (savedOverrides) {
+          const parsedOverrides = JSON.parse(savedOverrides);
+          if (parsedOverrides && typeof parsedOverrides === 'object') {
+            createdOrUpdatedUsers.forEach((u) => {
+              delete parsedOverrides[u.id];
+            });
+            localStorage.setItem(
+              'noorworship_user_halaqah_overrides_prod_v1',
+              JSON.stringify(parsedOverrides)
+            );
+          }
+        }
+      } catch {}
+
+      // 4. Update registeredUsers state (replacing any updated users by ID or name+role)
+      setRegisteredUsers((prev) => {
+        const updatedIds = new Set(createdOrUpdatedUsers.map((u) => u.id));
+        const updatedNameRoles = new Set(
+          createdOrUpdatedUsers.map((u) => `${u.role}:${u.name.trim().toLowerCase()}`)
+        );
+        const remaining = prev.filter(
+          (u) =>
+            !updatedIds.has(u.id) &&
+            !updatedNameRoles.has(`${u.role}:${u.name.trim().toLowerCase()}`)
+        );
+        return [...createdOrUpdatedUsers, ...remaining];
+      });
+
       try {
         localStorage.setItem(
           'noorworship_unified_halaqahs_prod_v1',
@@ -983,9 +1113,11 @@ export default function App() {
   };
 
   const handleRenameHalaqahForAll = async (oldName: string, newName: string, newCode?: string) => {
+    const cleanOld = (oldName || '').trim().toLowerCase();
+    if (!cleanOld) return;
     setRegisteredUsers((prev) =>
       prev.map((u) => {
-        if (u.halaqah === oldName) {
+        if (u.halaqah && u.halaqah.trim().toLowerCase() === cleanOld) {
           const updated = {
             ...u,
             halaqah: newName,

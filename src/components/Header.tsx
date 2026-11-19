@@ -114,9 +114,18 @@ export const Header: React.FC<HeaderProps> = ({
               <PremiumInitialAvatar
                 name={activeUser?.name || 'Pengguna'}
                 role={activeUser?.role || currentRole}
-                className="w-9 h-9 rounded-full shadow-[0_0_8px_rgba(1,45,29,0.18)] ring-2 ring-[#c1ecd4]"
+                className="w-9 h-9 rounded-full"
               />
-              <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[#53b889] ring-2 ring-white" />
+              <span
+                className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                  (activeUser?.role || currentRole) === 'dept-hx' ||
+                  (activeUser?.role || currentRole) === 'hq-admin'
+                    ? 'bg-[#2563eb]'
+                    : (activeUser?.role || currentRole) === 'admin'
+                    ? 'bg-[#d97706]'
+                    : 'bg-[#53b889]'
+                }`}
+              />
             </button>
 
             {/* Profile Popover Menu */}
@@ -129,17 +138,27 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-32px)] bg-white rounded-2xl shadow-xl border border-[#1b4332]/10 p-2 z-50 animate-in fade-in-50 zoom-in-95 duration-150">
                   <div className="px-3 py-2.5 border-b border-[#f1f3ff] mb-1">
                     <p className="text-xs font-bold text-[#141b2b] truncate">
-                      {activeUser?.name || 'Pengguna'}
+                      {activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin'
+                        ? 'Departemen HX (Human Experience)'
+                        : activeUser?.name || 'Pengguna'}
                     </p>
                     <p className="text-[11px] text-[#414844] truncate mt-0.5">
                       {activeUser?.halaqah || 'Halaqah Al-Fajr'}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          activeUser?.role === 'admin'
+                            ? 'bg-[#fff3d1] text-[#785a1a] border border-[#fed488]'
+                            : activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin'
+                            ? 'bg-[#dbeafe] text-[#1e3a8a] border border-[#93c5fd]'
+                            : 'bg-[#c1ecd4] text-[#002114]'
+                        }`}
+                      >
                         {activeUser?.role === 'admin'
                           ? `${getUstadzTitle(activeUser)} Pembimbing`
                           : activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin'
-                          ? 'Dept HX'
+                          ? 'Departemen HX (Human Experience)'
                           : 'Karyawan Aktif'}
                       </span>
                       {currentRole === 'member' &&

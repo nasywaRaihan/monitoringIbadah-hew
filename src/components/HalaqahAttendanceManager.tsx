@@ -645,7 +645,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
             <div className="flex items-center gap-2 text-xs text-[#414844]">
               <span className="material-symbols-outlined text-[20px] text-[#00452c]">sync</span>
               <span>
-                Data presensi akan langsung dikirim dan disinkronkan ke <strong>Direktorat Dept HX</strong> secara otomatis.
+                Data presensi akan langsung dikirim dan disinkronkan ke <strong>Departemen HX (Human Experience)</strong> secara otomatis.
               </span>
             </div>
 

@@ -230,10 +230,10 @@ export const DEFAULT_STANDARD_AMALAN_HX: StandardAmalanHX[] = [
     title: 'Olahraga & Kebugaran Jasmani',
     category: 'Kesehatan & Rihlah',
     baseXp: 10,
-    timeWindowDescription: 'Pagi atau sore hari (minimal 15-30 menit)',
+    timeWindowDescription: 'Sepanjang hari (pagi sampai malam, minimal 15-30 menit)',
     isActive: true,
     recurrence: 'daily',
-    note: 'Aktivitas fisik menjaga kebugaran jasmani untuk kelancaran ibadah & bekerja.',
+    note: 'Aktivitas fisik menjaga kebugaran jasmani untuk kelancaran ibadah & bekerja. Bebas diisi dari pagi sampai malam tanpa batas waktu.',
     order: 11
   }
 ];
@@ -264,11 +264,20 @@ export function resolveTaskPrayerId(
 ): StandardAmalanHX['prayerId'] | undefined {
   if (!input) return undefined;
   if (typeof input === 'string') return input;
-  if (input.prayerId) return input.prayerId;
-
   const combined = `${input.id || ''} ${input.title || ''} ${input.timeWindowInfo || ''} ${
     input.timeWindowDescription || ''
   }`.toLowerCase();
+
+  // Olahraga & Kebugaran Jasmani, Puasa Sunnah, dan Qiyamullail tidak dibatasi jam shalat tertentu (bebas diisi pagi s/d malam)
+  if (
+    /\bolahraga\b|\bkebugaran\s+jasmani\b|paten-olahraga|\bpuasa\b|paten-puasa-sunnah|\bqiyamullail\b|\btahajjud\b|paten-qiyamullail/i.test(
+      `${input.id || ''} ${input.title || ''}`
+    )
+  ) {
+    return undefined;
+  }
+
+  if (typeof input === 'object' && input.prayerId) return input.prayerId;
 
   if (/\bdzikir\s+pagi\b|\bmatsurat\s+pagi\b|paten-dzikir-pagi/i.test(combined)) {
     return 'dzikir-pagi';
@@ -615,16 +624,24 @@ const STORAGE_KEY_PATEN = 'noorworship_standard_amalan_hx_v1';
 function sanitizeStandardAmalanItems(items: StandardAmalanHX[]): StandardAmalanHX[] {
   return items.map((item) => {
     const isFardhu5 = isFiveDailyFardhuPrayer(item);
-    const resolvedPrayerId = resolveTaskPrayerId(item);
+    const isOlahraga =
+      item.id === 'paten-olahraga' ||
+      /\bolahraga\b|\bkebugaran\s+jasmani\b/i.test(item.title || '');
+    const resolvedPrayerId = isOlahraga ? undefined : resolveTaskPrayerId(item);
     const updatedNote = item.note
       ? item.note.replace(/dipotong\s*5\s*XP/gi, 'mendapatkan 75% dari poin asli')
       : item.note;
+    const updatedWindowDesc =
+      isOlahraga && (!item.timeWindowDescription || /pagi atau sore hari/i.test(item.timeWindowDescription))
+        ? 'Sepanjang hari (pagi sampai malam, minimal 15-30 menit)'
+        : item.timeWindowDescription;
     return {
       ...item,
       prayerId: resolvedPrayerId,
+      timeWindowDescription: updatedWindowDesc,
       hasJamaahOption: isFardhu5 ? true : false,
       jamaahBonusXp: isFardhu5 ? (item.jamaahBonusXp ?? 5) : undefined,
-      penaltyLateXp: item.penaltyLateXp ? 25 : undefined,
+      penaltyLateXp: isOlahraga ? undefined : item.penaltyLateXp ? 25 : undefined,
       note: updatedNote
     };
   });

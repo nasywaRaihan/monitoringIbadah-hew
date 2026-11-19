@@ -303,7 +303,7 @@ export const SecuritySettingsModal: React.FC<SecuritySettingsModalProps> = ({
 
     onUpdateUserPasscode(emp.id, cleanPin, 'member', emp.halaqah);
     addSecurityAuditLog(
-      'Direktorat Dept HX',
+      'Departemen HX (Human Experience)',
       `Mengubah PIN Login Karyawan (${emp.halaqah})`,
       emp.name
     );
@@ -570,7 +570,6 @@ export const SecuritySettingsModal: React.FC<SecuritySettingsModalProps> = ({
                           <span className="material-symbols-outlined text-[14px]">
                             {showHxFields ? 'visibility_off' : 'visibility'}
                           </span>
-                          <span>{showHxFields ? 'Sembunyikan' : 'Tampilkan'}</span>
                         </button>
                       </div>
                       <input
