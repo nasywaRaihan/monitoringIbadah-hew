@@ -113,14 +113,19 @@ export default function App() {
       (u.name && u.name.toLowerCase().includes('direktorat dept hx'));
     const hasLegacySup =
       u.supervisor && u.supervisor.toLowerCase().includes('direktorat dept hx');
-    if (!isDeptHXAccount && !hasLegacySup) return u;
+    const hasLegacyInitialBonus =
+      (!u.activeDates || u.activeDates.length === 0) &&
+      !u.lastActiveDate &&
+      ((u.totalXp === 150 && u.streakDays === 1) || (u.totalXp === 50 && u.streakDays === 1));
+    if (!isDeptHXAccount && !hasLegacySup && !hasLegacyInitialBonus) return u;
     return {
       ...u,
       name: isDeptHXAccount ? 'Departemen HX (Human Experience)' : u.name,
       supervisor:
         isDeptHXAccount || hasLegacySup
           ? 'Departemen HX (Human Experience)'
-          : u.supervisor
+          : u.supervisor,
+      ...(hasLegacyInitialBonus ? { totalXp: 0, streakDays: 0 } : {})
     };
   };
 
@@ -728,8 +733,8 @@ export default function App() {
       avatar: BRAND_ASSETS.currentUserAvatar,
       role: newUserData.role,
       gender: inferredGender,
-      totalXp: 50,
-      streakDays: 1,
+      totalXp: 0,
+      streakDays: 0,
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
       hxStatus: 'Resmi Dept HX',
@@ -769,8 +774,8 @@ export default function App() {
           newUser.name,
           newUser.halaqah,
           newUser.role === 'admin' ? `${getUstadzTitle(newUser)} / Supervisor` : 'Karyawan Baru (Dept HX)',
-          '95.0%',
-          '1/1',
+          '0%',
+          '0/0',
           newUser.streakDays,
           newUser.totalXp,
           `Terdaftar via Sistem (Kode Dept HX: ${newUser.halaqahCode})`
@@ -851,8 +856,8 @@ export default function App() {
       avatar: BRAND_ASSETS.currentUserAvatar,
       role: newUserData.role,
       gender: inferredGender,
-      totalXp: 150,
-      streakDays: 1,
+      totalXp: 0,
+      streakDays: 0,
       assignedHalaqahBy: 'Dept HX',
       hxAssignmentId: `HX-${Date.now().toString().slice(-4)}`,
       hxStatus: 'Resmi Dept HX',
@@ -874,8 +879,8 @@ export default function App() {
           newUser.name,
           newUser.halaqah,
           newUser.role === 'admin' ? `${getUstadzTitle(newUser)} / Supervisor` : 'Karyawan Baru (Dept HX)',
-          '95.0%',
-          '1/1',
+          '0%',
+          '0/0',
           newUser.streakDays,
           newUser.totalXp,
           `Didaftarkan Dept HX (Kode: ${newUser.halaqahCode})`

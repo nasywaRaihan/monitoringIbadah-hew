@@ -79,7 +79,7 @@ export default function AdminScreen({
           halaqah: u.halaqah || activeUser?.halaqah || 'Tanpa Halaqah',
           totalXp: u.totalXp || 0,
           streakDays: u.streakDays || 0,
-          tajweedAcc: 95,
+          tajweedAcc: 0,
           role: u.role || 'member',
           supervisor: formatSupervisorDisplayName((u as any).supervisor || activeUser?.name, activeUser?.gender),
           phone: (u as any).phone || ''
@@ -101,8 +101,8 @@ export default function AdminScreen({
       halaqahName,
       members,
       supervisor: formatSupervisorDisplayName(members[0]?.supervisor || activeUser?.name, activeUser?.gender),
-      avgTajweed: 95,
-      compliance: 100
+      avgTajweed: 0,
+      compliance: 0
     }));
   }, [allStudentsList, activeUser?.halaqah, activeUser?.name, activeUser?.gender]);
   

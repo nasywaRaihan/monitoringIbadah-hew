@@ -180,11 +180,11 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
             streak: u.streakDays ?? existing?.streak ?? 0,
             masjidAttendance: att.label,
             masjidPercent: att.percent,
-            tajweedScore: existing?.tajweedScore ?? 92,
-            lastSurah: existing?.lastSurah || 'Surah Al-Mulk (Ayat 1-10)',
-            status: existing?.status || 'Mumtaz',
-            completedDailyTasks: existing?.completedDailyTasks ?? 4,
-            totalDailyTasks: existing?.totalDailyTasks ?? 6,
+            tajweedScore: existing?.tajweedScore ?? 0,
+            lastSurah: existing?.lastSurah || '-',
+            status: existing?.status || ((u.totalXp || 0) >= 500 ? 'Mumtaz' : 'Disiplin'),
+            completedDailyTasks: existing?.completedDailyTasks ?? 0,
+            totalDailyTasks: existing?.totalDailyTasks ?? 0,
             recentNotes: existing?.recentNotes || `Karyawan resmi ${uHalaqah} terdaftar via Dept HX.`,
             parentContact: u.phone || existing?.parentContact || '-'
           });

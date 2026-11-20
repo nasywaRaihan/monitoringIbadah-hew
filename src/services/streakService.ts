@@ -57,17 +57,25 @@ export function evaluateStreakOnLoad(user: ActiveUser): {
 
   if (isDoneToday) {
     return {
-      currentStreak: user.streakDays || 1,
+      currentStreak: Math.max(1, user.streakDays || 1),
       isStreakAtRisk: false,
       isActiveToday: true,
     };
   }
 
-  // Not done today yet
-  if (!lastActive || lastActive === yesterday) {
-    // Yesterday was active, today is still pending
+  // Never completed any activity yet -> starts at 0
+  if (!lastActive) {
     return {
-      currentStreak: user.streakDays || 1,
+      currentStreak: user.streakDays || 0,
+      isStreakAtRisk: false,
+      isActiveToday: false,
+    };
+  }
+
+  // Active yesterday, today is still pending
+  if (lastActive === yesterday) {
+    return {
+      currentStreak: user.streakDays || 0,
       isStreakAtRisk: true,
       isActiveToday: false,
     };
@@ -87,7 +95,7 @@ export function evaluateStreakOnLoad(user: ActiveUser): {
   }
 
   return {
-    currentStreak: user.streakDays || 1,
+    currentStreak: user.streakDays || 0,
     isStreakAtRisk: true,
     isActiveToday: false,
   };

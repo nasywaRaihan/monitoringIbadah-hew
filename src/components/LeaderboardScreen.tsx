@@ -150,10 +150,10 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         rank: index + 1,
         name: u.name,
         xp: u.totalXp || 0,
-        streak: u.streakDays || 1,
+        streak: u.streakDays || 0,
         avatar: u.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDD9rhoZ_oKw2kaX_ib087jl58ZWxEyxXJe-f4-lkyam50XjJD1y4vmoJo_OP09N6wOgiWdvpNv5yr2G5JpuvLbm3TjeqXW0MHbuS6TtuFe6htOFVs18a00iBznKV3vany3LAk28L6AP7NVZ7sHf96ricgJ9NAjW7IvzR3eOOx6e1jpn11EVj5B7ar7C5WcI3CuYTneLk3RmV3-rVsJ7YE27-9cIjSlc_qil1T1R8WayBovHjw6vbVCog',
         isCurrentUser: u.id === activeUser?.id,
-        tajweedAcc: Math.min(99, Math.max(86, Math.floor(90 + ((u.totalXp || 0) % 9)))),
+        tajweedAcc: (u.totalXp || 0) > 0 ? Math.min(99, Math.max(86, Math.floor(90 + ((u.totalXp || 0) % 9)))) : 0,
         badge: index === 0 ? 'Peringkat 1' : index === 1 ? 'Peringkat 2' : index === 2 ? 'Peringkat 3' : 'Karyawan',
         roleOrCircle: u.halaqah
       }));
@@ -191,7 +191,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
       const totalXp = members.reduce((sum, u) => sum + (u.totalXp || 0), 0);
       const avgAcc = members.length > 0
         ? Math.round(ranked.reduce((sum, r) => sum + r.tajweedAcc, 0) / members.length)
-        : 90;
+        : 0;
 
       return {
         name,

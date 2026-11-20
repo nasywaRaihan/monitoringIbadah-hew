@@ -654,10 +654,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         group: targetHalaqah,
         supervisor: supervisorName,
         avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCPpztXYvKG0hnmCFJGCCU0xwy2MPvneIXXKJ1BW4Rtejtyzgr02Vo9Su5UxcVuZz3-GF8hPwRY0_1vZl5PVdpW10j8rqRMIipsU_h8mEvEcJShkcDH86v76LYWTlWzju8eCZDjvFPYoqOVoLWKjpOXfZWK3-4DbGikcXmtwS-5rGtyiOB3ejK_8RqWALFKRcTWhwJTWUpwoH36hhTTWYZyTPHbKBimBp0b-0er8SFXjKlDEMOCN2_0Qg',
-        status: 'Mumtaz',
-        tajweedAcc: 95.0,
-        streakDays: 1,
-        totalXp: '150',
+        status: 'Jayyid Jiddan',
+        tajweedAcc: 0,
+        streakDays: 0,
+        totalXp: '0',
         currentActivity: `Anggota ${targetHalaqah}`,
         lastActive: 'Baru didaftarkan'
       };
@@ -768,9 +768,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       m.name,
       group.halaqahName,
       group.supervisor,
-      `${m.streakDays || 5} hari`,
-      m.totalXp || 1200,
-      `${m.tajweedAcc || 94}%`
+      `${m.streakDays ?? 0} hari`,
+      m.totalXp ?? 0,
+      `${m.tajweedAcc ?? 0}%`
     ]);
     const filename = `Daftar_Anggota_${group.halaqahName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
     downloadPerColumnCSV(filename, headers, rows);
@@ -1037,7 +1037,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             halaqah: assignedHalaqah,
             totalXp: u.totalXp || 0,
             streakDays: u.streakDays || 0,
-            tajweedAcc: 95,
+            tajweedAcc: 0,
             role: u.role,
             supervisor: formatSupervisorDisplayName(u.supervisor),
             phone: u.phone || ''
@@ -1108,8 +1108,8 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         ),
         schedule: matchedPreset?.schedule || 'Jadwal Reguler Dept HX',
         location: matchedPreset?.location || 'Masjid Al-Ikhlas',
-        avgTajweed: 95,
-        compliance: 100
+        avgTajweed: 0,
+        compliance: 0
       };
     });
   }, [allStudentsList, allHalaqahPresets, deletedHalaqahNames]);
@@ -1132,7 +1132,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             : formatSupervisorDisplayName(matchedPreset?.supervisor || st.supervisor),
         avatar: st.avatar,
         status: ((st.totalXp || 0) >= 500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
-        tajweedAcc: st.tajweedAcc || 95.0,
+        tajweedAcc: st.tajweedAcc || 0,
         streakDays: st.streakDays || 0,
         totalXp: (st.totalXp || 0).toLocaleString(),
         currentActivity:
@@ -3483,10 +3483,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                               </h4>
                               <div className="flex items-center gap-1.5 flex-wrap mt-0.5 text-[10px]">
                                 <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold whitespace-nowrap">
-                                  🔥 {member.streakDays || 5} hari
+                                  🔥 {member.streakDays ?? 0} hari
                                 </span>
                                 <span className="px-1.5 py-0.2 rounded bg-[#e9edff] text-[#012d1d] font-bold whitespace-nowrap">
-                                  {member.totalXp} XP
+                                  {member.totalXp ?? 0} XP
                                 </span>
                                 <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold whitespace-nowrap inline-flex items-center gap-0.5">
                                   <span className="material-symbols-outlined text-[11px]">lock</span>
@@ -3925,11 +3925,11 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
                 <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
-                <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp || 1200}</span>
+                <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp ?? 0}</span>
               </div>
               <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
                 <span className="text-[10px] font-semibold text-amber-800 uppercase block">Streak</span>
-                <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays || 7} Hari</span>
+                <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays ?? 0} Hari</span>
               </div>
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
                 <span className="text-[10px] font-semibold text-slate-600 uppercase block">Tilawah</span>
