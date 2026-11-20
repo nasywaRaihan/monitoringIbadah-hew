@@ -209,6 +209,9 @@ export default function App() {
   const LEGACY_DEMO_SESSION_IDS = new Set(['att-session-1', 'att-session-2']);
   const LEGACY_DEMO_DIRECTIVE_IDS = new Set(['ibadah-1', 'ibadah-2', 'ibadah-3', 'ibadah-4']);
 
+  // Helper to strip undefined fields so Firebase Firestore setDoc never rejects objects
+  const sanitizeFirestoreData = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
   const [registeredUsers, setRegisteredUsers] = useState<ActiveUser[]>(() => {
     try {
       const saved = localStorage.getItem('noorworship_registered_users_prod_v1');
@@ -276,29 +279,56 @@ export default function App() {
 
   const [ibadahDirectives, setIbadahDirectives] = useState<IbadahDirective[]>([]);
 
-  // Real-time listener for Firestore users (automatically purges legacy demo accounts)
+  // Real-time listener for Firestore users (automatically purges legacy demo accounts & syncs local users up to Firestore)
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       const firestoreUsers: ActiveUser[] = [];
+      const firestoreIds = new Set<string>();
       snapshot.forEach((docSnap) => {
         if (LEGACY_DEMO_USER_IDS.has(docSnap.id)) {
           deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
           return;
         }
+        firestoreIds.add(docSnap.id);
         firestoreUsers.push({ id: docSnap.id, ...docSnap.data() } as ActiveUser);
       });
+
+      let deletedIdsSet = new Set<string>();
+      try {
+        const rawDel = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+        if (rawDel) {
+          const parsedDel = JSON.parse(rawDel);
+          if (Array.isArray(parsedDel)) deletedIdsSet = new Set(parsedDel);
+        }
+      } catch {}
 
       setRegisteredUsers((prev) => {
         const userMap = new Map<string, ActiveUser>();
         DEFAULT_USERS.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        prev.filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id)).forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        firestoreUsers.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+        prev
+          .filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id) && !deletedIdsSet.has(u.id))
+          .forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+        firestoreUsers
+          .filter((u) => !deletedIdsSet.has(u.id))
+          .forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
         const { unique, duplicateIds } = deduplicateActiveUsers(Array.from(userMap.values()));
+
+        // Purge duplicate user IDs from Firestore
         if (duplicateIds.length > 0) {
           duplicateIds.forEach((dupId) => {
             deleteDoc(doc(db, 'users', dupId)).catch(() => {});
           });
         }
+
+        // Auto-sync any local user (visible in UI) that is not yet saved in Firestore
+        unique.forEach((u) => {
+          if (!firestoreIds.has(u.id) && !LEGACY_DEMO_USER_IDS.has(u.id) && !deletedIdsSet.has(u.id)) {
+            setDoc(doc(db, 'users', u.id), sanitizeFirestoreData(u), { merge: true }).catch((err) => {
+              console.warn('Auto-sync user to Firestore notice:', err);
+            });
+          }
+        });
+
         return unique;
       });
     });
@@ -744,7 +774,7 @@ export default function App() {
     setRegisteredUsers((prev) => deduplicateActiveUsers([newUser, ...prev]).unique);
     
     try {
-      await setDoc(doc(db, 'users', newUser.id), newUser);
+      await setDoc(doc(db, 'users', newUser.id), sanitizeFirestoreData(newUser), { merge: true });
     } catch (e) {
       console.error('Error registering user in Firestore:', e);
     }
@@ -839,7 +869,7 @@ export default function App() {
         deduplicateActiveUsers(prev.map((u) => (u.id === existingDuplicate.id ? reassignedUser : u))).unique
       );
       try {
-        await setDoc(doc(db, 'users', reassignedUser.id), reassignedUser, { merge: true });
+        await setDoc(doc(db, 'users', reassignedUser.id), sanitizeFirestoreData(reassignedUser), { merge: true });
       } catch (e) {
         console.error('Error updating existing santri in Firestore:', e);
       }
@@ -852,7 +882,7 @@ export default function App() {
       halaqah: newUserData.halaqah,
       halaqahCode: newUserData.halaqahCode,
       passcode: newUserData.passcode || '1234',
-      phone: newUserData.phone,
+      phone: newUserData.phone || '',
       avatar: BRAND_ASSETS.currentUserAvatar,
       role: newUserData.role,
       gender: inferredGender,
@@ -867,7 +897,7 @@ export default function App() {
     setRegisteredUsers((prev) => deduplicateActiveUsers([newUser, ...prev]).unique);
 
     try {
-      await setDoc(doc(db, 'users', newUser.id), newUser);
+      await setDoc(doc(db, 'users', newUser.id), sanitizeFirestoreData(newUser), { merge: true });
     } catch (e) {
       console.error('Error registering santri in Firestore:', e);
     }
@@ -939,7 +969,7 @@ export default function App() {
           hxAssignmentId: `HX-UST-${Date.now().toString().slice(-4)}`,
           hxStatus: 'Resmi Dept HX'
         };
-        setDoc(doc(db, 'users', newUstadzUser.id), newUstadzUser, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'users', newUstadzUser.id), sanitizeFirestoreData(newUstadzUser), { merge: true }).catch(() => {});
         return [newUstadzUser, ...prev];
       }
 
@@ -1060,7 +1090,7 @@ export default function App() {
         };
         createdOrUpdatedUsers.push(ustadzUser);
         try {
-          await setDoc(doc(db, 'users', ustadzUser.id), ustadzUser);
+          await setDoc(doc(db, 'users', ustadzUser.id), sanitizeFirestoreData(ustadzUser), { merge: true });
         } catch (err) {
           console.warn('Firestore ustadz save notice:', err);
         }
@@ -1073,7 +1103,7 @@ export default function App() {
         };
         createdOrUpdatedUsers.push(updatedUstadz);
         try {
-          await setDoc(doc(db, 'users', updatedUstadz.id), updatedUstadz, { merge: true });
+          await setDoc(doc(db, 'users', updatedUstadz.id), sanitizeFirestoreData(updatedUstadz), { merge: true });
         } catch (err) {
           console.warn('Firestore ustadz update notice:', err);
         }
@@ -1115,7 +1145,7 @@ export default function App() {
 
       createdOrUpdatedUsers.push(memberUser);
       try {
-        await setDoc(doc(db, 'users', memberUser.id), memberUser, { merge: true });
+        await setDoc(doc(db, 'users', memberUser.id), sanitizeFirestoreData(memberUser), { merge: true });
       } catch (err) {
         console.warn('Firestore user save notice:', err);
       }
@@ -1194,6 +1224,11 @@ export default function App() {
           'noorworship_unified_halaqahs_prod_v1',
           JSON.stringify(currentHalaqahs)
         );
+        currentHalaqahs.forEach((h) => {
+          if (h && h.id && h.name) {
+            setDoc(doc(db, 'halaqahs', h.id), sanitizeFirestoreData(h), { merge: true }).catch(() => {});
+          }
+        });
       } catch (e) {
         console.warn(e);
       }
@@ -1253,7 +1288,7 @@ export default function App() {
             halaqah: newHalaqah,
             ...(newHalaqahCode ? { halaqahCode: newHalaqahCode } : {})
           };
-          setDoc(doc(db, 'users', studentId), updated, { merge: true }).catch((e) => {
+          setDoc(doc(db, 'users', studentId), sanitizeFirestoreData(updated), { merge: true }).catch((e) => {
             console.error('Error updating user halaqah in Firestore:', e);
           });
           return updated;
@@ -1274,7 +1309,7 @@ export default function App() {
             halaqah: newName,
             ...(newCode ? { halaqahCode: newCode } : {})
           };
-          setDoc(doc(db, 'users', u.id), updated, { merge: true }).catch((e) => {
+          setDoc(doc(db, 'users', u.id), sanitizeFirestoreData(updated), { merge: true }).catch((e) => {
             console.error('Error renaming halaqah for user in Firestore:', e);
           });
           return updated;

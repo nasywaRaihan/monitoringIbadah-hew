@@ -20,7 +20,10 @@ import {
 } from '../services/amalanPaten';
 import {
   setDoc,
-  doc
+  doc,
+  collection,
+  onSnapshot,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { PremiumInitialAvatar } from './PremiumInitialAvatar';
@@ -142,6 +145,70 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       console.warn(e);
     }
   }, [halaqahList]);
+
+  // Real-time two-way sync of Halaqah groups with Firestore 'halaqahs' collection
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'halaqahs'),
+      (snap) => {
+        const firestoreHalaqahs: HalaqahDetail[] = [];
+        const firestoreIds = new Set<string>();
+        const firestoreNamesLower = new Set<string>();
+
+        let currentDeletedLower = new Set<string>();
+        try {
+          const rawDel = localStorage.getItem('noorworship_deleted_halaqah_names_prod_v1');
+          if (rawDel) {
+            const parsedDel = JSON.parse(rawDel);
+            if (Array.isArray(parsedDel)) {
+              currentDeletedLower = new Set(parsedDel.map((d: string) => d.trim().toLowerCase()));
+            }
+          }
+        } catch {}
+
+        snap.forEach((docSnap) => {
+          const data = { id: docSnap.id, ...docSnap.data() } as HalaqahDetail;
+          if (!data.name || currentDeletedLower.has(data.name.trim().toLowerCase())) {
+            deleteDoc(doc(db, 'halaqahs', docSnap.id)).catch(() => {});
+            return;
+          }
+          firestoreIds.add(docSnap.id);
+          firestoreNamesLower.add(data.name.trim().toLowerCase());
+          firestoreHalaqahs.push(data);
+        });
+
+        setHalaqahList((prev) => {
+          const byName = new Map<string, HalaqahDetail>();
+          prev.forEach((h) => {
+            if (h && h.name && !currentDeletedLower.has(h.name.trim().toLowerCase())) {
+              byName.set(h.name.trim().toLowerCase(), h);
+            }
+          });
+          firestoreHalaqahs.forEach((h) => {
+            if (h && h.name && !currentDeletedLower.has(h.name.trim().toLowerCase())) {
+              byName.set(h.name.trim().toLowerCase(), h);
+            }
+          });
+
+          const merged = Array.from(byName.values());
+          // Auto-upload any local halaqah not yet stored in Firestore
+          merged.forEach((h) => {
+            const hId = h.id || `halaqah-${h.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            if (!firestoreIds.has(hId) && !firestoreNamesLower.has(h.name.trim().toLowerCase())) {
+              const payload = JSON.parse(JSON.stringify({ ...h, id: hId }));
+              setDoc(doc(db, 'halaqahs', hId), payload, { merge: true }).catch(() => {});
+            }
+          });
+
+          return merged;
+        });
+      },
+      (err) => {
+        console.warn('Firestore halaqahs sync notice:', err);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -479,6 +546,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       newHalaqahItem,
       ...prev.filter((h) => h.name.trim().toLowerCase() !== nameTrimmed.toLowerCase())
     ]);
+    setDoc(doc(db, 'halaqahs', newHalaqahItem.id), JSON.parse(JSON.stringify(newHalaqahItem)), { merge: true }).catch(
+      (err) => console.warn('Error saving new halaqah to Firestore:', err)
+    );
     setShowAddHalaqahModal(false);
     setNewHalaqahName('');
     setNewHalaqahCode('');
@@ -499,8 +569,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     const name = deletingHalaqahTarget.trim();
     const targetLower = name.toLowerCase();
 
-    // 1. Remove from halaqahList & persist immediately
+    // 1. Remove from halaqahList & persist immediately (including deleting from Firestore)
     setHalaqahList((prev) => {
+      prev.forEach((h) => {
+        if (h.name.trim().toLowerCase() === targetLower && h.id) {
+          deleteDoc(doc(db, 'halaqahs', h.id)).catch(() => {});
+        }
+      });
       const updated = prev.filter((h) => h.name.trim().toLowerCase() !== targetLower);
       try {
         localStorage.setItem('noorworship_unified_halaqahs_prod_v1', JSON.stringify(updated));
@@ -719,7 +794,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     setHalaqahList((prev) =>
       prev.map((h) => {
         if (h.name === originalName) {
-          return {
+          const updatedItem: HalaqahDetail = {
             ...h,
             name: nameTrimmed,
             code: codeTrimmed,
@@ -728,6 +803,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             location: locationTrimmed,
             dept: deptTrimmed
           };
+          if (updatedItem.id) {
+            setDoc(doc(db, 'halaqahs', updatedItem.id), JSON.parse(JSON.stringify(updatedItem)), { merge: true }).catch(() => {});
+          }
+          return updatedItem;
         }
         return h;
       })

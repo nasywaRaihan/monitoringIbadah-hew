@@ -233,12 +233,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Brand Logo Container */}
           <div className="relative mb-2.5">
-            <div className="w-16 h-16 rounded-2xl bg-[#012d1d] p-1.5 shadow-lg shadow-[#012d1d]/10 flex items-center justify-center overflow-hidden ring-2 ring-[#c1ecd4]/50">
+            <div className="w-16 h-16 rounded-2xl bg-[#012d1d] p-1.5 shadow-lg shadow-[#012d1d]/10 flex items-center justify-center overflow-hidden ring-2 ring-[#c1ecd4]/50 relative">
               <img
-                alt="Logo JejakTaqwa"
-                className="w-full h-full object-contain rounded-xl"
+                alt=""
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+                className="w-full h-full object-contain rounded-xl relative z-10"
                 src={BRAND_ASSETS.logo}
               />
+              <span className="absolute inset-0 flex items-center justify-center text-[#fed488] font-extrabold text-lg tracking-tight select-none pointer-events-none">
+                JT
+              </span>
             </div>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#fed488] text-[#785a1a] rounded-full flex items-center justify-center shadow-sm">
               <span

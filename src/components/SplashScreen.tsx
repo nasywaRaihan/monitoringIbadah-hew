@@ -86,12 +86,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Ambient Ring & Logo */}
         <div className="relative mb-6">
           <div className="absolute -inset-4 rounded-full bg-[#53b889]/20 blur-xl animate-pulse" />
-          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-2xl overflow-hidden ring-4 ring-[#fed488]/20">
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#012d1d]/90 border border-white/20 backdrop-blur-md flex items-center justify-center p-2.5 shadow-2xl overflow-hidden ring-4 ring-[#fed488]/20">
             <img
               src={BRAND_ASSETS.logo}
-              alt="Logo JejakTaqwa"
-              className="w-full h-full object-contain filter drop-shadow-md rounded-2xl"
+              alt=""
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+              className="w-full h-full object-contain filter drop-shadow-md rounded-2xl relative z-10"
             />
+            <span className="absolute inset-0 flex items-center justify-center text-[#fed488] font-extrabold text-2xl tracking-tight select-none pointer-events-none">
+              JT
+            </span>
           </div>
         </div>
 

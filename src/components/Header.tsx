@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeUser
 }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
+  const [logoError, setLogoError] = React.useState(false);
   const isSantri = currentRole === 'member' || activeUser?.role === 'member';
 
   const getSubhead = () => {
@@ -66,11 +67,20 @@ export const Header: React.FC<HeaderProps> = ({
             className="p-1 -ml-1 rounded-xl hover:bg-[#1b4332]/5 active:scale-95 transition-all cursor-pointer shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Logo JejakTaqwa"
           >
-            <img
-              alt="Logo JejakTaqwa"
-              className="h-9 w-9 rounded-xl object-contain shrink-0 shadow-xs ring-1 ring-[#00452c]/10"
-              src={BRAND_ASSETS.logo}
-            />
+            {!logoError ? (
+              <img
+                alt=""
+                onError={() => setLogoError(true)}
+                className="h-9 w-9 rounded-xl object-contain shrink-0 shadow-xs ring-1 ring-[#00452c]/10 bg-[#012d1d]"
+                src={BRAND_ASSETS.logo}
+              />
+            ) : (
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#012d1d] to-[#1b4332] flex items-center justify-center shrink-0 shadow-xs ring-1 ring-[#fed488]/40">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#fed488]" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2L14.4 7.2L20 8L15.8 12L16.9 17.6L12 14.9L7.1 17.6L8.2 12L4 8L9.6 7.2L12 2Z" />
+                </svg>
+              </div>
+            )}
           </button>
 
           <div className="flex flex-col min-w-0">

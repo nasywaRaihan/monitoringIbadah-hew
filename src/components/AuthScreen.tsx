@@ -340,12 +340,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       <div className="relative z-10 w-full max-w-md">
         {/* Brand Top Emblem & Identity */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#012d1d] p-1.5 shadow-xl ring-4 ring-[#c1ecd4]/50 mb-3 overflow-hidden">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#012d1d] p-1.5 shadow-xl ring-4 ring-[#c1ecd4]/50 mb-3 overflow-hidden relative">
             <img
               src={BRAND_ASSETS.logo}
-              alt="Logo JejakTaqwa"
-              className="w-full h-full object-contain filter drop-shadow rounded-2xl"
+              alt=""
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+              className="w-full h-full object-contain filter drop-shadow rounded-2xl relative z-10"
             />
+            <span className="absolute inset-0 flex items-center justify-center text-[#fed488] font-extrabold text-xl tracking-tight select-none pointer-events-none">
+              JT
+            </span>
           </div>
 
           <p className="font-amiri text-xl text-[#785a1a] mb-1 leading-relaxed">
