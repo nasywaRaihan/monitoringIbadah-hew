@@ -14,7 +14,8 @@ import {
   FastingOption,
   isFiveDailyFardhuPrayer,
   calculateTaskXpWithLatePolicy,
-  formatXpValue
+  formatXpValue,
+  formatHijriDateIndonesian
 } from '../services/amalanPaten';
 import { MuraqabahConfirmModal } from './MuraqabahConfirmModal';
 import { FastingSelectionModal } from './FastingSelectionModal';
@@ -37,6 +38,7 @@ interface WorshipScreenProps {
   onNavigateToLeaderboard?: () => void;
   onShowToast: (msg: string) => void;
   activeUser: ActiveUser;
+  registeredUsers?: ActiveUser[];
   onOpenAuth: () => void;
   attendanceSessions?: HalaqahAttendanceSession[];
 }
@@ -52,6 +54,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   onNavigateToLeaderboard,
   onShowToast,
   activeUser,
+  registeredUsers,
   onOpenAuth,
   attendanceSessions
 }) => {
@@ -102,6 +105,77 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
   const isDoneToday = useMemo(() => {
     return hasUserCompletedIbadahToday(activeUser.id) || tasks.some((t) => t.completed);
   }, [activeUser.id, tasks]);
+
+  // Real-time Per-Halaqah Rank calculation synchronized with LeaderboardScreen
+  const halaqahRankInfo = useMemo(() => {
+    const currentHalaqah = (activeUser?.halaqah || '').trim();
+    if (
+      !currentHalaqah ||
+      currentHalaqah === 'Tanpa Halaqah' ||
+      currentHalaqah === 'Belum Ada Halaqah' ||
+      currentHalaqah === 'Dept HX Pusat'
+    ) {
+      return { rank: 0, total: 0, halaqahName: currentHalaqah || 'Tanpa Halaqah' };
+    }
+
+    let deletedIds = new Set<string>();
+    let overrides: Record<string, string> = {};
+    try {
+      const savedDel = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+      if (savedDel) {
+        const parsed = JSON.parse(savedDel);
+        if (Array.isArray(parsed)) deletedIds = new Set(parsed);
+      }
+      const savedOv = localStorage.getItem('noorworship_user_halaqah_overrides_prod_v1');
+      if (savedOv) {
+        const parsedOv = JSON.parse(savedOv);
+        if (parsedOv && typeof parsedOv === 'object') overrides = parsedOv;
+      }
+    } catch {}
+
+    const targetLower = currentHalaqah.toLowerCase();
+    const poolMap = new Map<string, ActiveUser>();
+
+    (registeredUsers || []).forEach((u) => {
+      if (u.role !== 'member' || deletedIds.has(u.id)) return;
+      const effectiveHalaqah = (overrides[u.id] !== undefined ? overrides[u.id] : u.halaqah || '').trim();
+      if (effectiveHalaqah.toLowerCase() === targetLower) {
+        poolMap.set(u.id, {
+          ...u,
+          halaqah: effectiveHalaqah,
+          totalXp: u.id === activeUser.id ? totalXp : (u.totalXp || 0),
+          streakDays: u.id === activeUser.id ? streakDays : (u.streakDays || 0)
+        });
+      }
+    });
+
+    if (activeUser.role === 'member' && !deletedIds.has(activeUser.id)) {
+      poolMap.set(activeUser.id, {
+        ...activeUser,
+        halaqah: currentHalaqah,
+        totalXp,
+        streakDays
+      });
+    }
+
+    const sorted = Array.from(poolMap.values()).sort((a, b) => {
+      const xpDiff = (b.totalXp || 0) - (a.totalXp || 0);
+      if (xpDiff !== 0) return xpDiff;
+      const streakDiff = (b.streakDays || 0) - (a.streakDays || 0);
+      if (streakDiff !== 0) return streakDiff;
+      return (a.name || '').localeCompare(b.name || '', 'id');
+    });
+
+    const idx = sorted.findIndex(
+      (u) => u.id === activeUser.id || u.name.trim().toLowerCase() === activeUser.name.trim().toLowerCase()
+    );
+
+    return {
+      rank: idx >= 0 ? idx + 1 : sorted.length > 0 ? 1 : 0,
+      total: sorted.length,
+      halaqahName: currentHalaqah
+    };
+  }, [registeredUsers, activeUser, totalXp, streakDays]);
 
   // Ustadz / Pembimbing privilege check: only Ustadz can add amalan
   const isUstadz = activeUser.role === 'admin' || activeUser.role === 'dept-hx' || activeUser.role === 'hq-admin';
@@ -288,19 +362,8 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     });
     const masehiShortStr = masehiShortFormatter.format(now);
 
-    // Hijriah
-    let hijriDateStr = '';
-    try {
-      const hijriFormatter = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-      hijriDateStr = hijriFormatter.format(now);
-      if (!hijriDateStr.includes('H')) hijriDateStr += ' H';
-    } catch {
-      hijriDateStr = '14 Jumadil Akhir 1448 H';
-    }
+    // Hijriah (Cross-platform deterministic Indonesian Hijri formatter)
+    const hijriDateStr = formatHijriDateIndonesian(now);
 
     const liveClockStr =
       now.toLocaleTimeString('id-ID', {
@@ -558,7 +621,10 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
               <span className="sm:hidden truncate">{masehiShortStr}</span>
               <span className="hidden sm:inline truncate">{masehiDateStr}</span>
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-white/10 text-[#ffdea5] text-[10px] sm:text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs min-w-0">
+            <span
+              translate="no"
+              className="notranslate inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-white/10 text-[#ffdea5] text-[10px] sm:text-xs font-semibold backdrop-blur-md border border-white/10 shadow-xs min-w-0"
+            >
               <span className="material-symbols-outlined text-[13px] sm:text-[14px] shrink-0">calendar_month</span>
               <span className="truncate">{hijriDateStr}</span>
             </span>
@@ -688,18 +754,38 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
           </span>
         </div>
 
-        <div className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 text-center relative min-w-0 select-none">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigateToLeaderboard && onNavigateToLeaderboard()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigateToLeaderboard && onNavigateToLeaderboard();
+            }
+          }}
+          title={
+            halaqahRankInfo.rank > 0
+              ? `Peringkat #${halaqahRankInfo.rank} dari ${halaqahRankInfo.total} anggota di ${halaqahRankInfo.halaqahName} (Klik untuk buka klasemen)`
+              : 'Klik untuk melihat Papan Peringkat Halaqah'
+          }
+          className="flex flex-col items-center justify-start pt-3 pb-2.5 px-1.5 sm:justify-center sm:p-3 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#775a19]/40 hover:shadow-md transition-all active:scale-95 text-center relative min-w-0 select-none cursor-pointer group"
+        >
           <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-[#775a19]">
             <span
-              className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0"
+              className="material-symbols-outlined text-[18px] sm:text-[20px] group-hover:scale-110 transition-transform shrink-0"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               workspace_premium
             </span>
-            <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight">#3</span>
+            <span className="text-lg sm:text-xl font-bold text-[#141b2b] tabular-nums leading-tight">
+              {halaqahRankInfo.rank > 0 ? `#${halaqahRankInfo.rank}` : '#-'}
+            </span>
           </div>
           <span className="text-[10px] sm:text-xs text-[#414844] mt-1 sm:mt-0.5 leading-tight truncate max-w-full flex items-center justify-center">
-            <span className="truncate">Peringkat</span>
+            <span className="truncate">
+              {halaqahRankInfo.total > 0 ? `Peringkat (${halaqahRankInfo.rank}/${halaqahRankInfo.total})` : 'Peringkat'}
+            </span>
           </span>
         </div>
       </div>
@@ -805,7 +891,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
             <div className="flex items-center gap-1.5 text-[11px] text-[#414844]">
               <span className="material-symbols-outlined text-[14px] text-[#00452c]">school</span>
               <span>
-                Kurikulum amalan dibina &amp; ditetapkan oleh <strong>{formatSupervisorDisplayName(activeUser.supervisor)}</strong> ({activeUser.halaqah})
+                Kurikulum mutaba&apos;ah ditetapkan oleh Departemen Human Experience dan <strong>{formatSupervisorDisplayName(activeUser.supervisor)}</strong> ({activeUser.halaqah})
               </span>
             </div>
           )}        </div>

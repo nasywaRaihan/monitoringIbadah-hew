@@ -31,7 +31,39 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
   const [logoError, setLogoError] = React.useState(false);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
   const isSantri = currentRole === 'member' || activeUser?.role === 'member';
+
+  React.useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent | PointerEvent) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleClickOutside, true);
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside, true);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isProfileMenuOpen]);
 
   const getSubhead = () => {
     switch (currentTab) {
@@ -110,9 +142,9 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Profile Button with Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={profileMenuRef}>
             <button
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              onClick={() => setIsProfileMenuOpen((prev) => !prev)}
               title={
                 activeUser
                   ? `Akun: ${activeUser.name} (${activeUser.halaqah})`
@@ -140,12 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Profile Popover Menu */}
             {isProfileMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-32px)] bg-white rounded-2xl shadow-xl border border-[#1b4332]/10 p-2 z-50 animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-32px)] bg-white rounded-2xl shadow-xl border border-[#1b4332]/10 p-2 z-50 animate-in fade-in-50 zoom-in-95 duration-150">
                   <div className="px-3 py-2.5 border-b border-[#f1f3ff] mb-1">
                     <p className="text-xs font-bold text-[#141b2b] truncate">
                       {activeUser?.role === 'dept-hx' || activeUser?.role === 'hq-admin'
@@ -196,7 +223,6 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   )}
                 </div>
-              </>
             )}
           </div>
         </div>

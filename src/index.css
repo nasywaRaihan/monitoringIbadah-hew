@@ -78,9 +78,7 @@
   line-height: 1;
   letter-spacing: normal !important;
   text-transform: none !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
@@ -93,11 +91,6 @@
   vertical-align: middle;
   user-select: none;
   flex-shrink: 0;
-  width: 1em;
-  height: 1em;
-  max-width: 1em;
-  max-height: 1em;
-  overflow: hidden;
 }
 
 .material-symbols-outlined.fill {

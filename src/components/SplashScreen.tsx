@@ -71,7 +71,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       {/* Top Bar with Skip Action */}
       <div className="w-full max-w-md flex items-center justify-between">
         <span className="text-[11px] font-semibold text-[#86af99] tracking-wider uppercase">
-          Versi 2.4 • Edisi Halaqah
+          Versi 1.0 • Edisi Halaqah
         </span>
         <button
           onClick={handleSkip}

@@ -453,7 +453,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     }
 
     onShowToast(
-      `📢 Maklumat berhasil disiarkan ke seluruh ustadz/ah & karyawan (${registeredUsers?.length || 1} pengguna)!`
+      `📢 Maklumat berhasil disiarkan ke seluruh ${halaqahGroups.length} lingkaran halaqah (${allRecitersList.length} karyawan & ${allUstadzList.length} ustadz/ah)!`
     );
     setGlobalBroadcastText('');
     setShowBroadcastModal(false);
@@ -856,8 +856,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     onShowToast(`File CSV anggota ${group.halaqahName} berhasil diunduh (terformat rapi per kolom)`);
   };
 
-  // Dashboard browsing states (Lihat Halaqah, List Karyawan, Rekap Presensi, Kelola Amalan Paten, Pantau Tugas Ustadz)
-  const [deptHxTab, setDeptHxTab] = useState<'halaqah' | 'students' | 'presensi' | 'amalan-paten' | 'tugas-ustadz'>('halaqah');
+  // Dashboard browsing states (Lihat Halaqah, List Karyawan, List Ustadz/ah, Rekap Presensi, Kelola Amalan Paten, Pantau Tugas Ustadz)
+  const [deptHxTab, setDeptHxTab] = useState<'halaqah' | 'students' | 'ustadz' | 'presensi' | 'amalan-paten' | 'tugas-ustadz'>('halaqah');
+  const [ustadzSearchQuery, setUstadzSearchQuery] = useState<string>('');
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<any | null>(null);
 
   // Rekap Presensi Dept HX states
@@ -1194,8 +1195,15 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   }, [allStudentsList, allHalaqahPresets, deletedHalaqahNames]);
 
   const allRecitersList = useMemo(() => {
-    // Build directly from allStudentsList so "List Karyawan" is 100% synchronized with "Kelompok Halaqah"
-    const fromStudents: ReciterProfile[] = allStudentsList.map((st: any) => {
+    // Build directly from allStudentsList (strictly role === 'member') so "List Karyawan" only contains Karyawan
+    const memberStudents = allStudentsList.filter((st: any) => st.role === 'member');
+    const ustadzNamesSet = new Set(
+      allStudentsList
+        .filter((st: any) => st.role === 'admin')
+        .map((st: any) => normalizePersonNameKey(st.name, 'admin'))
+    );
+
+    const fromStudents: ReciterProfile[] = memberStudents.map((st: any) => {
       const assignedHalaqah = st.halaqah || 'Tanpa Halaqah';
       const matchedPreset = allHalaqahPresets.find(
         (p) => p.name.trim().toLowerCase() === assignedHalaqah.trim().toLowerCase()
@@ -1205,19 +1213,13 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         id: st.id,
         name: st.name,
         group: assignedHalaqah,
-        supervisor:
-          st.role === 'admin'
-            ? `${getUstadzTitle(st)} Pembimbing`
-            : formatSupervisorDisplayName(matchedPreset?.supervisor || st.supervisor),
+        supervisor: formatSupervisorDisplayName(matchedPreset?.supervisor || st.supervisor),
         avatar: st.avatar,
         status: ((st.totalXp || 0) >= 500 ? 'Mumtaz' : 'Jayyid Jiddan') as any,
         tajweedAcc: st.tajweedAcc || 0,
         streakDays: st.streakDays || 0,
         totalXp: (st.totalXp || 0).toLocaleString(),
-        currentActivity:
-          st.role === 'admin'
-            ? `${getUstadzTitle(st)} Pembimbing ${assignedHalaqah} (${code})`
-            : `Anggota ${assignedHalaqah} (Kode: ${code})`,
+        currentActivity: `Anggota ${assignedHalaqah} (Kode: ${code})`,
         lastActive: 'Terdaftar'
       };
     });
@@ -1231,6 +1233,8 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           r.id &&
           !existingIds.has(r.id) &&
           !existingNames.has(r.name.trim().toLowerCase()) &&
+          !ustadzNamesSet.has(normalizePersonNameKey(r.name, 'admin')) &&
+          !/^(ustadz\/ah|ustadzah|ustadz|ust\.?)\s+/i.test(r.name.trim()) &&
           !deletedStudentIds.includes(r.id)
       )
       .map((r) => {
@@ -1245,6 +1249,103 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
     return [...fromStudents, ...extraFromReciters];
   }, [allStudentsList, allHalaqahPresets, reciters, deletedStudentIds, userHalaqahOverrides, deletedHalaqahNames, halaqahList]);
+
+  const allUstadzList = useMemo(() => {
+    const byNameKey = new Map<string, any>();
+
+    // 1. All registered Ustadz/ah accounts (role === 'admin')
+    allStudentsList
+      .filter((st: any) => st.role === 'admin')
+      .forEach((st: any) => {
+        const assignedHalaqah = st.halaqah || 'Tanpa Halaqah';
+        const matchedGroup = halaqahGroups.find(
+          (g) => g.halaqahName.trim().toLowerCase() === assignedHalaqah.trim().toLowerCase()
+        );
+        const matchedPreset = allHalaqahPresets.find(
+          (p) => p.name.trim().toLowerCase() === assignedHalaqah.trim().toLowerCase()
+        );
+        const code = matchedGroup?.code || matchedPreset?.code || 'HX-001';
+        const displayTitle = getUstadzTitle(st);
+        const displayName = formatSupervisorDisplayName(st.name);
+        const key = normalizePersonNameKey(st.name, 'admin');
+        if (!key) return;
+
+        byNameKey.set(key, {
+          id: st.id,
+          name: displayName,
+          rawName: st.name,
+          role: 'admin',
+          title: displayTitle,
+          halaqah: assignedHalaqah,
+          code,
+          memberCount: matchedGroup ? matchedGroup.members.length : 0,
+          schedule: matchedGroup?.schedule || matchedPreset?.schedule || 'Jadwal Reguler Dept HX',
+          location: matchedGroup?.location || matchedPreset?.location || 'Masjid Al-Ikhlas',
+          phone: st.phone || '',
+          supervisor: displayName
+        });
+      });
+
+    // 2. Also include any supervisor assigned to active halaqahGroups if not yet in byNameKey
+    halaqahGroups.forEach((grp) => {
+      const supRaw = (grp.supervisor || '').trim();
+      if (
+        !supRaw ||
+        supRaw === '-' ||
+        supRaw.toLowerCase().includes('ustadz/ah pembimbing') ||
+        supRaw.toLowerCase() === 'pembimbing'
+      ) {
+        return;
+      }
+      const key = normalizePersonNameKey(supRaw, 'admin');
+      if (!key) return;
+      const syntheticId = `ustadz-grp-${key.replace(/[^a-z0-9]+/g, '-')}`;
+      if (deletedStudentIds.includes(syntheticId)) return;
+
+      const existing = byNameKey.get(key);
+      if (!existing) {
+        const displayTitle = getUstadzTitle(supRaw);
+        const displayName = formatSupervisorDisplayName(supRaw);
+        byNameKey.set(key, {
+          id: syntheticId,
+          name: displayName,
+          rawName: supRaw,
+          role: 'admin',
+          title: displayTitle,
+          halaqah: grp.halaqahName,
+          code: grp.code || 'HX-001',
+          memberCount: grp.members.length,
+          schedule: grp.schedule || 'Jadwal Reguler Dept HX',
+          location: grp.location || 'Masjid Al-Ikhlas',
+          phone: '',
+          supervisor: displayName
+        });
+      } else if (
+        (!existing.halaqah || existing.halaqah === 'Tanpa Halaqah') &&
+        grp.halaqahName
+      ) {
+        existing.halaqah = grp.halaqahName;
+        existing.code = grp.code || existing.code;
+        existing.memberCount = grp.members.length;
+        existing.schedule = grp.schedule || existing.schedule;
+        existing.location = grp.location || existing.location;
+      }
+    });
+
+    return Array.from(byNameKey.values());
+  }, [allStudentsList, halaqahGroups, allHalaqahPresets, deletedStudentIds]);
+
+  const filteredUstadzList = useMemo(() => {
+    const q = ustadzSearchQuery.trim().toLowerCase();
+    return allUstadzList.filter((u) => {
+      if (!q) return true;
+      return (
+        u.name.toLowerCase().includes(q) ||
+        (u.halaqah && u.halaqah.toLowerCase().includes(q)) ||
+        (u.code && u.code.toLowerCase().includes(q))
+      );
+    });
+  }, [allUstadzList, ustadzSearchQuery]);
 
   const groups = useMemo(() => {
     const base = [{ label: 'Semua Kelompok', count: String(allRecitersList.length) }];
@@ -1605,6 +1706,35 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         >
           <span className="material-symbols-outlined text-[18px]">badge</span>
           <span>List Karyawan</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+              deptHxTab === 'students'
+                ? 'bg-white/20 text-white'
+                : 'bg-[#e9edff] text-[#012d1d]'
+            }`}
+          >
+            {allRecitersList.length}
+          </span>
+        </button>
+        <button
+          onClick={() => { setDeptHxTab('ustadz'); setSelectedHalaqahGroup(null); }}
+          className={`shrink-0 md:flex-1 py-2 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] active:scale-95 whitespace-nowrap ${
+            deptHxTab === 'ustadz'
+              ? 'bg-[#012d1d] text-white shadow-xs'
+              : 'text-[#414844] hover:bg-[#f1f3ff]'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px] text-[#fed488]">shield_person</span>
+          <span>List Ustadz/ah</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+              deptHxTab === 'ustadz'
+                ? 'bg-[#fed488] text-[#261900]'
+                : 'bg-[#fff3db] text-[#785a1a]'
+            }`}
+          >
+            {allUstadzList.length}
+          </span>
         </button>
         <button
           onClick={() => { setDeptHxTab('amalan-paten'); setSelectedHalaqahGroup(null); }}
@@ -1978,7 +2108,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           <section className="flex flex-col items-center justify-center gap-2 py-3 bg-[#f1f3ff]/60 rounded-2xl p-4 border border-[#1b4332]/5">
             <div className="flex items-center gap-2 text-xs text-[#414844]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
-              <span>Menampilkan {filteredReciters.length} dari {allRecitersList.length} pengguna terdaftar</span>
+              <span>Menampilkan {filteredReciters.length} dari {allRecitersList.length} karyawan terdaftar</span>
               <span className="w-1.5 h-1.5 rounded-full bg-[#1b4332]/40" />
             </div>
 
@@ -1998,6 +2128,199 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               >
                 {isMultiSelect ? 'Keluar Multi-Pilih' : 'Mode Pilih Massal'}
               </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Tab: List Ustadz/ah Pembimbing Halaqah */}
+      {deptHxTab === 'ustadz' && (
+        <div className="space-y-3">
+          {/* Header & Quick Add Ustadz/ah */}
+          <div className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-full bg-[#fff3db] text-[#785a1a] text-[10px] font-bold">
+                  Pembimbing Resmi Dept HX
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#e9edff] text-[#012d1d] text-[10px] font-bold">
+                  {allUstadzList.length} Ustadz/ah Terdaftar
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-[#141b2b] mt-1">
+                Direktori Ustadz &amp; Ustadzah Pembimbing Halaqah
+              </h3>
+              <p className="text-xs text-[#414844]">
+                Daftar khusus akun Ustadz/ah pembimbing lingkaran halaqah (terpisah dari daftar karyawan)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setNewReciterRole('admin');
+                if (!newReciterGroup && allHalaqahPresets.length > 0) {
+                  setNewReciterGroup(allHalaqahPresets[0].name);
+                }
+                setShowAddModal(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-[#012d1d] hover:bg-[#1b4332] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#fed488]">person_add</span>
+              <span>Tambah Ustadz/ah Baru</span>
+            </button>
+          </div>
+
+          {/* Search Bar Ustadz/ah */}
+          <div className="relative w-full">
+            <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-[#717973]">
+              <span className="material-symbols-outlined text-[20px]">search</span>
+            </span>
+            <input
+              type="text"
+              value={ustadzSearchQuery}
+              onChange={(e) => setUstadzSearchQuery(e.target.value)}
+              placeholder="Cari nama ustadz/ah, halaqah binaan, atau kode halaqah..."
+              className="w-full h-11 pl-10 pr-10 bg-white rounded-xl text-xs sm:text-sm text-[#141b2b] placeholder:text-[#717973] border border-[#1b4332]/5 focus:outline-none focus:ring-1 focus:ring-[#012d1d] shadow-sm"
+            />
+            {ustadzSearchQuery && (
+              <button
+                onClick={() => setUstadzSearchQuery('')}
+                className="absolute inset-y-0 right-3 flex items-center text-[#717973] hover:text-[#141b2b] cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">clear</span>
+              </button>
+            )}
+          </div>
+
+          {/* Ustadz/ah Directory Cards */}
+          <section className="space-y-2.5">
+            {filteredUstadzList.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-dashed border-[#1b4332]/20 text-center space-y-2.5">
+                <span className="material-symbols-outlined text-[32px] text-[#785a1a]">shield_person</span>
+                <p className="text-sm font-bold text-[#141b2b]">Belum Ada Ustadz/ah Terdaftar</p>
+                <p className="text-xs text-[#414844] max-w-sm mx-auto">
+                  Silakan klik tombol <strong>&ldquo;Tambah Ustadz/ah Baru&rdquo;</strong> di atas atau impor melalui <strong>&ldquo;Kelola Sheet (.xlsx)&rdquo;</strong>.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {filteredUstadzList.map((ust, idx) => {
+                  const hasActiveHalaqah =
+                    ust.halaqah &&
+                    ust.halaqah !== 'Tanpa Halaqah' &&
+                    ust.halaqah !== 'Belum Ada Halaqah' &&
+                    halaqahGroups.some(
+                      (g) => g.halaqahName.trim().toLowerCase() === ust.halaqah.trim().toLowerCase()
+                    );
+
+                  return (
+                    <div
+                      key={`${ust.id}-${idx}`}
+                      onClick={() => setSelectedStudentDetail(ust)}
+                      className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/8 hover:border-[#785a1a]/40 hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <PremiumInitialAvatar
+                            name={ust.name}
+                            role="admin"
+                            className="w-11 h-11 rounded-full shrink-0 shadow-sm"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-bold text-[#141b2b] truncate">
+                                {ust.name}
+                              </span>
+                              <span className="px-2 py-0.2 rounded-full bg-[#fff3db] text-[#785a1a] border border-[#fed488]/60 text-[10px] font-bold">
+                                {ust.title} Pembimbing
+                              </span>
+                              <span className="px-2 py-0.2 rounded-full bg-[#f1f3ff] text-[#012d1d] text-[10px] font-semibold">
+                                {ust.halaqah}
+                              </span>
+                              {ust.code && (
+                                <span className="px-1.5 py-0.2 rounded-full bg-[#e9edff] text-[#012d1d] text-[9px] font-mono font-bold">
+                                  {ust.code}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-[#414844] block mt-0.5 truncate">
+                              Membina {ust.memberCount} Karyawan • {ust.location}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#c1ecd4]/60 text-[#002114] text-[11px] font-bold">
+                            <span className="material-symbols-outlined text-[14px]">groups</span>
+                            <span>{ust.memberCount} Anggota</span>
+                          </span>
+                          <span className="text-[10px] text-[#717973] block mt-0.5">
+                            Akun Pembimbing
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-[#f1f3ff] flex items-center justify-between text-xs text-[#414844] flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 font-medium text-[#414844]">
+                            <span className="material-symbols-outlined text-[14px] text-[#785a1a]">
+                              schedule
+                            </span>
+                            {ust.schedule}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {hasActiveHalaqah && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenHalaqahModal(ust.halaqah);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-[#fff3db] hover:bg-[#fed488] text-[#785a1a] text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">groups</span>
+                              <span>Buka Halaqah</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteStudent({ id: ust.id, name: ust.rawName || ust.name });
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                            title={`Hapus ${ust.name}`}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                            <span>Hapus</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStudentDetail(ust);
+                            }}
+                            className="px-3 py-1 rounded-lg bg-[#e9edff] hover:bg-[#012d1d] hover:text-white text-[#012d1d] text-xs font-bold transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <span>Detail</span>
+                            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="flex flex-col items-center justify-center gap-1.5 py-3 bg-[#f1f3ff]/60 rounded-2xl p-4 border border-[#1b4332]/5 text-xs text-[#414844]">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#785a1a]/60" />
+              <span>Menampilkan {filteredUstadzList.length} dari {allUstadzList.length} ustadz/ah pembimbing</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#785a1a]/60" />
             </div>
           </section>
         </div>
@@ -3318,7 +3641,9 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff]">
               <div>
                 <h3 className="font-bold text-base text-[#141b2b]">Maklumat Pengumuman</h3>
-                <p className="text-xs text-[#414844]">Kirim notifikasi ke seluruh 18 lingkaran halaqah</p>
+                <p className="text-xs text-[#414844]">
+                  Kirim notifikasi ke seluruh {halaqahGroups.length} lingkaran halaqah ({allRecitersList.length} karyawan &amp; {allUstadzList.length} ustadz/ah)
+                </p>
               </div>
               <button
                 onClick={() => setShowBroadcastModal(false)}
@@ -3965,17 +4290,27 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         );
       })()}
 
-      {/* Student Detail Modal */}
+      {/* Student / Ustadz Detail Modal */}
       {selectedStudentDetail && (
         <div className="fixed inset-0 z-[60] bg-[#141b2b]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 border border-[#1b4332]/10">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f3ff]">
               <div>
-                <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
-                  Profil &amp; Rekam Jejak Karyawan
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedStudentDetail.role === 'admin'
+                      ? 'bg-[#fff3db] text-[#785a1a]'
+                      : 'bg-[#c1ecd4] text-[#002114]'
+                  }`}
+                >
+                  {selectedStudentDetail.role === 'admin'
+                    ? 'Profil & Halaqah Binaan Ustadz/ah'
+                    : 'Profil & Rekam Jejak Karyawan'}
                 </span>
                 <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
-                  Detail Karyawan
+                  {selectedStudentDetail.role === 'admin'
+                    ? 'Detail Ustadz/ah Pembimbing'
+                    : 'Detail Karyawan'}
                 </h3>
               </div>
               <button
@@ -3989,44 +4324,87 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[#f9f9ff] border border-[#1b4332]/8 space-y-2">
               <PremiumInitialAvatar
                 name={selectedStudentDetail.name}
+                role={selectedStudentDetail.role === 'admin' ? 'admin' : 'member'}
                 className="w-20 h-20 rounded-full ring-4 ring-white shadow-md"
               />
               <div>
                 <h4 className="text-base font-bold text-[#141b2b]">
                   {selectedStudentDetail.name}
                 </h4>
-                <p className="text-xs text-[#414844] mt-0.5">
-                  {selectedStudentDetail.halaqah} • Pembimbing: <span className="font-semibold text-[#141b2b]">{formatSupervisorDisplayName(selectedStudentDetail.supervisor)}</span>
-                </p>
+                {selectedStudentDetail.role === 'admin' ? (
+                  <p className="text-xs text-[#414844] mt-0.5">
+                    {selectedStudentDetail.title || getUstadzTitle(selectedStudentDetail.name)} Pembimbing • Halaqah:{' '}
+                    <span className="font-semibold text-[#141b2b]">
+                      {selectedStudentDetail.halaqah || selectedStudentDetail.group || 'Tanpa Halaqah'}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-[#414844] mt-0.5">
+                    {selectedStudentDetail.halaqah || selectedStudentDetail.group} • Pembimbing:{' '}
+                    <span className="font-semibold text-[#141b2b]">
+                      {formatSupervisorDisplayName(selectedStudentDetail.supervisor)}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
-                <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp ?? 0}</span>
+            {selectedStudentDetail.role === 'admin' ? (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 rounded-2xl bg-[#fff8ef] border border-[#fed488] text-center">
+                  <span className="text-[10px] font-semibold text-[#785a1a] uppercase block">Kode Halaqah</span>
+                  <span className="text-sm font-extrabold text-[#261900] mt-0.5 block">
+                    {selectedStudentDetail.code || 'HX-001'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                  <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Binaan</span>
+                  <span className="text-sm font-extrabold text-emerald-950 mt-0.5 block">
+                    {selectedStudentDetail.memberCount ?? 0} Karyawan
+                  </span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] font-semibold text-slate-600 uppercase block">Otoritas</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">
+                    Pembimbing
+                  </span>
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
-                <span className="text-[10px] font-semibold text-amber-800 uppercase block">Streak</span>
-                <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays ?? 0} Hari</span>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                  <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Total XP</span>
+                  <span className="text-base font-extrabold text-emerald-950">{selectedStudentDetail.totalXp ?? 0}</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                  <span className="text-[10px] font-semibold text-amber-800 uppercase block">Streak</span>
+                  <span className="text-base font-extrabold text-amber-950">{selectedStudentDetail.streakDays ?? 0} Hari</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] font-semibold text-slate-600 uppercase block">Tilawah</span>
+                  <span className="text-xs font-bold text-slate-600 inline-flex items-center justify-center gap-0.5 mt-1">
+                    <span className="material-symbols-outlined text-[14px]">lock</span>
+                    <span>Dikunci</span>
+                  </span>
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-                <span className="text-[10px] font-semibold text-slate-600 uppercase block">Tilawah</span>
-                <span className="text-xs font-bold text-slate-600 inline-flex items-center justify-center gap-0.5 mt-1">
-                  <span className="material-symbols-outlined text-[14px]">lock</span>
-                  <span>Dikunci</span>
-                </span>
-              </div>
-            </div>
+            )}
 
             <div className="pt-2 border-t border-[#f1f3ff] flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleDeleteStudent(selectedStudentDetail)}
+                onClick={() =>
+                  handleDeleteStudent({
+                    id: selectedStudentDetail.id,
+                    name: selectedStudentDetail.rawName || selectedStudentDetail.name
+                  })
+                }
                 className="flex-1 py-2.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all border border-red-200 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
-                <span>Hapus Karyawan</span>
+                <span>
+                  {selectedStudentDetail.role === 'admin' ? 'Hapus Ustadz/ah' : 'Hapus Karyawan'}
+                </span>
               </button>
               <button
                 type="button"

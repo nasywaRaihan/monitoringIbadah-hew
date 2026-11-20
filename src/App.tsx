@@ -1256,16 +1256,18 @@ export default function App() {
       'Total XP',
       'Kode Halaqah'
     ];
-    const rows = registeredUsers.map((u, idx) => [
-      idx + 1,
-      u.name,
-      u.halaqah,
-      formatSupervisorDisplayName(u.supervisor),
-      u.role === 'admin' ? `${getUstadzTitle(u)} / Pembimbing` : 'Karyawan Aktif',
-      u.streakDays,
-      u.totalXp,
-      u.halaqahCode || '-'
-    ]);
+    const rows = registeredUsers
+      .filter((u) => u.role !== 'dept-hx' && u.role !== 'hq-admin')
+      .map((u, idx) => [
+        idx + 1,
+        u.name,
+        u.halaqah,
+        formatSupervisorDisplayName(u.supervisor),
+        u.role === 'admin' ? `${getUstadzTitle(u)} / Pembimbing` : 'Karyawan Aktif',
+        u.streakDays,
+        u.role === 'admin' ? '-' : u.totalXp,
+        u.halaqahCode || '-'
+      ]);
     downloadPerColumnCSV('Data_Karyawan_JejakTaqwa_Lokal', headers, rows, 'Karyawan');
     showToast('Alhamdulillah! Seluruh data karyawan berhasil diekspor ke file Excel (.xlsx).');
   };
@@ -1432,16 +1434,17 @@ export default function App() {
       )
     );
 
+    const isMonitoringHx = activeUser.role === 'dept-hx' || activeUser.role === 'hq-admin';
     const streakResult = recordDailyActivityStreak(activeUser);
-    const newXp = Math.round((totalXp + finalXp) * 100) / 100;
+    const newXp = isMonitoringHx ? 0 : Math.round((totalXp + finalXp) * 100) / 100;
     setTotalXp(newXp);
-    setStreakDays(streakResult.streakDays);
+    setStreakDays(isMonitoringHx ? 0 : streakResult.streakDays);
 
     const updatedUser: ActiveUser = {
       ...activeUser,
       totalXp: newXp,
-      streakDays: streakResult.streakDays,
-      longestStreak: streakResult.longestStreak,
+      streakDays: isMonitoringHx ? 0 : streakResult.streakDays,
+      longestStreak: isMonitoringHx ? 0 : streakResult.longestStreak,
       lastActiveDate: streakResult.lastActiveDate,
       activeDates: streakResult.activeDates
     };
@@ -1721,6 +1724,7 @@ export default function App() {
             onNavigateToLeaderboard={() => setCurrentTab('leaderboard')}
             onShowToast={showToast}
             activeUser={activeUser}
+            registeredUsers={registeredUsers}
             onOpenAuth={() => setIsAuthOpen(true)}
             attendanceSessions={attendanceSessions}
           />

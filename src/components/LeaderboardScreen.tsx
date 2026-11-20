@@ -85,29 +85,60 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
 
   // Merged pool of all rankable employee users
   const allEmployees = useMemo<ActiveUser[]>(() => {
+    let deletedIds = new Set<string>();
+    let overrides: Record<string, string> = {};
+    try {
+      const savedDel = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+      if (savedDel) {
+        const parsed = JSON.parse(savedDel);
+        if (Array.isArray(parsed)) deletedIds = new Set(parsed);
+      }
+      const savedOv = localStorage.getItem('noorworship_user_halaqah_overrides_prod_v1');
+      if (savedOv) {
+        const parsedOv = JSON.parse(savedOv);
+        if (parsedOv && typeof parsedOv === 'object') overrides = parsedOv;
+      }
+    } catch {}
+
     const map = new Map<string, ActiveUser>();
 
     // 1. Base employees
-    BASE_EMPLOYEES_ROSTER.forEach((u) => map.set(u.id, u));
+    BASE_EMPLOYEES_ROSTER.forEach((u) => {
+      if (!deletedIds.has(u.id)) map.set(u.id, u);
+    });
 
     // 2. Overlay registeredUsers (e.g. newly added by Dept HX or AuthScreen)
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
-        if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id)) {
-          map.set(u.id, { ...(map.get(u.id) || {}), ...u });
+        if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id) && !deletedIds.has(u.id)) {
+          const effectiveHalaqah = overrides[u.id] !== undefined ? overrides[u.id] : u.halaqah;
+          map.set(u.id, { ...(map.get(u.id) || {}), ...u, halaqah: effectiveHalaqah });
         }
       });
     }
 
     // 3. Overlay Firestore live users
     liveUsers.forEach((u) => {
-      if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id)) {
-        map.set(u.id, { ...(map.get(u.id) || {}), ...u });
+      if (u.role === 'member' && !LEGACY_DEMO_IDS.has(u.id) && !deletedIds.has(u.id)) {
+        const effectiveHalaqah = overrides[u.id] !== undefined ? overrides[u.id] : u.halaqah;
+        map.set(u.id, { ...(map.get(u.id) || {}), ...u, halaqah: effectiveHalaqah });
       }
     });
 
+    // 4. Ensure activeUser's live XP and streak are always reflected immediately
+    if (activeUser && activeUser.role === 'member' && !LEGACY_DEMO_IDS.has(activeUser.id) && !deletedIds.has(activeUser.id)) {
+      const effectiveHalaqah = overrides[activeUser.id] !== undefined ? overrides[activeUser.id] : activeUser.halaqah;
+      map.set(activeUser.id, {
+        ...(map.get(activeUser.id) || {}),
+        ...activeUser,
+        halaqah: effectiveHalaqah,
+        totalXp: userXp,
+        streakDays: userStreak
+      });
+    }
+
     return Array.from(map.values());
-  }, [liveUsers, registeredUsers]);
+  }, [liveUsers, registeredUsers, activeUser, userXp, userStreak]);
 
   // Unique list of halaqah names found in halaqahDetailsList + allEmployees
   const allHalaqahNames = useMemo<string[]>(() => {
@@ -145,7 +176,13 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   // Helper to get formatted ranked leaderboard list for a given set of users
   const formatLeaderboardUsers = (users: ActiveUser[]): LeaderboardUser[] => {
     return [...users]
-      .sort((a, b) => (b.totalXp || 0) - (a.totalXp || 0))
+      .sort((a, b) => {
+        const xpDiff = (b.totalXp || 0) - (a.totalXp || 0);
+        if (xpDiff !== 0) return xpDiff;
+        const streakDiff = (b.streakDays || 0) - (a.streakDays || 0);
+        if (streakDiff !== 0) return streakDiff;
+        return (a.name || '').localeCompare(b.name || '', 'id');
+      })
       .map((u, index) => ({
         rank: index + 1,
         name: u.name,
@@ -171,7 +208,10 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
     : (activeUser?.halaqah || 'Halaqah Al-Fajr');
 
   const singleHalaqahLeaderboard = useMemo<LeaderboardUser[]>(() => {
-    const halaqahMembers = allEmployees.filter((u) => u.halaqah === activeHalaqahTarget);
+    const targetLower = (activeHalaqahTarget || '').trim().toLowerCase();
+    const halaqahMembers = allEmployees.filter(
+      (u) => (u.halaqah || '').trim().toLowerCase() === targetLower
+    );
     return formatLeaderboardUsers(halaqahMembers);
   }, [allEmployees, activeHalaqahTarget, activeUser?.id]);
 
@@ -611,7 +651,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#ffdea5] font-bold min-w-0 truncate">
                 {scope === 'global'
                   ? 'Podium Nasional Pekan Ini'
-                  : `Qari Terbaik: ${activeHalaqahTarget}`}
+                  : `Karyawan Terbaik: ${activeHalaqahTarget}`}
               </span>
               <span className="text-[10px] sm:text-xs bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[#e9c176] font-medium shrink-0 whitespace-nowrap">
                 Pekan ke-34
@@ -651,8 +691,17 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 <div className="flex flex-col items-center -translate-y-1.5 sm:-translate-y-2 min-w-0">
                   <div className="relative mb-2">
                     {/* Crown Icon */}
-                    <span className="material-symbols-outlined text-[20px] sm:text-[24px] text-[#fed488] absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 drop-shadow animate-bounce">
-                      crown
+                    <span
+                      aria-hidden="true"
+                      className="text-[#fed488] absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 drop-shadow animate-bounce inline-flex items-center justify-center"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-[20px] h-[20px] sm:w-[24px] sm:h-[24px]"
+                      >
+                        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
+                      </svg>
                     </span>
                     <div className="w-15 h-15 sm:w-18 sm:h-18 rounded-full p-1 bg-gradient-to-tr from-[#fed488] to-[#ffdea5] shadow-lg flex items-center justify-center ring-2 ring-[#fed488]/50">
                       <PremiumInitialAvatar

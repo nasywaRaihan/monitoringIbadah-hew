@@ -331,55 +331,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {registeredUsers.map((u) => {
-                    const isCurrent = u.id === activeUser.id;
-                    return (
-                      <div
-                        key={u.id}
-                        onClick={() => {
-                          setUserToUnlock(u);
-                          setInputPasscode('');
-                          setUnlockError(null);
-                        }}
-                        className={`p-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all border ${
-                          isCurrent
-                            ? 'bg-[#c1ecd4]/40 border-[#00452c]/20 ring-1 ring-[#00452c]'
-                            : 'bg-[#f1f3ff] border-transparent hover:bg-[#e9edff]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <PremiumInitialAvatar
-                            name={u.name}
-                            role={u.role}
-                            className="w-10 h-10 rounded-full shrink-0 shadow-sm ring-1 ring-[#012d1d]/10"
-                          />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-bold text-[#141b2b] truncate">
-                                {u.name}
-                              </span>
-                              <span className="px-1.5 py-0.2 bg-[#fed488]/50 text-[#785a1a] text-[9px] font-bold rounded-full">
-                                {u.halaqahCode}
-                              </span>
-                              {isCurrent && (
-                                <span className="px-1.5 py-0.2 bg-[#00452c] text-white text-[9px] font-bold rounded-full">
-                                  Aktif
+                  {registeredUsers.filter((u) => u.role === 'member').length === 0 ? (
+                    <div className="p-4 rounded-xl bg-[#f9f9ff] border border-dashed border-[#1b4332]/20 text-center space-y-1">
+                      <p className="text-xs font-bold text-[#141b2b]">Belum Ada Akun Karyawan Terdaftar</p>
+                      <p className="text-[11px] text-[#414844]">
+                        Silakan masuk melalui tab <strong>Dept HX</strong> untuk mendaftarkan atau mengimpor data karyawan.
+                      </p>
+                    </div>
+                  ) : (
+                    registeredUsers
+                      .filter((u) => u.role === 'member')
+                      .map((u) => {
+                        const isCurrent = u.id === activeUser.id;
+                        return (
+                          <div
+                            key={u.id}
+                            onClick={() => {
+                              setUserToUnlock(u);
+                              setInputPasscode('');
+                              setUnlockError(null);
+                            }}
+                            className={`p-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all border ${
+                              isCurrent
+                                ? 'bg-[#c1ecd4]/40 border-[#00452c]/20 ring-1 ring-[#00452c]'
+                                : 'bg-[#f1f3ff] border-transparent hover:bg-[#e9edff]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <PremiumInitialAvatar
+                                name={u.name}
+                                role={u.role}
+                                className="w-10 h-10 rounded-full shrink-0 shadow-sm ring-1 ring-[#012d1d]/10"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold text-[#141b2b] truncate">
+                                    {u.name}
+                                  </span>
+                                  <span className="px-1.5 py-0.2 bg-[#fed488]/50 text-[#785a1a] text-[9px] font-bold rounded-full">
+                                    {u.halaqahCode}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="px-1.5 py-0.2 bg-[#00452c] text-white text-[9px] font-bold rounded-full">
+                                      Aktif
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-[#414844] truncate block mt-0.5">
+                                  {u.halaqah} • {u.totalXp} XP
                                 </span>
-                              )}
+                              </div>
                             </div>
-                            <span className="text-[11px] text-[#414844] truncate block mt-0.5">
-                              {u.halaqah} • {u.totalXp} XP
+
+                            <span className="text-xs text-[#012d1d] font-bold flex items-center gap-1 shrink-0 bg-white px-2.5 py-1 rounded-full shadow-sm">
+                              <span className="material-symbols-outlined text-[14px]">lock</span>
+                              <span>Buka</span>
                             </span>
                           </div>
-                        </div>
-
-                        <span className="text-xs text-[#012d1d] font-bold flex items-center gap-1 shrink-0 bg-white px-2.5 py-1 rounded-full shadow-sm">
-                          <span className="material-symbols-outlined text-[14px]">lock</span>
-                          <span>Buka</span>
-                        </span>
-                      </div>
-                    );
-                  })}
+                        );
+                      })
+                  )}
                 </div>
               </>
             ) : (

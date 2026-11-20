@@ -527,26 +527,113 @@ export const FASTING_OPTIONS: FastingOption[] = [
   }
 ];
 
-export function getHijriDateDetails(date: Date = new Date()) {
-  try {
-    const dtf = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
-      day: 'numeric',
-      month: 'numeric',
-      year: 'numeric'
-    });
-    const parts = dtf.formatToParts(date);
-    let day = 15;
-    let month = 6;
-    let year = 1448;
-    for (const part of parts) {
-      if (part.type === 'day') day = parseInt(part.value, 10) || 15;
-      if (part.type === 'month') month = parseInt(part.value, 10) || 6;
-      if (part.type === 'year') year = parseInt(part.value, 10) || 1448;
-    }
-    return { day, month, year };
-  } catch (e) {
-    return { day: 15, month: 6, year: 1448 };
+export const HIJRI_MONTH_NAMES_ID = [
+  '',
+  'Muharram',
+  'Safar',
+  'Rabiul Awal',
+  'Rabiul Akhir',
+  'Jumadil Awal',
+  'Jumadil Akhir',
+  'Rajab',
+  'Syaban',
+  'Ramadhan',
+  'Syawal',
+  'Dzulkaidah',
+  'Dzulhijjah'
+];
+
+function computeHijriFromGregorianMath(date: Date): { day: number; month: number; year: number } {
+  const d = date.getDate();
+  const m = date.getMonth() + 1;
+  const y = date.getFullYear();
+
+  let jd: number;
+  if (y > 1582 || (y === 1582 && m > 10) || (y === 1582 && m === 10 && d > 14)) {
+    jd =
+      Math.floor((1461 * (y + 4800 + Math.floor((m - 14) / 12))) / 4) +
+      Math.floor((367 * (m - 2 - 12 * Math.floor((m - 14) / 12))) / 12) -
+      Math.floor((3 * Math.floor((y + 4900 + Math.floor((m - 14) / 12)) / 100)) / 4) +
+      d -
+      32075;
+  } else {
+    jd =
+      367 * y -
+      Math.floor((7 * (y + 5001 + Math.floor((m - 9) / 7))) / 4) +
+      Math.floor((275 * m) / 9) +
+      d +
+      1729777;
   }
+
+  let l = jd - 1948440 + 10632;
+  const n = Math.floor((l - 1) / 10631);
+  l = l - 10631 * n + 354;
+  const j =
+    Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) +
+    Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
+  l =
+    l -
+    Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
+    Math.floor(j / 16) * Math.floor((15238 * j) / 43) +
+    29;
+  const hMonth = Math.floor((24 * l) / 709);
+  const hDay = l - Math.floor((709 * hMonth) / 24);
+  const hYear = 30 * n + j - 30;
+
+  return {
+    day: Math.max(1, Math.min(30, hDay)),
+    month: Math.max(1, Math.min(12, hMonth)),
+    year: hYear
+  };
+}
+
+export function getHijriDateDetails(date: Date = new Date()): {
+  day: number;
+  month: number;
+  year: number;
+  monthName: string;
+} {
+  const calendarsToTry = ['islamic-umalqura', 'islamic-civil', 'islamic'];
+  for (const cal of calendarsToTry) {
+    try {
+      const dtf = new Intl.DateTimeFormat(`en-US-u-ca-${cal}-nu-latn`, {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric'
+      });
+      const parts = dtf.formatToParts(date);
+      let day = 0;
+      let month = 0;
+      let year = 0;
+      for (const part of parts) {
+        if (part.type === 'day') day = parseInt(part.value.replace(/\D/g, ''), 10) || 0;
+        if (part.type === 'month') month = parseInt(part.value.replace(/\D/g, ''), 10) || 0;
+        if (part.type === 'year') year = parseInt(part.value.replace(/\D/g, ''), 10) || 0;
+      }
+      // Verify that the browser actually converted to a Hijri year (1400..1600) and didn't fallback to Gregorian (e.g. 2026)
+      if (year >= 1400 && year <= 1600 && month >= 1 && month <= 12 && day >= 1 && day <= 30) {
+        return {
+          day,
+          month,
+          year,
+          monthName: HIJRI_MONTH_NAMES_ID[month] || `Bulan ${month}`
+        };
+      }
+    } catch {
+      // Continue to next calendar or math fallback
+    }
+  }
+
+  const fallback = computeHijriFromGregorianMath(date);
+  return {
+    ...fallback,
+    monthName: HIJRI_MONTH_NAMES_ID[fallback.month] || `Bulan ${fallback.month}`
+  };
+}
+
+export function formatHijriDateIndonesian(date: Date = new Date()): string {
+  const { day, monthName, year } = getHijriDateDetails(date);
+  return `${day} ${monthName} ${year} H`;
 }
 
 export function checkFastingMatch(
@@ -563,12 +650,7 @@ export function checkFastingMatch(
   }
 
   const hijri = getHijriDateDetails(now);
-  const hijriMonthNames = [
-    '', 'Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir',
-    'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Syaban', 'Ramadan',
-    'Syawal', 'Dzulkaidah', 'Dzulhijjah'
-  ];
-  const hMonthName = hijriMonthNames[hijri.month] || `Bulan ${hijri.month}`;
+  const hMonthName = hijri.monthName;
 
   if (fastingId === 'senin') {
     if (dayIndex === 1) {

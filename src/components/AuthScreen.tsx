@@ -566,7 +566,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span className="material-symbols-outlined text-[14px] text-[#012d1d] inline align-middle mr-1">
                     info
                   </span>
-                  Karyawan didaftarkan secara resmi oleh pengurus melalui tab <strong>Dept HX</strong> di atas.
+                  Karyawan didaftarkan secara resmi oleh Departemen Human Experience
                 </p>
               </div>
             </form>
@@ -685,7 +685,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="p-3 rounded-2xl bg-[#012d1d] text-white leading-relaxed shadow-lg border border-[#c1ecd4]/20">
                 <div className="flex items-center gap-1.5 font-bold mb-1 text-[#fed488]">
                   <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                  <span className="text-xs uppercase tracking-wider">Area Otoritas Departemen HX (Human Experience)</span>
+                  <span className="text-xs uppercase tracking-wider">Area Otoritas Departemen Human Experience</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
                   Akses khusus pengurus pusat untuk pendaftaran karyawan asli, pembuatan kelompok halaqah, penetapan Ustadz/ah pembimbing, dan rekapitulasi mutaba&apos;ah.
