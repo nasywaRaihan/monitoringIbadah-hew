@@ -1,5 +1,5 @@
 import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, safeFirestoreWrite } from './firebase';
 
 export interface AppNotification {
   id: string;
@@ -68,16 +68,12 @@ export async function pushNotification(
   const existing = getLocalNotifications();
   saveLocalNotifications([fullNotif, ...existing.filter((n) => n.id !== notifId)]);
 
-  // Persist to Firestore
-  try {
-    const cleanPayload: Record<string, any> = {};
-    Object.entries(fullNotif).forEach(([k, v]) => {
-      if (v !== undefined) cleanPayload[k] = v;
-    });
-    await setDoc(doc(db, 'notifications', notifId), cleanPayload);
-  } catch (e) {
-    console.warn('Could not persist notification to Firestore:', e);
-  }
+  // Persist to Firestore if quota available
+  const cleanPayload: Record<string, any> = {};
+  Object.entries(fullNotif).forEach(([k, v]) => {
+    if (v !== undefined) cleanPayload[k] = v;
+  });
+  await safeFirestoreWrite(() => setDoc(doc(db, 'notifications', notifId), cleanPayload));
 
   return fullNotif;
 }
@@ -87,11 +83,7 @@ export async function markNotificationAsReadInStore(notifId: string): Promise<vo
   const updated = existing.map((n) => (n.id === notifId ? { ...n, read: true } : n));
   saveLocalNotifications(updated);
 
-  try {
-    await updateDoc(doc(db, 'notifications', notifId), { read: true });
-  } catch {
-    // Ignore if document only exists locally or already updated
-  }
+  await safeFirestoreWrite(() => updateDoc(doc(db, 'notifications', notifId), { read: true }));
 }
 
 export async function deleteNotificationFromStore(notifId: string): Promise<void> {
@@ -99,11 +91,7 @@ export async function deleteNotificationFromStore(notifId: string): Promise<void
   const updated = existing.filter((n) => n.id !== notifId);
   saveLocalNotifications(updated);
 
-  try {
-    await deleteDoc(doc(db, 'notifications', notifId));
-  } catch {
-    // Ignore if document only exists locally
-  }
+  await safeFirestoreWrite(() => deleteDoc(doc(db, 'notifications', notifId)));
 }
 
 export function formatRelativeNotifTime(createdAt?: string, fallbackTime?: string): string {

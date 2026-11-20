@@ -106,6 +106,44 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     return hasUserCompletedIbadahToday(activeUser.id) || tasks.some((t) => t.completed);
   }, [activeUser.id, tasks]);
 
+  // Dynamically resolve the actual supervisor (Ustadz/ah) of the user's current Halaqah
+  const resolvedSupervisorName = useMemo(() => {
+    const currentHalaqah = (activeUser?.halaqah || '').trim();
+    const targetLower = currentHalaqah.toLowerCase();
+    if (targetLower && targetLower !== 'tanpa halaqah' && targetLower !== 'belum ada halaqah') {
+      try {
+        const savedHalaqahs = localStorage.getItem('noorworship_unified_halaqahs_prod_v1');
+        if (savedHalaqahs) {
+          const parsed = JSON.parse(savedHalaqahs);
+          if (Array.isArray(parsed)) {
+            const matched = parsed.find(
+              (h: any) => h?.name && h.name.trim().toLowerCase() === targetLower
+            );
+            if (
+              matched?.supervisor &&
+              matched.supervisor.trim() &&
+              matched.supervisor.trim() !== '-' &&
+              !matched.supervisor.toLowerCase().includes('ustadz/ah pembimbing')
+            ) {
+              return formatSupervisorDisplayName(matched.supervisor);
+            }
+          }
+        }
+      } catch {}
+
+      const adminForHalaqah = (registeredUsers || []).find(
+        (u) =>
+          u.role === 'admin' &&
+          u.halaqah &&
+          u.halaqah.trim().toLowerCase() === targetLower
+      );
+      if (adminForHalaqah?.name) {
+        return formatSupervisorDisplayName(adminForHalaqah.name);
+      }
+    }
+    return formatSupervisorDisplayName(activeUser.supervisor);
+  }, [activeUser.halaqah, activeUser.supervisor, registeredUsers]);
+
   // Real-time Per-Halaqah Rank calculation synchronized with LeaderboardScreen
   const halaqahRankInfo = useMemo(() => {
     const currentHalaqah = (activeUser?.halaqah || '').trim();
@@ -817,7 +855,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                 {attendanceStats.hadir} dari {attendanceStats.total} Pertemuan Halaqah
               </h3>
               <p className="text-[11px] text-[#c1ecd4]/80 truncate mt-0.5">
-                Rekap absensi resmi oleh {getUstadzTitle(activeUser.supervisor)} • Klik untuk lihat riwayat lengkap ➔
+                Rekap absensi resmi oleh {resolvedSupervisorName} • Klik untuk lihat riwayat lengkap ➔
               </p>
             </div>
           </div>
@@ -891,7 +929,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
             <div className="flex items-center gap-1.5 text-[11px] text-[#414844]">
               <span className="material-symbols-outlined text-[14px] text-[#00452c]">school</span>
               <span>
-                Kurikulum mutaba&apos;ah ditetapkan oleh Departemen Human Experience dan <strong>{formatSupervisorDisplayName(activeUser.supervisor)}</strong> ({activeUser.halaqah})
+                Kurikulum mutaba&apos;ah ditetapkan oleh Departemen Human Experience dan <strong>{resolvedSupervisorName}</strong> ({activeUser.halaqah})
               </span>
             </div>
           )}        </div>

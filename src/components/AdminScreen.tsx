@@ -67,11 +67,28 @@ export default function AdminScreen({
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<any | null>(null);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
+  const isUstadzOrNonMemberAccount = React.useCallback(
+    (u?: { id?: string; name?: string; role?: string }) => {
+      if (!u) return true;
+      if (u.role && u.role !== 'member') return true;
+      if (u.id && (u.id === activeUser?.id || u.id.startsWith('ustadz-') || u.id.startsWith('user-ustadz-'))) {
+        return true;
+      }
+      const cleanName = (u.name || '').trim();
+      if (/^(ustadz\/ah|ustadzah|ustadz|ust\.?)\s+/i.test(cleanName)) return true;
+      if (activeUser?.name && cleanName.toLowerCase() === activeUser.name.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    },
+    [activeUser?.id, activeUser?.name]
+  );
+
   const allStudentsList = useMemo(() => {
     const map = new Map<string, any>();
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
-        if (u.role === 'dept-hx' || u.role === 'hq-admin') return;
+        if (isUstadzOrNonMemberAccount(u)) return;
         map.set(u.id, {
           id: u.id,
           name: u.name,
@@ -80,14 +97,14 @@ export default function AdminScreen({
           totalXp: u.totalXp || 0,
           streakDays: u.streakDays || 0,
           tajweedAcc: 0,
-          role: u.role || 'member',
+          role: 'member',
           supervisor: formatSupervisorDisplayName((u as any).supervisor || activeUser?.name, activeUser?.gender),
           phone: (u as any).phone || ''
         });
       });
     }
     return Array.from(map.values());
-  }, [registeredUsers, activeUser?.halaqah, activeUser?.name, activeUser?.gender]);
+  }, [registeredUsers, activeUser?.halaqah, activeUser?.name, activeUser?.gender, isUstadzOrNonMemberAccount]);
 
   const halaqahGroups = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -151,12 +168,9 @@ export default function AdminScreen({
     }
 
     const halaqahTarget = activeUser.halaqah || 'Halaqah Al-Fajr';
-    const members = allStudentsList.filter(
-      (u) => (!u.role || u.role === 'member') && (!u.halaqah || u.halaqah === halaqahTarget)
-    );
     const batchId = `broadcast-${Date.now()}`;
 
-    // Always push a Halaqah-level broadcast notification so any member of this halaqah sees it
+    // Push a single Halaqah-level broadcast notification document so any member of this halaqah sees it
     await pushNotification({
       targetHalaqah: halaqahTarget,
       senderName: formatSupervisorDisplayName(activeUser.name, activeUser.gender),
@@ -165,20 +179,6 @@ export default function AdminScreen({
       type: 'broadcast',
       batchId,
     });
-
-    // Also push individual notifications for registered members
-    for (const member of members) {
-      await pushNotification({
-        targetUserId: member.id,
-        recipientName: member.name,
-        targetHalaqah: halaqahTarget,
-        senderName: formatSupervisorDisplayName(activeUser.name, activeUser.gender),
-        title: `Maklumat ${halaqahTarget}`,
-        message: broadcastText.trim(),
-        type: 'broadcast',
-        batchId,
-      });
-    }
 
     onShowToast(`📢 Maklumat berhasil disiarkan ke seluruh anggota ${halaqahTarget}!`);
     setBroadcastText('');
@@ -781,7 +781,7 @@ export default function AdminScreen({
                   Daftar Karyawan Binaan {activeUser.halaqah || 'Halaqah Al-Fajr'}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[#414844] mt-0.5">
-                  Total {allStudentsList.filter(s => !activeUser.halaqah || s.halaqah === activeUser.halaqah).length} karyawan resmi di bawah bimbingan Anda
+                  Total {allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length} karyawan resmi di bawah bimbingan Anda
                 </p>
               </div>
               <div className="relative w-full sm:w-60 shrink-0">
@@ -800,7 +800,7 @@ export default function AdminScreen({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {allStudentsList
-                .filter(s => (!activeUser.halaqah || s.halaqah === activeUser.halaqah) && (!studentSearchQuery.trim() || s.name.toLowerCase().includes(studentSearchQuery.toLowerCase())))
+                .filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah) && (!studentSearchQuery.trim() || s.name.toLowerCase().includes(studentSearchQuery.toLowerCase())))
                 .map((member) => (
                   <div
                     key={member.id}
@@ -2130,7 +2130,9 @@ export default function AdminScreen({
       {/* Comprehensive Student Submissions Modal (Siapa Saja yang Sudah & Belum Mengerjakan) */}
       {selectedTaskForSubmissions && (() => {
         const currentTask = selectedTaskForSubmissions;
-        const submissions = currentTask.submissions || [];
+        const submissions = (currentTask.submissions || []).filter(
+          (s) => !isUstadzOrNonMemberAccount({ id: s.studentId, name: s.studentName })
+        );
         const completedList = submissions.filter((s) => s.isCompleted);
         const pendingList = submissions.filter((s) => !s.isCompleted);
         const isWeekly = currentTask.type === "usbu'iyah";

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ALL_RECITERS_DIRECTORY, DEFAULT_HALAQAH_ROSTER, DEFAULT_ATTENDANCE_SESSIONS } from '../data/mockData';
 import {
   ReciterProfile,
@@ -25,7 +25,12 @@ import {
   onSnapshot,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import {
+  db,
+  safeFirestoreWrite,
+  isFirestoreQuotaExhausted,
+  checkAndMarkQuotaExhausted
+} from '../services/firebase';
 import { PremiumInitialAvatar } from './PremiumInitialAvatar';
 import { pushNotification } from '../services/notificationService';
 import {
@@ -146,6 +151,8 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     }
   }, [halaqahList]);
 
+  const syncedHalaqahIdsRef = useRef<Set<string>>(new Set());
+
   // Real-time two-way sync of Halaqah groups with Firestore 'halaqahs' collection
   useEffect(() => {
     const unsub = onSnapshot(
@@ -169,10 +176,14 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
         snap.forEach((docSnap) => {
           const data = { id: docSnap.id, ...docSnap.data() } as HalaqahDetail;
           if (!data.name || currentDeletedLower.has(data.name.trim().toLowerCase())) {
-            deleteDoc(doc(db, 'halaqahs', docSnap.id)).catch(() => {});
+            if (!isFirestoreQuotaExhausted() && !syncedHalaqahIdsRef.current.has(`del:${docSnap.id}`)) {
+              syncedHalaqahIdsRef.current.add(`del:${docSnap.id}`);
+              safeFirestoreWrite(() => deleteDoc(doc(db, 'halaqahs', docSnap.id)));
+            }
             return;
           }
           firestoreIds.add(docSnap.id);
+          syncedHalaqahIdsRef.current.add(docSnap.id);
           firestoreNamesLower.add(data.name.trim().toLowerCase());
           firestoreHalaqahs.push(data);
         });
@@ -191,20 +202,27 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           });
 
           const merged = Array.from(byName.values());
-          // Auto-upload any local halaqah not yet stored in Firestore
-          merged.forEach((h) => {
-            const hId = h.id || `halaqah-${h.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-            if (!firestoreIds.has(hId) && !firestoreNamesLower.has(h.name.trim().toLowerCase())) {
-              const payload = JSON.parse(JSON.stringify({ ...h, id: hId }));
-              setDoc(doc(db, 'halaqahs', hId), payload, { merge: true }).catch(() => {});
-            }
-          });
+          if (!snap.metadata.hasPendingWrites && !isFirestoreQuotaExhausted()) {
+            // Auto-upload any local halaqah not yet stored in Firestore at most once per ID
+            merged.forEach((h) => {
+              const hId = h.id || `halaqah-${h.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+              if (
+                !firestoreIds.has(hId) &&
+                !syncedHalaqahIdsRef.current.has(hId) &&
+                !firestoreNamesLower.has(h.name.trim().toLowerCase())
+              ) {
+                syncedHalaqahIdsRef.current.add(hId);
+                const payload = JSON.parse(JSON.stringify({ ...h, id: hId }));
+                safeFirestoreWrite(() => setDoc(doc(db, 'halaqahs', hId), payload, { merge: true }));
+              }
+            });
+          }
 
           return merged;
         });
       },
       (err) => {
-        console.warn('Firestore halaqahs sync notice:', err);
+        checkAndMarkQuotaExhausted(err);
       }
     );
     return () => unsub();
@@ -428,7 +446,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
     const batchId = `global-broadcast-${Date.now()}`;
 
-    // Always push a global notification so every user (even newly logged in) sees it
+    // Push a single global notification document so every user sees it without wasting N writes
     await pushNotification({
       isGlobal: true,
       senderName: 'Dept HX Pusat',
@@ -437,20 +455,6 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       type: 'broadcast',
       batchId,
     });
-
-    // Also push individual notifications to registered users
-    for (const user of registeredUsers || []) {
-      await pushNotification({
-        targetUserId: user.id,
-        recipientName: user.name,
-        isGlobal: true,
-        senderName: 'Dept HX Pusat',
-        title: 'Maklumat Pusat Dept HX',
-        message: text,
-        type: 'broadcast',
-        batchId,
-      });
-    }
 
     onShowToast(
       `📢 Maklumat berhasil disiarkan ke seluruh ${halaqahGroups.length} lingkaran halaqah (${allRecitersList.length} karyawan & ${allUstadzList.length} ustadz/ah)!`
@@ -468,7 +472,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
     const batchId = `halaqah-broadcast-${Date.now()}`;
 
-    // Push a halaqah-wide notification
+    // Push a single halaqah-wide notification document
     await pushNotification({
       targetHalaqah: groupName,
       senderName: 'Departemen HX (Human Experience)',
@@ -477,22 +481,6 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       type: 'broadcast',
       batchId,
     });
-
-    // Find members of this halaqah
-    const targetUsers = (registeredUsers || []).filter((u) => u.halaqah === groupName);
-
-    for (const user of targetUsers) {
-      await pushNotification({
-        targetUserId: user.id,
-        recipientName: user.name,
-        targetHalaqah: groupName,
-        senderName: 'Departemen HX (Human Experience)',
-        title: `Maklumat Khusus: ${groupName}`,
-        message: text,
-        type: 'broadcast',
-        batchId,
-      });
-    }
 
     setBroadcastHalaqahText('');
     onShowToast(`📢 Maklumat berhasil disiarkan khusus kepada seluruh anggota ${groupName}!`);

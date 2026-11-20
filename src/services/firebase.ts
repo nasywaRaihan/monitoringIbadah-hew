@@ -1,20 +1,51 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+// Silence internal Firestore SDK exponential backoff console.error logs when free-tier daily quota is reached
+setLogLevel('silent');
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
-async function testConnection() {
+let quotaCooldownUntilMs = 0;
+try {
+  sessionStorage.removeItem('noorworship_firestore_quota_exhausted_date');
+} catch {}
+
+export function isFirestoreQuotaExhausted(): boolean {
+  return Date.now() < quotaCooldownUntilMs;
+}
+
+export function checkAndMarkQuotaExhausted(err: any): boolean {
+  const msg = String(err?.message || err || '');
+  const code = String(err?.code || '');
+  if (
+    code.includes('resource-exhausted') ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('Quota limit exceeded') ||
+    msg.includes('Quota exceeded')
+  ) {
+    // Cooldown background bulk syncs for 30 seconds instead of locking for the whole day
+    quotaCooldownUntilMs = Date.now() + 30_000;
+    return true;
+  }
+  return false;
+}
+
+export async function safeFirestoreWrite<T>(
+  writeOperation: () => Promise<T>,
+  options?: { force?: boolean }
+): Promise<T | null> {
+  if (!options?.force && isFirestoreQuotaExhausted()) return null;
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase connection verified");
-  } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    return await writeOperation();
+  } catch (err) {
+    if (!checkAndMarkQuotaExhausted(err)) {
+      console.warn('Firestore write notice (fallback to local storage):', err);
     }
+    return null;
   }
 }
-testConnection();

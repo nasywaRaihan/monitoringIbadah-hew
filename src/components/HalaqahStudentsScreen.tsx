@@ -142,12 +142,45 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     [attendanceSessions, currentHalaqah]
   );
 
-  // Merge dynamically registered users matching current halaqah
+  // Merge dynamically registered users matching current halaqah (strictly members only, excluding Ustadz/ah)
   const effectiveStudents = React.useMemo(() => {
     const map = new Map<string, StudentPerformanceRecord>();
 
-    // 1. Add stored/default students with real attendance synced
+    const nonMemberIds = new Set<string>();
+    const nonMemberNames = new Set<string>();
+    if (activeUser?.id) nonMemberIds.add(activeUser.id);
+    if (activeUser?.name) nonMemberNames.add(activeUser.name.trim().toLowerCase());
+
+    (registeredUsers || []).forEach((u) => {
+      if (u.role && u.role !== 'member') {
+        nonMemberIds.add(u.id);
+        nonMemberNames.add((u.name || '').trim().toLowerCase());
+      }
+    });
+
+    const isNonMemberRecord = (id?: string, name?: string, role?: string) => {
+      if (role && role !== 'member') return true;
+      if (id && (nonMemberIds.has(id) || id.startsWith('ustadz-') || id.startsWith('user-ustadz-'))) {
+        return true;
+      }
+      const cleanName = (name || '').trim();
+      if (!cleanName) return true;
+      if (nonMemberNames.has(cleanName.toLowerCase())) return true;
+      if (/^(ustadz\/ah|ustadzah|ustadz|ust\.?)\s+/i.test(cleanName)) return true;
+      return false;
+    };
+
+    // 1. Add stored/default students with real attendance synced (only if member of this halaqah)
     students.forEach((st) => {
+      if (isNonMemberRecord(st.id, st.name)) return;
+      if (
+        activeUser?.role === 'admin' &&
+        st.halaqah &&
+        currentHalaqah &&
+        st.halaqah.trim().toLowerCase() !== currentHalaqah.trim().toLowerCase()
+      ) {
+        return;
+      }
       const att = computeStudentHalaqahAttendance(st.id, st.name, st.halaqah);
       map.set(st.id, {
         ...st,
@@ -156,9 +189,10 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       });
     });
 
-    // 2. Add registered users from Dept HX
+    // 2. Add registered users from Dept HX (strictly role === 'member')
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
+        if (isNonMemberRecord(u.id, u.name, u.role)) return;
         const uHalaqah = u.halaqah || 'Halaqah Binaan';
         const isMatch =
           u.role === 'member' &&
@@ -192,11 +226,22 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       });
     }
 
-    return Array.from(map.values());
-  }, [students, registeredUsers, currentHalaqah, halaqahCode, activeUser?.role, computeStudentHalaqahAttendance]);
+    return Array.from(map.values()).filter(
+      (s) => !deletedStudentIds.includes(s.id) && !deletedStudentIds.includes(s.name)
+    );
+  }, [
+    students,
+    registeredUsers,
+    currentHalaqah,
+    halaqahCode,
+    activeUser?.id,
+    activeUser?.name,
+    activeUser?.role,
+    deletedStudentIds,
+    computeStudentHalaqahAttendance
+  ]);
 
   const filteredStudents = effectiveStudents.filter((s) => {
-    if (deletedStudentIds.includes(s.id) || deletedStudentIds.includes(s.name)) return false;
     const matchesSearch =
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -258,7 +303,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
       'Catatan Ustadz/ah'
     ];
 
-    const rows = students.map((s, idx) => [
+    const rows = effectiveStudents.map((s, idx) => [
       idx + 1,
       s.id,
       s.name,
@@ -320,7 +365,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               {currentHalaqah}
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
-              {ustadzRoleLabel} Pembimbing: <strong className="text-white">{supervisorName}</strong> • {students.length} Karyawan Binaan Aktif
+              {ustadzRoleLabel} Pembimbing: <strong className="text-white">{supervisorName}</strong> • {effectiveStudents.length} Karyawan Binaan Aktif
             </p>
           </div>
 
@@ -389,7 +434,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e9edff]'
           }`}
         >
-          Semua Karyawan ({students.length})
+          Semua Karyawan ({effectiveStudents.length})
         </button>
         <button
           onClick={() => setStatusFilter('Mumtaz')}
@@ -399,7 +444,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e9edff]'
           }`}
         >
-          🌟 Mumtaz ({students.filter((s) => s.status === 'Mumtaz').length})
+          🌟 Mumtaz ({effectiveStudents.filter((s) => s.status === 'Mumtaz').length})
         </button>
         <button
           onClick={() => setStatusFilter('Disiplin')}
@@ -409,7 +454,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               : 'bg-[#f1f3ff] text-[#414844] hover:bg-[#e9edff]'
           }`}
         >
-          ✅ Disiplin ({students.filter((s) => s.status === 'Disiplin').length})
+          ✅ Disiplin ({effectiveStudents.filter((s) => s.status === 'Disiplin').length})
         </button>
         <button
           onClick={() => setStatusFilter('Perlu Bimbingan')}
@@ -419,7 +464,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               : 'bg-[#ffdad6]/60 text-[#ba1a1a] hover:bg-[#ffdad6]'
           }`}
         >
-          ⚠️ Perlu Bimbingan ({students.filter((s) => s.status === 'Perlu Bimbingan').length})
+          ⚠️ Perlu Bimbingan ({effectiveStudents.filter((s) => s.status === 'Perlu Bimbingan').length})
         </button>
       </div>
 

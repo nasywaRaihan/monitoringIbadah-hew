@@ -29,14 +29,36 @@ export interface StreakCalculationResult {
 /**
  * Checks whether the user has completed at least one ibadah task or recitation today.
  */
-export function hasUserCompletedIbadahToday(userId: string): boolean {
+export function hasUserCompletedIbadahToday(userId: string, user?: ActiveUser): boolean {
   try {
     const todayStr = getLocalDateString();
-    const userCompletionKey = `noorworship_completions_${userId}_${todayStr}`;
-    const raw = localStorage.getItem(userCompletionKey);
-    if (!raw) return false;
-    const completions: Record<string, { completed?: boolean }> = JSON.parse(raw);
-    return Object.values(completions).some((c) => c && c.completed === true);
+    const utcTodayStr = new Date().toISOString().split('T')[0];
+
+    if (user?.dailyCompletions) {
+      const fromCloudLocal = user.dailyCompletions[todayStr];
+      if (fromCloudLocal && Object.values(fromCloudLocal).some((c) => c && c.completed === true)) {
+        return true;
+      }
+      const fromCloudUtc = user.dailyCompletions[utcTodayStr];
+      if (fromCloudUtc && Object.values(fromCloudUtc).some((c) => c && c.completed === true)) {
+        return true;
+      }
+    }
+
+    const keysToCheck = [
+      `noorworship_completions_${userId}_${todayStr}`,
+      `noorworship_completions_${userId}_${utcTodayStr}`
+    ];
+    for (const key of keysToCheck) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const completions: Record<string, { completed?: boolean }> = JSON.parse(raw);
+        if (Object.values(completions).some((c) => c && c.completed === true)) {
+          return true;
+        }
+      }
+    }
+    return false;
   } catch {
     return false;
   }
@@ -53,7 +75,7 @@ export function evaluateStreakOnLoad(user: ActiveUser): {
   const today = getLocalDateString();
   const yesterday = getYesterdayDateString();
   const lastActive = user.lastActiveDate;
-  const isDoneToday = lastActive === today || hasUserCompletedIbadahToday(user.id);
+  const isDoneToday = lastActive === today || hasUserCompletedIbadahToday(user.id, user);
 
   if (isDoneToday) {
     return {
@@ -192,7 +214,7 @@ export function getWeeklyStreakDays(user: ActiveUser): DayOverview[] {
   const activeDates = new Set(user.activeDates || []);
 
   // If user has lastActiveDate === today or completions today, ensure today is in set
-  if (user.lastActiveDate === todayStr || hasUserCompletedIbadahToday(user.id)) {
+  if (user.lastActiveDate === todayStr || hasUserCompletedIbadahToday(user.id, user)) {
     activeDates.add(todayStr);
   }
 

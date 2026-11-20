@@ -15,6 +15,7 @@
         "lastActiveDate": { "type": "string" },
         "longestStreak": { "type": "integer" },
         "activeDates": { "type": "array" },
+        "dailyCompletions": { "type": "object" },
         "avatar": { "type": "string" }
       },
       "required": ["id", "name", "role", "totalXp", "streakDays"]

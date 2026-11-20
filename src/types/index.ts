@@ -126,6 +126,14 @@ export interface ReciterProfile {
   lastActive: string;
 }
 
+export interface DailyTaskCompletionRecord {
+  completed: boolean;
+  xp?: number;
+  note?: string;
+  isJamaah?: boolean;
+  completedAt?: string;
+}
+
 export interface ActiveUser {
   id: string;
   name: string;
@@ -143,6 +151,7 @@ export interface ActiveUser {
   lastActiveDate?: string;
   longestStreak?: number;
   activeDates?: string[];
+  dailyCompletions?: Record<string, Record<string, DailyTaskCompletionRecord>>;
   assignedHalaqahBy?: string; // 'Dept HX'
   hxAssignmentId?: string;
   hxStatus?: 'Resmi Dept HX' | 'Terdaftar';

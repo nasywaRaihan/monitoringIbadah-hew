@@ -654,7 +654,10 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                   : `Karyawan Terbaik: ${activeHalaqahTarget}`}
               </span>
               <span className="text-[10px] sm:text-xs bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[#e9c176] font-medium shrink-0 whitespace-nowrap">
-                Pekan ke-34
+                {`Pekan ke-${Math.ceil(new Date().getDate() / 7)} • ${new Intl.DateTimeFormat('id-ID', {
+                  month: 'short',
+                  year: 'numeric'
+                }).format(new Date())}`}
               </span>
             </div>
 

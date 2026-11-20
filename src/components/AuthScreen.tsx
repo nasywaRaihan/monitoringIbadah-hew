@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ActiveUser } from '../types';
 import { BRAND_ASSETS } from '../data/mockData';
 import {
@@ -10,6 +10,20 @@ import {
   resetFailedAuthAttempts
 } from '../services/securityService';
 import { formatSupervisorDisplayName } from '../services/ustadzTitle';
+
+interface RememberedSessionItem {
+  id: string;
+  name: string;
+  halaqah: string;
+  halaqahCode: string;
+  passcode: string;
+  supervisor?: string;
+  role: 'member' | 'admin';
+  savedAt: string;
+}
+
+const REMEMBERED_SESSIONS_KEY = 'noorworship_remembered_sessions_v1';
+const REMEMBER_ME_PREF_KEY = 'noorworship_remember_me_pref_v1';
 
 interface AuthScreenProps {
   registeredUsers: ActiveUser[];
@@ -33,13 +47,179 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   // Login screen strictly has three tabs: 'user' (Karyawan), 'ustadz' (Ustadz), and 'dept-hx' (Direktorat)
   const [authRoleTab, setAuthRoleTab] = useState<'user' | 'ustadz' | 'dept-hx'>('user');
 
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    try {
+      const savedPref = localStorage.getItem(REMEMBER_ME_PREF_KEY);
+      return savedPref !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [rememberedSessions, setRememberedSessions] = useState<RememberedSessionItem[]>(() => {
+    const list: RememberedSessionItem[] = [];
+    try {
+      const raw = localStorage.getItem(REMEMBERED_SESSIONS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item: any) => {
+            if (item && item.name && item.role === 'member') {
+              list.push(item);
+            }
+          });
+        }
+      }
+    } catch {}
+
+    // Also seed from last active user on this device (HP or Laptop) if they previously logged in as member
+    try {
+      const rawActive = localStorage.getItem('noorworship_active_user_prod_v1');
+      if (rawActive) {
+        const parsedActive = JSON.parse(rawActive);
+        if (
+          parsedActive &&
+          parsedActive.name &&
+          parsedActive.role === 'member' &&
+          parsedActive.id !== 'user-dept-hx'
+        ) {
+          const exists = list.some(
+            (s) => s.name.trim().toLowerCase() === parsedActive.name.trim().toLowerCase()
+          );
+          if (!exists) {
+            list.unshift({
+              id: parsedActive.id,
+              name: parsedActive.name,
+              halaqah: parsedActive.halaqah || 'Halaqah Utama',
+              halaqahCode: parsedActive.halaqahCode || 'HL-1001',
+              passcode: parsedActive.passcode || '',
+              supervisor: parsedActive.supervisor,
+              role: 'member',
+              savedAt: new Date().toISOString()
+            });
+          }
+        }
+      }
+    } catch {}
+
+    return list.slice(0, 5);
+  });
+
   // --- KARYAWAN (USER) LOGIN STATE ---
-  const [santriIdentifier, setSantriIdentifier] = useState('');
-  const [santriPassword, setSantriPassword] = useState('');
+  const [santriIdentifier, setSantriIdentifier] = useState<string>(() => {
+    try {
+      const pref = localStorage.getItem(REMEMBER_ME_PREF_KEY);
+      if (pref !== 'false' && rememberedSessions.length > 0) {
+        return rememberedSessions[0].name;
+      }
+    } catch {}
+    return '';
+  });
+  const [santriPassword, setSantriPassword] = useState<string>(() => {
+    try {
+      const pref = localStorage.getItem(REMEMBER_ME_PREF_KEY);
+      if (pref !== 'false' && rememberedSessions.length > 0) {
+        return rememberedSessions[0].passcode || '';
+      }
+    } catch {}
+    return '';
+  });
   const [showSantriPassword, setShowSantriPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [santriError, setSantriError] = useState<string | null>(null);
   const [isSubmittingSantri, setIsSubmittingSantri] = useState(false);
+  const [isHistoryDropdownOpen, setIsHistoryDropdownOpen] = useState(false);
+  const nameFieldContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideTouchOrClick = (e: MouseEvent | TouchEvent) => {
+      if (
+        nameFieldContainerRef.current &&
+        !nameFieldContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsHistoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideTouchOrClick);
+    document.addEventListener('touchstart', handleOutsideTouchOrClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideTouchOrClick);
+      document.removeEventListener('touchstart', handleOutsideTouchOrClick);
+    };
+  }, []);
+
+  const saveRememberedSession = (user: ActiveUser, shouldRemember: boolean) => {
+    try {
+      localStorage.setItem(REMEMBER_ME_PREF_KEY, shouldRemember ? 'true' : 'false');
+      const cleanNameLower = user.name.trim().toLowerCase();
+      if (shouldRemember) {
+        const entry: RememberedSessionItem = {
+          id: user.id,
+          name: user.name,
+          halaqah: user.halaqah || 'Halaqah Utama',
+          halaqahCode: user.halaqahCode || 'HL-1001',
+          passcode: user.passcode || '',
+          supervisor: user.supervisor,
+          role: 'member',
+          savedAt: new Date().toISOString()
+        };
+        const updated = [
+          entry,
+          ...rememberedSessions.filter((s) => s.name.trim().toLowerCase() !== cleanNameLower)
+        ].slice(0, 5);
+        setRememberedSessions(updated);
+        localStorage.setItem(REMEMBERED_SESSIONS_KEY, JSON.stringify(updated));
+      } else {
+        const updated = rememberedSessions.filter(
+          (s) => s.name.trim().toLowerCase() !== cleanNameLower
+        );
+        setRememberedSessions(updated);
+        localStorage.setItem(REMEMBERED_SESSIONS_KEY, JSON.stringify(updated));
+      }
+    } catch {}
+  };
+
+  const handleRemoveRememberedSession = (nameToRemove: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const cleanLower = nameToRemove.trim().toLowerCase();
+    const updated = rememberedSessions.filter((s) => s.name.trim().toLowerCase() !== cleanLower);
+    setRememberedSessions(updated);
+    try {
+      localStorage.setItem(REMEMBERED_SESSIONS_KEY, JSON.stringify(updated));
+    } catch {}
+    if (santriIdentifier.trim().toLowerCase() === cleanLower) {
+      setSantriIdentifier('');
+      setSantriPassword('');
+    }
+  };
+
+  // Filter remembered sessions & registered members for mobile-friendly touch suggestions
+  const filteredRememberedSessions = useMemo(() => {
+    const q = santriIdentifier.trim().toLowerCase();
+    if (!q) return rememberedSessions;
+    return rememberedSessions.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.halaqah.toLowerCase().includes(q) ||
+        s.name.toLowerCase() === q
+    );
+  }, [rememberedSessions, santriIdentifier]);
+
+  const matchingDirectorySuggestions = useMemo(() => {
+    const q = santriIdentifier.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const rememberedNames = new Set(
+      rememberedSessions.map((s) => s.name.trim().toLowerCase())
+    );
+    return registeredUsers
+      .filter((u) => {
+        if (u.role !== 'member') return false;
+        const lower = u.name.trim().toLowerCase();
+        if (rememberedNames.has(lower)) return false;
+        if (lower === q) return false;
+        return lower.includes(q);
+      })
+      .slice(0, 5);
+  }, [registeredUsers, rememberedSessions, santriIdentifier]);
 
   // Dynamically load registered Halaqahs created by Dept HX
   const availableHalaqahs = useMemo(() => {
@@ -179,6 +359,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       }
 
       resetFailedAuthAttempts('santri');
+      saveRememberedSession(matched, rememberMe);
       setIsSubmittingSantri(false);
       onShowToast(
         `Ahlan wa Sahlan, ${matched.name}! Anda masuk ke ${matched.halaqah}.`
@@ -440,26 +621,189 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-[#141b2b] mb-1">
-                  Nama Lengkap Karyawan
-                </label>
+              <div ref={nameFieldContainerRef} className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-[#141b2b]">
+                    Nama Lengkap Karyawan
+                  </label>
+                  {rememberedSessions.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsHistoryDropdownOpen((prev) => !prev)}
+                      className="text-[11px] font-bold text-[#00452c] hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">history</span>
+                      <span>Riwayat Sesi ({rememberedSessions.length})</span>
+                    </button>
+                  )}
+                </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined text-[18px] text-[#717973] absolute left-3 pointer-events-none">
                     person
                   </span>
                   <input
                     type="text"
+                    name="username"
+                    autoComplete="username"
                     required
                     value={santriIdentifier}
+                    onFocus={() => setIsHistoryDropdownOpen(true)}
+                    onClick={() => setIsHistoryDropdownOpen(true)}
                     onChange={(e) => {
                       setSantriIdentifier(e.target.value);
+                      setIsHistoryDropdownOpen(true);
                       if (santriError) setSantriError(null);
                     }}
                     placeholder="Ketik nama lengkap sesuai data Dept HX..."
-                    className="w-full pl-9.5 pr-3 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
+                    className="w-full pl-9.5 pr-8 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
+                  {santriIdentifier && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSantriIdentifier('');
+                        setSantriPassword('');
+                        setIsHistoryDropdownOpen(true);
+                      }}
+                      className="absolute right-2.5 text-[#717973] hover:text-[#141b2b] cursor-pointer"
+                      title="Bersihkan input"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  )}
                 </div>
+
+                {/* Mobile & Desktop Touch-Friendly Remembered Sessions + Directory Suggestions Dropdown */}
+                {isHistoryDropdownOpen &&
+                  (filteredRememberedSessions.length > 0 ||
+                    matchingDirectorySuggestions.length > 0) && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-2xl shadow-xl border border-[#012d1d]/15 overflow-hidden max-h-60 overflow-y-auto animate-in fade-in duration-150">
+                      {filteredRememberedSessions.length > 0 && (
+                        <div>
+                          <div className="px-3 py-1.5 bg-[#f1f3ff] border-b border-[#012d1d]/10 flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#012d1d] flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[13px]">
+                                bookmark_added
+                              </span>
+                              <span>Riwayat Sesi Tersimpan</span>
+                            </span>
+                            <span className="text-[10px] text-[#717973]">Ketuk untuk isi otomatis</span>
+                          </div>
+                          {filteredRememberedSessions.map((session) => (
+                            <div
+                              key={session.name}
+                              onClick={() => {
+                                setSantriIdentifier(session.name);
+                                if (session.passcode) {
+                                  setSantriPassword(session.passcode);
+                                }
+                                setSantriError(null);
+                                setIsHistoryDropdownOpen(false);
+                              }}
+                              className="px-3 py-2.5 hover:bg-[#c1ecd4]/35 active:bg-[#c1ecd4]/50 border-b border-[#f1f3ff] last:border-b-0 flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-[#012d1d] truncate">
+                                    {session.name}
+                                  </span>
+                                  <span className="px-1.5 py-0.2 rounded-full bg-[#c1ecd4] text-[#002114] text-[9px] font-bold shrink-0">
+                                    Tersimpan
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-[#414844] truncate mt-0.5">
+                                  {session.halaqah} ({session.halaqahCode})
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleRemoveRememberedSession(session.name, e)}
+                                className="w-6 h-6 rounded-full hover:bg-rose-100 text-[#717973] hover:text-rose-700 flex items-center justify-center shrink-0 cursor-pointer"
+                                title="Hapus dari riwayat sesi"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">close</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {matchingDirectorySuggestions.length > 0 && (
+                        <div>
+                          <div className="px-3 py-1.5 bg-[#f9f9ff] border-b border-[#012d1d]/10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#414844] flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[13px]">
+                                person_search
+                              </span>
+                              <span>Saran Nama Karyawan Terdaftar</span>
+                            </span>
+                          </div>
+                          {matchingDirectorySuggestions.map((u) => (
+                            <div
+                              key={u.id}
+                              onClick={() => {
+                                setSantriIdentifier(u.name);
+                                setSantriError(null);
+                                setIsHistoryDropdownOpen(false);
+                              }}
+                              className="px-3 py-2 hover:bg-[#f1f3ff] active:bg-[#e4e7ff] border-b border-[#f1f3ff] last:border-b-0 flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-[#141b2b] truncate">{u.name}</p>
+                                <p className="text-[10px] text-[#717973] truncate">
+                                  {u.halaqah} ({u.halaqahCode})
+                                </p>
+                              </div>
+                              <span className="material-symbols-outlined text-[15px] text-[#012d1d]">
+                                north_west
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {/* Quick-Select Remembered Session Chips (Always visible on HP & Laptop when sessions exist) */}
+                {rememberedSessions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-semibold text-[#717973] flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[13px] text-[#00452c]">
+                        history
+                      </span>
+                      <span>Sesi Tersimpan:</span>
+                    </span>
+                    {rememberedSessions.map((session) => {
+                      const isSelected =
+                        santriIdentifier.trim().toLowerCase() ===
+                        session.name.trim().toLowerCase();
+                      return (
+                        <button
+                          key={session.name}
+                          type="button"
+                          onClick={() => {
+                            setSantriIdentifier(session.name);
+                            if (session.passcode) {
+                              setSantriPassword(session.passcode);
+                            }
+                            setSantriError(null);
+                            setIsHistoryDropdownOpen(false);
+                          }}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-[#012d1d] text-white border-[#012d1d] shadow-2xs'
+                              : 'bg-[#f1f3ff] hover:bg-[#c1ecd4]/50 text-[#012d1d] border-[#012d1d]/10'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            account_circle
+                          </span>
+                          <span className="truncate max-w-[150px]">{session.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {matchedSantri && (
@@ -499,6 +843,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   </span>
                   <input
                     type={showSantriPassword ? 'text' : 'password'}
+                    name="password"
+                    autoComplete="current-password"
                     required
                     value={santriPassword}
                     onChange={(e) => {
@@ -525,7 +871,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <input
                     type="checkbox"
                     checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
+                    onChange={(e) => {
+                      setRememberMe(e.target.checked);
+                      try {
+                        localStorage.setItem(
+                          REMEMBER_ME_PREF_KEY,
+                          e.target.checked ? 'true' : 'false'
+                        );
+                      } catch {}
+                    }}
                     className="rounded accent-[#012d1d] w-3.5 h-3.5"
                   />
                   <span className="text-xs text-[#414844] font-medium">Ingat sesi saya</span>

@@ -12,9 +12,15 @@ import {
   where,
   Timestamp,
   arrayUnion,
-  getDoc
+  getDoc,
+  writeBatch
 } from 'firebase/firestore';
-import { db } from './services/firebase';
+import {
+  db,
+  safeFirestoreWrite,
+  isFirestoreQuotaExhausted,
+  checkAndMarkQuotaExhausted
+} from './services/firebase';
 import {
   getDirectiveDurationMs,
   getDirectiveExpiresAtMs,
@@ -50,6 +56,7 @@ import {
 import {
   TabType,
   DailyTask,
+  DailyTaskCompletionRecord,
   ActiveUser,
   IbadahDirective,
   StudentTaskSubmission,
@@ -71,7 +78,7 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { ImportedReciterRecord, downloadPerColumnCSV } from './services/csvExport';
 import { DeptHXPasscodeModal } from './components/DeptHXPasscodeModal';
 import { getStoredStandardAmalan, findConflictingStandardAmalan } from './services/amalanPaten';
-import { recordDailyActivityStreak, evaluateStreakOnLoad } from './services/streakService';
+import { recordDailyActivityStreak, evaluateStreakOnLoad, getLocalDateString } from './services/streakService';
 
 export default function App() {
   // Splash & Authentication Lifecycle State
@@ -139,6 +146,69 @@ export default function App() {
     return `${role || 'member'}:${raw}`;
   };
 
+  const mergeDailyCompletions = (
+    a?: Record<string, Record<string, DailyTaskCompletionRecord>>,
+    b?: Record<string, Record<string, DailyTaskCompletionRecord>>
+  ): Record<string, Record<string, DailyTaskCompletionRecord>> | undefined => {
+    if (!a && !b) return undefined;
+    const allDates = Array.from(new Set([...Object.keys(a || {}), ...Object.keys(b || {})])).sort();
+    // Retain up to the latest 10 days to keep Firestore document lightweight
+    const recentDates = allDates.slice(-10);
+    const merged: Record<string, Record<string, DailyTaskCompletionRecord>> = {};
+
+    recentDates.forEach((dateKey) => {
+      const mapA = a?.[dateKey] || {};
+      const mapB = b?.[dateKey] || {};
+      const taskKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
+      const dayMerged: Record<string, DailyTaskCompletionRecord> = {};
+      taskKeys.forEach((taskId) => {
+        const compA = mapA[taskId];
+        const compB = mapB[taskId];
+        if (compA && compB) {
+          dayMerged[taskId] = {
+            ...compA,
+            ...compB,
+            completed: Boolean(compA.completed || compB.completed),
+            xp: compB.xp !== undefined ? compB.xp : compA.xp,
+            note: compB.note || compA.note
+          };
+        } else if (compB) {
+          dayMerged[taskId] = compB;
+        } else if (compA) {
+          dayMerged[taskId] = compA;
+        }
+      });
+      if (Object.keys(dayMerged).length > 0) {
+        merged[dateKey] = dayMerged;
+      }
+    });
+
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  };
+
+  const mergeTwoUserRecords = (primary: ActiveUser, secondary: ActiveUser): ActiveUser => {
+    const mergedCompletions = mergeDailyCompletions(
+      secondary.dailyCompletions,
+      primary.dailyCompletions
+    );
+    const mergedActiveDates = Array.from(
+      new Set([...(secondary.activeDates || []), ...(primary.activeDates || [])])
+    ).sort();
+    return {
+      ...secondary,
+      ...primary,
+      totalXp: Math.max(primary.totalXp || 0, secondary.totalXp || 0),
+      streakDays: Math.max(primary.streakDays || 0, secondary.streakDays || 0),
+      longestStreak: Math.max(primary.longestStreak || 0, secondary.longestStreak || 0),
+      lastActiveDate:
+        (primary.lastActiveDate || '') >= (secondary.lastActiveDate || '')
+          ? primary.lastActiveDate || secondary.lastActiveDate
+          : secondary.lastActiveDate || primary.lastActiveDate,
+      ...(mergedActiveDates.length > 0 ? { activeDates: mergedActiveDates } : {}),
+      ...(mergedCompletions ? { dailyCompletions: mergedCompletions } : {})
+    };
+  };
+
   const deduplicateActiveUsers = (
     users: ActiveUser[]
   ): { unique: ActiveUser[]; duplicateIds: string[] } => {
@@ -161,7 +231,7 @@ export default function App() {
       }
 
       if (existing.id === u.id) {
-        byKey.set(key, { ...existing, ...u });
+        byKey.set(key, mergeTwoUserRecords(u, existing));
         return;
       }
 
@@ -176,15 +246,16 @@ export default function App() {
 
       if (candidateHasActiveHalaqah && !existingHasActiveHalaqah) {
         duplicateIds.push(existing.id);
-        byKey.set(key, u);
+        byKey.set(key, mergeTwoUserRecords(u, existing));
       } else if (
         candidateHasActiveHalaqah === existingHasActiveHalaqah &&
         (u.totalXp || 0) > (existing.totalXp || 0)
       ) {
         duplicateIds.push(existing.id);
-        byKey.set(key, u);
+        byKey.set(key, mergeTwoUserRecords(u, existing));
       } else {
         duplicateIds.push(u.id);
+        byKey.set(key, mergeTwoUserRecords(existing, u));
       }
     });
 
@@ -279,59 +350,84 @@ export default function App() {
 
   const [ibadahDirectives, setIbadahDirectives] = useState<IbadahDirective[]>([]);
 
-  // Real-time listener for Firestore users (automatically purges legacy demo accounts & syncs local users up to Firestore)
+  const syncedUserIdsRef = useRef<Set<string>>(new Set());
+
+  // Real-time listener for Firestore users (with circuit-breaker & single-pass sync to prevent write storms)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const firestoreUsers: ActiveUser[] = [];
-      const firestoreIds = new Set<string>();
-      snapshot.forEach((docSnap) => {
-        if (LEGACY_DEMO_USER_IDS.has(docSnap.id)) {
-          deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
-          return;
-        }
-        firestoreIds.add(docSnap.id);
-        firestoreUsers.push({ id: docSnap.id, ...docSnap.data() } as ActiveUser);
-      });
-
-      let deletedIdsSet = new Set<string>();
-      try {
-        const rawDel = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
-        if (rawDel) {
-          const parsedDel = JSON.parse(rawDel);
-          if (Array.isArray(parsedDel)) deletedIdsSet = new Set(parsedDel);
-        }
-      } catch {}
-
-      setRegisteredUsers((prev) => {
-        const userMap = new Map<string, ActiveUser>();
-        DEFAULT_USERS.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        prev
-          .filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id) && !deletedIdsSet.has(u.id))
-          .forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        firestoreUsers
-          .filter((u) => !deletedIdsSet.has(u.id))
-          .forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
-        const { unique, duplicateIds } = deduplicateActiveUsers(Array.from(userMap.values()));
-
-        // Purge duplicate user IDs from Firestore
-        if (duplicateIds.length > 0) {
-          duplicateIds.forEach((dupId) => {
-            deleteDoc(doc(db, 'users', dupId)).catch(() => {});
-          });
-        }
-
-        // Auto-sync any local user (visible in UI) that is not yet saved in Firestore
-        unique.forEach((u) => {
-          if (!firestoreIds.has(u.id) && !LEGACY_DEMO_USER_IDS.has(u.id) && !deletedIdsSet.has(u.id)) {
-            setDoc(doc(db, 'users', u.id), sanitizeFirestoreData(u), { merge: true }).catch((err) => {
-              console.warn('Auto-sync user to Firestore notice:', err);
-            });
+    const unsub = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        const firestoreUsers: ActiveUser[] = [];
+        const firestoreIds = new Set<string>();
+        snapshot.forEach((docSnap) => {
+          if (LEGACY_DEMO_USER_IDS.has(docSnap.id)) {
+            if (!isFirestoreQuotaExhausted() && !syncedUserIdsRef.current.has(`del:${docSnap.id}`)) {
+              syncedUserIdsRef.current.add(`del:${docSnap.id}`);
+              safeFirestoreWrite(() => deleteDoc(doc(db, 'users', docSnap.id)));
+            }
+            return;
           }
+          firestoreIds.add(docSnap.id);
+          syncedUserIdsRef.current.add(docSnap.id);
+          firestoreUsers.push({ id: docSnap.id, ...docSnap.data() } as ActiveUser);
         });
 
-        return unique;
-      });
-    });
+        let deletedIdsSet = new Set<string>();
+        try {
+          const rawDel = localStorage.getItem('noorworship_deleted_student_ids_prod_v1');
+          if (rawDel) {
+            const parsedDel = JSON.parse(rawDel);
+            if (Array.isArray(parsedDel)) deletedIdsSet = new Set(parsedDel);
+          }
+        } catch {}
+
+        setRegisteredUsers((prev) => {
+          const userMap = new Map<string, ActiveUser>();
+          DEFAULT_USERS.forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+          prev
+            .filter((u) => !LEGACY_DEMO_USER_IDS.has(u.id) && !deletedIdsSet.has(u.id))
+            .forEach((u) => userMap.set(u.id, normalizeDeptHXUser(u)));
+          firestoreUsers
+            .filter((u) => !deletedIdsSet.has(u.id))
+            .forEach((rawFsUser) => {
+              const fsUser = normalizeDeptHXUser(rawFsUser);
+              const prevUser = userMap.get(fsUser.id);
+              userMap.set(fsUser.id, prevUser ? mergeTwoUserRecords(fsUser, prevUser) : fsUser);
+            });
+          const { unique, duplicateIds } = deduplicateActiveUsers(Array.from(userMap.values()));
+
+          if (!snapshot.metadata.hasPendingWrites && !isFirestoreQuotaExhausted()) {
+            // Purge duplicate user IDs from Firestore at most once per ID
+            duplicateIds.forEach((dupId) => {
+              if (firestoreIds.has(dupId) && !syncedUserIdsRef.current.has(`del:${dupId}`)) {
+                syncedUserIdsRef.current.add(`del:${dupId}`);
+                safeFirestoreWrite(() => deleteDoc(doc(db, 'users', dupId)));
+              }
+            });
+
+            // Auto-sync any local user not yet saved in Firestore at most once per ID
+            unique.forEach((u) => {
+              if (
+                !firestoreIds.has(u.id) &&
+                !syncedUserIdsRef.current.has(u.id) &&
+                !LEGACY_DEMO_USER_IDS.has(u.id) &&
+                !deletedIdsSet.has(u.id)
+              ) {
+                syncedUserIdsRef.current.add(u.id);
+                safeFirestoreWrite(() =>
+                  setDoc(doc(db, 'users', u.id), sanitizeFirestoreData(u), { merge: true })
+                );
+              }
+            });
+          }
+
+          return unique;
+        });
+      },
+      (err) => {
+        checkAndMarkQuotaExhausted(err);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -548,17 +644,174 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, [ibadahDirectives.map(d => d.id).join(',')]);
 
+  // Helper to resolve merged completions for today across Firestore (dailyCompletions) & localStorage
+  const getEffectiveTodayCompletions = React.useCallback(
+    (
+      user?: ActiveUser,
+      allUsers?: ActiveUser[]
+    ): Record<string, DailyTaskCompletionRecord> => {
+      if (!user) return {};
+      const localTodayStr = getLocalDateString();
+      const utcTodayStr = new Date().toISOString().split('T')[0];
+      const personKey = normalizePersonKey(user.name, user.role);
+
+      const matchedInRegistry = (allUsers || []).find(
+        (u) =>
+          u.id === user.id ||
+          (personKey && normalizePersonKey(u.name, u.role) === personKey)
+      );
+
+      const combined: Record<string, DailyTaskCompletionRecord> = {};
+      const mergeIntoCombined = (map?: Record<string, DailyTaskCompletionRecord>) => {
+        if (!map || typeof map !== 'object') return;
+        Object.entries(map).forEach(([taskId, comp]) => {
+          if (!comp) return;
+          const prev = combined[taskId];
+          if (prev) {
+            combined[taskId] = {
+              ...prev,
+              ...comp,
+              completed: Boolean(prev.completed || comp.completed),
+              xp: comp.xp !== undefined ? comp.xp : prev.xp,
+              note: comp.note || prev.note
+            };
+          } else {
+            combined[taskId] = comp;
+          }
+        });
+      };
+
+      // 1. Read from localStorage (by user.id, matchedInRegistry.id, and personKey for both local & UTC date)
+      const storageKeys = Array.from(
+        new Set([
+          `noorworship_completions_${user.id}_${localTodayStr}`,
+          `noorworship_completions_${user.id}_${utcTodayStr}`,
+          ...(matchedInRegistry
+            ? [
+                `noorworship_completions_${matchedInRegistry.id}_${localTodayStr}`,
+                `noorworship_completions_${matchedInRegistry.id}_${utcTodayStr}`
+              ]
+            : []),
+          ...(personKey
+            ? [
+                `noorworship_completions_${personKey}_${localTodayStr}`,
+                `noorworship_completions_${personKey}_${utcTodayStr}`
+              ]
+            : [])
+        ])
+      );
+
+      storageKeys.forEach((key) => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            mergeIntoCombined(JSON.parse(raw));
+          }
+        } catch {}
+      });
+
+      // 2. Read from Firestore-synced user.dailyCompletions & matchedInRegistry.dailyCompletions
+      mergeIntoCombined(user.dailyCompletions?.[utcTodayStr]);
+      mergeIntoCombined(user.dailyCompletions?.[localTodayStr]);
+      mergeIntoCombined(matchedInRegistry?.dailyCompletions?.[utcTodayStr]);
+      mergeIntoCombined(matchedInRegistry?.dailyCompletions?.[localTodayStr]);
+
+      return combined;
+    },
+    []
+  );
+
+  const backfilledCloudCompletionSignatureRef = useRef<string>('');
+
+  // Keep activeUser and localStorage completions synchronized in real-time when Firestore users update
+  useEffect(() => {
+    if (!activeUser?.id) return;
+    const personKey = normalizePersonKey(activeUser.name, activeUser.role);
+    const matched = registeredUsers.find(
+      (u) =>
+        u.id === activeUser.id ||
+        (personKey && normalizePersonKey(u.name, u.role) === personKey)
+    );
+
+    const localTodayStr = getLocalDateString();
+    const utcTodayStr = new Date().toISOString().split('T')[0];
+    const effectiveCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers);
+    const hasEffectiveCompletions = Object.keys(effectiveCompletions).length > 0;
+
+    if (hasEffectiveCompletions) {
+      try {
+        const serialized = JSON.stringify(effectiveCompletions);
+        localStorage.setItem(`noorworship_completions_${activeUser.id}_${localTodayStr}`, serialized);
+        localStorage.setItem(`noorworship_completions_${activeUser.id}_${utcTodayStr}`, serialized);
+        if (personKey) {
+          localStorage.setItem(`noorworship_completions_${personKey}_${localTodayStr}`, serialized);
+        }
+      } catch {}
+    }
+
+    if (!matched) return;
+
+    const mergedUser = mergeTwoUserRecords(matched, activeUser);
+    const nextDailyCompletions = hasEffectiveCompletions
+      ? mergeDailyCompletions(mergedUser.dailyCompletions, {
+          [localTodayStr]: effectiveCompletions,
+          [utcTodayStr]: effectiveCompletions
+        })
+      : mergedUser.dailyCompletions;
+
+    // Backfill local completions to Firestore if this device has completions not yet in Firestore's matched record
+    if (hasEffectiveCompletions && matched.role === 'member') {
+      const cloudTodayMap = matched.dailyCompletions?.[localTodayStr] || {};
+      const missingInCloud = Object.keys(effectiveCompletions).some(
+        (taskId) => effectiveCompletions[taskId]?.completed && !cloudTodayMap[taskId]?.completed
+      );
+      const sig = `${matched.id}:${localTodayStr}:${Object.keys(effectiveCompletions).sort().join(',')}`;
+      if (missingInCloud && backfilledCloudCompletionSignatureRef.current !== sig) {
+        backfilledCloudCompletionSignatureRef.current = sig;
+        safeFirestoreWrite(
+          () =>
+            setDoc(
+              doc(db, 'users', matched.id),
+              sanitizeFirestoreData({
+                dailyCompletions: nextDailyCompletions,
+                totalXp: mergedUser.totalXp,
+                streakDays: mergedUser.streakDays,
+                longestStreak: mergedUser.longestStreak,
+                lastActiveDate: mergedUser.lastActiveDate,
+                activeDates: mergedUser.activeDates
+              }),
+              { merge: true }
+            ),
+          { force: true }
+        );
+      }
+    }
+
+    const prevCompJson = JSON.stringify(activeUser.dailyCompletions || {});
+    const nextCompJson = JSON.stringify(nextDailyCompletions || {});
+    if (
+      mergedUser.id !== activeUser.id ||
+      mergedUser.totalXp !== activeUser.totalXp ||
+      mergedUser.streakDays !== activeUser.streakDays ||
+      mergedUser.halaqah !== activeUser.halaqah ||
+      prevCompJson !== nextCompJson
+    ) {
+      const syncedActiveUser: ActiveUser = {
+        ...mergedUser,
+        ...(nextDailyCompletions ? { dailyCompletions: nextDailyCompletions } : {})
+      };
+      setActiveUser(syncedActiveUser);
+      if (syncedActiveUser.totalXp !== totalXp) setTotalXp(syncedActiveUser.totalXp);
+      if (syncedActiveUser.streakDays !== streakDays) setStreakDays(syncedActiveUser.streakDays);
+    }
+  }, [registeredUsers, activeUser?.id, activeUser?.name, getEffectiveTodayCompletions]);
+
   // Merge 11 Amalan Paten Dept HX + Ustadz directives for activeUser
   useEffect(() => {
     if (!activeUser) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const userCompletionKey = `noorworship_completions_${activeUser.id}_${todayStr}`;
-    let userCompletions: Record<string, { completed: boolean; xp?: number; note?: string }> = {};
-    try {
-      const raw = localStorage.getItem(userCompletionKey);
-      if (raw) userCompletions = JSON.parse(raw);
-    } catch (e) {}
+    const todayStr = getLocalDateString();
+    const userCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers);
 
     // 1. Amalan Paten Dept HX (11 Baku)
     const patenItems = getStoredStandardAmalan().filter((p) => p.isActive);
@@ -570,7 +823,7 @@ export default function App() {
         title: p.title,
         category: p.category,
         xp: comp?.xp !== undefined ? comp.xp : p.baseXp,
-        completed: comp?.completed || false,
+        completed: Boolean(comp?.completed),
         isPatenHX: true,
         prayerId: p.prayerId,
         hasJamaahOption: p.hasJamaahOption,
@@ -581,6 +834,7 @@ export default function App() {
     });
 
     // 2. Ustadz Directives for activeUser's halaqah (exclude expired non-recurring tasks and duplicates of Dept HX Amalan Pasti)
+    const activeUserCleanName = (activeUser.name || '').trim().toLowerCase();
     const ustadzTasks: DailyTask[] = ibadahDirectives
       .filter((d) => isDirectiveCurrentlyActive(d, directiveClockMs))
       .filter((d) => !findConflictingStandardAmalan(d.title, patenItems))
@@ -590,10 +844,14 @@ export default function App() {
       })
       .map((d) => {
         const taskId = `task-directive-${d.id}`;
-        const submission = d.submissions?.find((s) => s.studentId === activeUser.id);
+        const submission = d.submissions?.find(
+          (s) =>
+            s.studentId === activeUser.id ||
+            (activeUserCleanName && (s.studentName || '').trim().toLowerCase() === activeUserCleanName)
+        );
         const comp = userCompletions[taskId];
         const resetAfterMidnight = d.lastResetAt && Date.parse(d.lastResetAt) > new Date(todayStr).getTime();
-        const isDone = submission?.isCompleted || (!resetAfterMidnight && comp?.completed) || false;
+        const isDone = Boolean(submission?.isCompleted || (!resetAfterMidnight && comp?.completed));
         const validityDays = d.type === 'yaumiyah' ? 1 : 7;
 
         return {
@@ -615,7 +873,16 @@ export default function App() {
       });
 
     setTasks([...patenTasks, ...ustadzTasks]);
-  }, [ibadahDirectives, activeUser?.id, activeUser?.halaqah, directiveClockMs]);
+  }, [
+    ibadahDirectives,
+    activeUser?.id,
+    activeUser?.name,
+    activeUser?.halaqah,
+    activeUser?.dailyCompletions,
+    registeredUsers,
+    directiveClockMs,
+    getEffectiveTodayCompletions
+  ]);
 
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
@@ -1089,11 +1356,7 @@ export default function App() {
           supervisor: 'Departemen HX (Human Experience)'
         };
         createdOrUpdatedUsers.push(ustadzUser);
-        try {
-          await setDoc(doc(db, 'users', ustadzUser.id), sanitizeFirestoreData(ustadzUser), { merge: true });
-        } catch (err) {
-          console.warn('Firestore ustadz save notice:', err);
-        }
+        syncedUserIdsRef.current.add(ustadzUser.id);
       } else if (existingUstadz && !existingUstadzInBatch) {
         const updatedUstadz: ActiveUser = {
           ...existingUstadz,
@@ -1102,11 +1365,7 @@ export default function App() {
           halaqahCode: halaqahCode
         };
         createdOrUpdatedUsers.push(updatedUstadz);
-        try {
-          await setDoc(doc(db, 'users', updatedUstadz.id), sanitizeFirestoreData(updatedUstadz), { merge: true });
-        } catch (err) {
-          console.warn('Firestore ustadz update notice:', err);
-        }
+        syncedUserIdsRef.current.add(updatedUstadz.id);
       }
 
       // Check if employee with same name already exists in registeredUsers
@@ -1144,11 +1403,7 @@ export default function App() {
           };
 
       createdOrUpdatedUsers.push(memberUser);
-      try {
-        await setDoc(doc(db, 'users', memberUser.id), sanitizeFirestoreData(memberUser), { merge: true });
-      } catch (err) {
-        console.warn('Firestore user save notice:', err);
-      }
+      syncedUserIdsRef.current.add(memberUser.id);
     }
 
     if (createdOrUpdatedUsers.length > 0) {
@@ -1205,17 +1460,12 @@ export default function App() {
         }
       } catch {}
 
-      // 4. Update registeredUsers state with strict name deduplication and purge any old duplicate Firestore docs
+      // 4. Update registeredUsers state immediately
       setRegisteredUsers((prev) => {
-        const { unique, duplicateIds } = deduplicateActiveUsers([
+        const { unique } = deduplicateActiveUsers([
           ...createdOrUpdatedUsers,
           ...prev
         ]);
-        if (duplicateIds.length > 0) {
-          duplicateIds.forEach((dupId) => {
-            deleteDoc(doc(db, 'users', dupId)).catch(() => {});
-          });
-        }
         return unique;
       });
 
@@ -1224,13 +1474,24 @@ export default function App() {
           'noorworship_unified_halaqahs_prod_v1',
           JSON.stringify(currentHalaqahs)
         );
-        currentHalaqahs.forEach((h) => {
-          if (h && h.id && h.name) {
-            setDoc(doc(db, 'halaqahs', h.id), sanitizeFirestoreData(h), { merge: true }).catch(() => {});
-          }
-        });
       } catch (e) {
         console.warn(e);
+      }
+
+      // 5. Commit all imported users and halaqahs to Firestore in a single atomic batch if quota is available
+      if (!isFirestoreQuotaExhausted()) {
+        safeFirestoreWrite(async () => {
+          const batch = writeBatch(db);
+          createdOrUpdatedUsers.slice(0, 400).forEach((u) => {
+            batch.set(doc(db, 'users', u.id), sanitizeFirestoreData(u), { merge: true });
+          });
+          currentHalaqahs.slice(0, 80).forEach((h) => {
+            if (h && h.id && h.name) {
+              batch.set(doc(db, 'halaqahs', h.id), sanitizeFirestoreData(h), { merge: true });
+            }
+          });
+          await batch.commit();
+        });
       }
       window.dispatchEvent(new Event('noorworship_halaqah_updated'));
       showToast(
@@ -1400,13 +1661,12 @@ export default function App() {
       return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const userCompletionKey = `noorworship_completions_${activeUser.id}_${todayStr}`;
-    let userCompletions: Record<string, { completed: boolean; xp?: number; note?: string }> = {};
-    try {
-      const raw = localStorage.getItem(userCompletionKey);
-      if (raw) userCompletions = JSON.parse(raw);
-    } catch (e) {}
+    const localTodayStr = getLocalDateString();
+    const utcTodayStr = new Date().toISOString().split('T')[0];
+    const personKey = normalizePersonKey(activeUser.name, activeUser.role);
+    const userCompletions = {
+      ...getEffectiveTodayCompletions(activeUser, registeredUsers)
+    };
 
     const finalXp = extraDetails?.earnedXp !== undefined ? extraDetails.earnedXp : task.xp;
     const fastingNoteStr = extraDetails?.fastingNote ? ` (Niat: ${extraDetails.fastingNote})` : '';
@@ -1414,11 +1674,18 @@ export default function App() {
     userCompletions[taskId] = {
       completed: true,
       xp: finalXp,
-      note: (task.note || '') + fastingNoteStr
+      note: (task.note || '') + fastingNoteStr,
+      isJamaah: extraDetails?.isJamaah,
+      completedAt: new Date().toISOString()
     };
 
     try {
-      localStorage.setItem(userCompletionKey, JSON.stringify(userCompletions));
+      const serialized = JSON.stringify(userCompletions);
+      localStorage.setItem(`noorworship_completions_${activeUser.id}_${localTodayStr}`, serialized);
+      localStorage.setItem(`noorworship_completions_${activeUser.id}_${utcTodayStr}`, serialized);
+      if (personKey) {
+        localStorage.setItem(`noorworship_completions_${personKey}_${localTodayStr}`, serialized);
+      }
     } catch (e) {}
 
     setTasks((prev) =>
@@ -1440,55 +1707,69 @@ export default function App() {
     setTotalXp(newXp);
     setStreakDays(isMonitoringHx ? 0 : streakResult.streakDays);
 
+    const updatedDailyCompletions = mergeDailyCompletions(activeUser.dailyCompletions, {
+      [localTodayStr]: userCompletions,
+      [utcTodayStr]: userCompletions
+    });
+
     const updatedUser: ActiveUser = {
       ...activeUser,
       totalXp: newXp,
       streakDays: isMonitoringHx ? 0 : streakResult.streakDays,
       longestStreak: isMonitoringHx ? 0 : streakResult.longestStreak,
       lastActiveDate: streakResult.lastActiveDate,
-      activeDates: streakResult.activeDates
+      activeDates: streakResult.activeDates,
+      dailyCompletions: updatedDailyCompletions
     };
     setActiveUser(updatedUser);
 
     setRegisteredUsers((prev) =>
-      prev.map((u) => (u.id === activeUser.id ? updatedUser : u))
+      prev.map((u) =>
+        u.id === activeUser.id || (personKey && normalizePersonKey(u.name, u.role) === personKey)
+          ? { ...updatedUser, id: u.id }
+          : u
+      )
     );
 
     try {
-      await setDoc(
-        doc(db, 'users', activeUser.id),
-        {
-          totalXp: newXp,
-          streakDays: streakResult.streakDays,
-          longestStreak: streakResult.longestStreak,
-          lastActiveDate: streakResult.lastActiveDate,
-          activeDates: streakResult.activeDates
-        },
-        { merge: true }
-      );
       localStorage.setItem('noorworship_active_user_prod_v1', JSON.stringify(updatedUser));
-    } catch (e) {
-      console.error('Error syncing user XP & Streak:', e);
-    }
+    } catch (e) {}
+
+    await safeFirestoreWrite(
+      () =>
+        setDoc(
+          doc(db, 'users', activeUser.id),
+          sanitizeFirestoreData({
+            totalXp: newXp,
+            streakDays: streakResult.streakDays,
+            longestStreak: streakResult.longestStreak,
+            lastActiveDate: streakResult.lastActiveDate,
+            activeDates: streakResult.activeDates,
+            dailyCompletions: updatedDailyCompletions
+          }),
+          { merge: true }
+        ),
+      { force: true }
+    );
 
     if (task.directiveId) {
       const submissionRef = doc(db, `ibadahDirectives/${task.directiveId}/submissions`, activeUser.id);
-      try {
-        await setDoc(
-          submissionRef,
-          {
-            studentId: activeUser.id,
-            studentName: activeUser.name,
-            studentAvatar: activeUser.avatar || '',
-            halaqah: activeUser.halaqah || '',
-            isCompleted: true,
-            completedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
-          },
-          { merge: true }
-        );
-      } catch (e) {
-        console.error('Error updating Firestore submission:', e);
-      }
+      await safeFirestoreWrite(
+        () =>
+          setDoc(
+            submissionRef,
+            {
+              studentId: activeUser.id,
+              studentName: activeUser.name,
+              studentAvatar: activeUser.avatar || '',
+              halaqah: activeUser.halaqah || '',
+              isCompleted: true,
+              completedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+            },
+            { merge: true }
+          ),
+        { force: true }
+      );
     }
 
     if (streakResult.isNewDayStreak) {
