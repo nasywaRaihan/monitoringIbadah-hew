@@ -41,8 +41,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
   const todayStr = new Date().toISOString().split('T')[0];
   const [sessionDate, setSessionDate] = useState<string>(todayStr);
   const [sessionTime, setSessionTime] = useState<string>('05:30 WIB');
-  const [sessionTitle, setSessionTitle] = useState<string>('Halaqah Ba\'da Subuh: Tahsin & Tajwid');
-  const [sessionLocation, setSessionLocation] = useState<string>('Masjid Al-Ikhlas (Ruang Utama)');
+  const [sessionTitle, setSessionTitle] = useState<string>('Pertemuan ke- 1: Perkenalan');
+  const [sessionLocation, setSessionLocation] = useState<string>('Masjid Herba Emas');
 
   // Form State: Presensi Ustadz
   const [ustadzStatus, setUstadzStatus] = useState<UstadzAttendanceStatus>('hadir');
@@ -75,8 +75,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
       setSessionTime('-');
     } else {
       // Restore defaults if switching back from Izin/Sakit (optional, but good for UX)
-      if (sessionTitle === 'Tidak Ada Halaqah') setSessionTitle('Halaqah Ba\'da Subuh: Tahsin & Tajwid');
-      if (sessionLocation === '-') setSessionLocation('Masjid Al-Ikhlas (Ruang Utama)');
+      if (sessionTitle === 'Tidak Ada Halaqah') setSessionTitle('Pertemuan ke- 1: Perkenalan');
+      if (sessionLocation === '-') setSessionLocation('Masjid Herba Emas');
       if (sessionTime === '-') setSessionTime('05:30 WIB');
       if (ustadzNotes === '-') setUstadzNotes('Materi: Adab Penuntut Ilmu & Muraqabah Tartil Ayat');
     }
@@ -143,8 +143,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setEditingSessionId(null);
     setSessionDate(todayStr);
     setSessionTime('05:30 WIB');
-    setSessionTitle('Halaqah Ba\'da Subuh: Tahsin & Tajwid');
-    setSessionLocation('Masjid Al-Ikhlas (Ruang Utama)');
+    setSessionTitle('Pertemuan ke- 1: Perkenalan');
+    setSessionLocation('Masjid Herba Emas');
     setUstadzStatus('hadir');
     setUstadzNotes('Materi: Adab Penuntut Ilmu & Muraqabah Tartil Ayat');
     setPenggantiName('');
@@ -229,8 +229,8 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
       halaqahCode: activeUser.halaqahCode || 'HF-4092',
       date: sessionDate || todayStr,
       timeStr: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? '-' : (sessionTime || '-'),
-      sessionTitle: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? 'Tidak Ada Halaqah' : (sessionTitle.trim() || 'Halaqah Rutin'),
-      location: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? '-' : (sessionLocation.trim() || 'Masjid Al-Ikhlas'),
+      sessionTitle: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? 'Tidak Ada Halaqah' : (sessionTitle.trim() || 'Pertemuan ke- 1: Perkenalan'),
+      location: (ustadzStatus === 'izin' || ustadzStatus === 'sakit') ? '-' : (sessionLocation.trim() || 'Masjid Herba Emas'),
       ustadzId: activeUser.id,
       ustadzName: ustadzDisplayName || 'Ustadz/ah',
       ustadzAvatar: activeUser.avatar || '',
@@ -940,19 +940,25 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
               <div>
                 <h3 className="text-lg font-extrabold text-[#141b2b]">Hapus Sesi Presensi?</h3>
                 <p className="text-xs text-[#717973] mt-1 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus riwayat sesi <strong>&ldquo;{sessionToDelete.sessionTitle}&rdquo;</strong>? Data yang dihapus tidak dapat dipulihkan.
+                  Apakah Anda yakin ingin menghapus riwayat sesi <strong>&ldquo;{sessionToDelete.sessionTitle}&rdquo;</strong>? Data yang dihapus tidak dapat dipulihkan dan poin presensi (<strong>-15 XP</strong>) dari setiap anggota yang hadir akan ikut dikurangi.
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-gray-100 text-xs">
-              <div className="flex justify-between mb-1">
+            <div className="p-3.5 rounded-2xl bg-[#f9f9ff] border border-gray-100 text-xs space-y-1">
+              <div className="flex justify-between">
                 <span className="text-[#717973]">Tanggal:</span>
                 <span className="font-bold text-[#141b2b]">{sessionToDelete.date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#717973]">Halaqah:</span>
                 <span className="font-bold text-[#141b2b]">{sessionToDelete.halaqahName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#717973]">Poin Anggota Dikurangi:</span>
+                <span className="font-bold text-rose-600">
+                  {sessionToDelete.members?.filter((m) => m.status === 'hadir').length || 0} Anggota (-15 XP/orang)
+                </span>
               </div>
             </div>
 
@@ -968,6 +974,9 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                 type="button"
                 onClick={() => {
                   if (onDeleteSession) onDeleteSession(sessionToDelete.id);
+                  if (selectedHistorySession?.id === sessionToDelete.id) {
+                    setSelectedHistorySession(null);
+                  }
                   setSessionToDelete(null);
                 }}
                 className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all active:scale-95 cursor-pointer"

@@ -41,7 +41,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
   onShowToast,
   onDeleteStudent
 }) => {
-  const currentHalaqah = activeUser?.halaqah || 'Halaqah Binaan';
+  const currentHalaqah = activeUser?.halaqah || 'Halaqah Peserta';
   const halaqahCode = activeUser?.halaqahCode || 'HL-1001';
   const supervisorName = formatSupervisorDisplayName(activeUser?.name, activeUser?.gender);
   const ustadzRoleLabel = getUstadzTitle(activeUser);
@@ -193,7 +193,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
     if (registeredUsers && registeredUsers.length > 0) {
       registeredUsers.forEach((u) => {
         if (isNonMemberRecord(u.id, u.name, u.role)) return;
-        const uHalaqah = u.halaqah || 'Halaqah Binaan';
+        const uHalaqah = u.halaqah || 'Halaqah Peserta';
         const isMatch =
           u.role === 'member' &&
           (uHalaqah === currentHalaqah ||
@@ -351,7 +351,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
                 <span className="material-symbols-outlined text-[16px] sm:text-[18px]">groups</span>
               </span>
               <span className="text-[11px] sm:text-xs uppercase tracking-wider text-[#86af99] font-bold truncate">
-                Direktori Karyawan Binaan
+                Direktori Karyawan Peserta
               </span>
             </div>
             <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/10 text-white text-[10px] sm:text-xs font-semibold backdrop-blur-md shrink-0 whitespace-nowrap">
@@ -365,7 +365,7 @@ export const HalaqahStudentsScreen: React.FC<HalaqahStudentsScreenProps> = ({
               {currentHalaqah}
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
-              {ustadzRoleLabel} Pembimbing: <strong className="text-white">{supervisorName}</strong> • {effectiveStudents.length} Karyawan Binaan Aktif
+              {ustadzRoleLabel} Pembimbing: <strong className="text-white">{supervisorName}</strong> • {effectiveStudents.length} Karyawan Peserta Aktif
             </p>
           </div>
 

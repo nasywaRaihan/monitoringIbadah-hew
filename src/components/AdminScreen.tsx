@@ -669,7 +669,7 @@ export default function AdminScreen({
 
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              {activeUser?.halaqah || 'Halaqah Binaan'} • Panel {getUstadzTitle(activeUser)}
+              {activeUser?.halaqah || 'Halaqah Peserta'} • Panel {getUstadzTitle(activeUser)}
             </h2>
             <p className="text-[11px] sm:text-xs text-[#86af99] mt-0.5 leading-snug">
               Pemantauan mutaba&apos;ah ibadah yaumiyah/usbu&apos;iyah &amp; diagnostik tajwid karyawan
@@ -679,7 +679,7 @@ export default function AdminScreen({
           {/* Metric Trio Grid */}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
             <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-white/10 backdrop-blur-sm min-w-0 overflow-hidden select-none">
-              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Binaan</span>
+              <span className="text-[10px] sm:text-[11px] text-[#86af99] font-medium leading-tight">Karyawan Peserta</span>
               <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0 mt-1 sm:mt-0.5">
                 <span className="text-base sm:text-lg font-bold text-white tabular-nums leading-none">
                   {allStudentsList.filter((s) => s.role === 'member' && s.halaqah === activeUser?.halaqah).length}
@@ -751,7 +751,7 @@ export default function AdminScreen({
           }`}
         >
           <span className="material-symbols-outlined text-[18px] shrink-0">groups</span>
-          <span className="truncate max-w-full">Binaan ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
+          <span className="truncate max-w-full">Peserta ({allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length})</span>
         </button>
       </div>
 
@@ -771,14 +771,14 @@ export default function AdminScreen({
         />
       )}
 
-      {/* TAB 2: DATA BINAAN */}
+      {/* TAB 2: DATA PESERTA */}
       {dashboardTab === 'students' && (
         <div className="space-y-3.5">
           <div className="p-3.5 sm:p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/10 space-y-3 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#f1f3ff]">
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-[#141b2b] leading-snug">
-                  Daftar Karyawan Binaan {activeUser.halaqah || 'Halaqah Al-Fajr'}
+                  Daftar Karyawan Peserta {activeUser.halaqah || 'Halaqah Al-Fajr'}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[#414844] mt-0.5">
                   Total {allStudentsList.filter(s => s.role === 'member' && (!activeUser.halaqah || s.halaqah === activeUser.halaqah)).length} karyawan resmi di bawah bimbingan Anda
@@ -1225,7 +1225,7 @@ export default function AdminScreen({
                   Profil &amp; Rekam Jejak Karyawan
                 </span>
                 <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
-                  Detail Karyawan Binaan
+                  Detail Karyawan Peserta
                 </h3>
               </div>
               <button
@@ -1272,7 +1272,7 @@ export default function AdminScreen({
             <div className="space-y-1.5 text-xs text-[#414844] bg-[#f1f3ff] p-3 rounded-xl">
               <div className="flex justify-between">
                 <span>Status Keanggotaan:</span>
-                <strong className="text-[#141b2b]">Resmi Binaan Halaqah</strong>
+                <strong className="text-[#141b2b]">Resmi Peserta Halaqah</strong>
               </div>
               <div className="flex justify-between">
                 <span>Kode Halaqah:</span>

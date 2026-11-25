@@ -626,16 +626,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <label className="block text-xs font-bold text-[#141b2b]">
                     Nama Lengkap Karyawan
                   </label>
-                  {rememberedSessions.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setIsHistoryDropdownOpen((prev) => !prev)}
-                      className="text-[11px] font-bold text-[#00452c] hover:underline flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">history</span>
-                      <span>Riwayat Sesi ({rememberedSessions.length})</span>
-                    </button>
-                  )}
                 </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined text-[18px] text-[#717973] absolute left-3 pointer-events-none">

@@ -27,35 +27,42 @@ export interface StreakCalculationResult {
 }
 
 /**
- * Checks whether the user has completed at least one ibadah task or recitation today.
+ * Validates that a completion record was genuinely completed on the target local calendar date (YYYY-MM-DD).
+ * Prevents yesterday's completions (e.g. from UTC vs WIB timezone offset) from appearing checked on a new day.
+ */
+export function isCompletionValidForDate(
+  comp: { completed?: boolean; completedAt?: string } | undefined,
+  targetDateStr: string
+): boolean {
+  if (!comp || !comp.completed) return false;
+  if (!comp.completedAt) return false;
+  const parsed = new Date(comp.completedAt);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return getLocalDateString(parsed) === targetDateStr;
+}
+
+/**
+ * Checks whether the user has completed at least one ibadah task or recitation today (local calendar day).
  */
 export function hasUserCompletedIbadahToday(userId: string, user?: ActiveUser): boolean {
   try {
     const todayStr = getLocalDateString();
-    const utcTodayStr = new Date().toISOString().split('T')[0];
 
     if (user?.dailyCompletions) {
       const fromCloudLocal = user.dailyCompletions[todayStr];
-      if (fromCloudLocal && Object.values(fromCloudLocal).some((c) => c && c.completed === true)) {
-        return true;
-      }
-      const fromCloudUtc = user.dailyCompletions[utcTodayStr];
-      if (fromCloudUtc && Object.values(fromCloudUtc).some((c) => c && c.completed === true)) {
+      if (
+        fromCloudLocal &&
+        Object.values(fromCloudLocal).some((c) => isCompletionValidForDate(c, todayStr))
+      ) {
         return true;
       }
     }
 
-    const keysToCheck = [
-      `noorworship_completions_${userId}_${todayStr}`,
-      `noorworship_completions_${userId}_${utcTodayStr}`
-    ];
-    for (const key of keysToCheck) {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const completions: Record<string, { completed?: boolean }> = JSON.parse(raw);
-        if (Object.values(completions).some((c) => c && c.completed === true)) {
-          return true;
-        }
+    const raw = localStorage.getItem(`noorworship_completions_${userId}_${todayStr}`);
+    if (raw) {
+      const completions: Record<string, { completed?: boolean; completedAt?: string }> = JSON.parse(raw);
+      if (Object.values(completions).some((c) => isCompletionValidForDate(c, todayStr))) {
+        return true;
       }
     }
     return false;

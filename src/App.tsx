@@ -78,7 +78,12 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { ImportedReciterRecord, downloadPerColumnCSV } from './services/csvExport';
 import { DeptHXPasscodeModal } from './components/DeptHXPasscodeModal';
 import { getStoredStandardAmalan, findConflictingStandardAmalan } from './services/amalanPaten';
-import { recordDailyActivityStreak, evaluateStreakOnLoad, getLocalDateString } from './services/streakService';
+import {
+  recordDailyActivityStreak,
+  evaluateStreakOnLoad,
+  getLocalDateString,
+  isCompletionValidForDate
+} from './services/streakService';
 
 export default function App() {
   // Splash & Authentication Lifecycle State
@@ -162,15 +167,16 @@ export default function App() {
       const taskKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
       const dayMerged: Record<string, DailyTaskCompletionRecord> = {};
       taskKeys.forEach((taskId) => {
-        const compA = mapA[taskId];
-        const compB = mapB[taskId];
+        const compA = isCompletionValidForDate(mapA[taskId], dateKey) ? mapA[taskId] : undefined;
+        const compB = isCompletionValidForDate(mapB[taskId], dateKey) ? mapB[taskId] : undefined;
         if (compA && compB) {
           dayMerged[taskId] = {
             ...compA,
             ...compB,
-            completed: Boolean(compA.completed || compB.completed),
+            completed: true,
             xp: compB.xp !== undefined ? compB.xp : compA.xp,
-            note: compB.note || compA.note
+            note: compB.note || compA.note,
+            completedAt: compB.completedAt || compA.completedAt
           };
         } else if (compB) {
           dayMerged[taskId] = compB;
@@ -186,7 +192,11 @@ export default function App() {
     return Object.keys(merged).length > 0 ? merged : undefined;
   };
 
-  const mergeTwoUserRecords = (primary: ActiveUser, secondary: ActiveUser): ActiveUser => {
+  const mergeTwoUserRecords = (
+    primary: ActiveUser,
+    secondary: ActiveUser,
+    preferPrimaryXp = false
+  ): ActiveUser => {
     const mergedCompletions = mergeDailyCompletions(
       secondary.dailyCompletions,
       primary.dailyCompletions
@@ -194,10 +204,15 @@ export default function App() {
     const mergedActiveDates = Array.from(
       new Set([...(secondary.activeDates || []), ...(primary.activeDates || [])])
     ).sort();
+    const resolvedTotalXp = preferPrimaryXp
+      ? typeof primary.totalXp === 'number'
+        ? primary.totalXp
+        : secondary.totalXp || 0
+      : Math.max(primary.totalXp || 0, secondary.totalXp || 0);
     return {
       ...secondary,
       ...primary,
-      totalXp: Math.max(primary.totalXp || 0, secondary.totalXp || 0),
+      totalXp: resolvedTotalXp,
       streakDays: Math.max(primary.streakDays || 0, secondary.streakDays || 0),
       longestStreak: Math.max(primary.longestStreak || 0, secondary.longestStreak || 0),
       lastActiveDate:
@@ -326,17 +341,19 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter(
-            (t: DailyTask) =>
-              t.id !== 'task-4' &&
-              !t.title.toLowerCase().includes('shalat zhuhur di masjid')
-          );
+          return parsed
+            .filter(
+              (t: DailyTask) =>
+                t.id !== 'task-4' &&
+                !t.title.toLowerCase().includes('shalat zhuhur di masjid')
+            )
+            .map((t: DailyTask) => ({ ...t, completed: false }));
         }
       }
     } catch (e) {
       console.warn(e);
     }
-    return INITIAL_DAILY_TASKS;
+    return INITIAL_DAILY_TASKS.map((t) => ({ ...t, completed: false }));
   });
 
   useEffect(() => {
@@ -392,7 +409,7 @@ export default function App() {
             .forEach((rawFsUser) => {
               const fsUser = normalizeDeptHXUser(rawFsUser);
               const prevUser = userMap.get(fsUser.id);
-              userMap.set(fsUser.id, prevUser ? mergeTwoUserRecords(fsUser, prevUser) : fsUser);
+              userMap.set(fsUser.id, prevUser ? mergeTwoUserRecords(fsUser, prevUser, true) : fsUser);
             });
           const { unique, duplicateIds } = deduplicateActiveUsers(Array.from(userMap.values()));
 
@@ -472,7 +489,30 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  const getAttendanceMemberXp = (m?: { status?: string; xpAwarded?: number }): number => {
+    if (!m) return 0;
+    if (m.status === 'hadir') {
+      return typeof m.xpAwarded === 'number' ? m.xpAwarded : 15;
+    }
+    return 0;
+  };
+
+  const findMatchingAttendanceMember = (
+    members: HalaqahAttendanceSession['members'] | undefined,
+    user: ActiveUser
+  ) => {
+    if (!members || members.length === 0) return undefined;
+    const userPersonKey = normalizePersonKey(user.name, 'member');
+    return members.find(
+      (m) =>
+        m.userId === user.id ||
+        (userPersonKey && normalizePersonKey(m.userName, 'member') === userPersonKey)
+    );
+  };
+
   const handleSaveAttendanceSession = async (session: HalaqahAttendanceSession) => {
+    const previousSession = attendanceSessions.find((s) => s.id === session.id);
+
     // 1. Update state & localStorage immediately
     setAttendanceSessions((prev) => {
       const existingIdx = prev.findIndex((s) => s.id === session.id);
@@ -491,33 +531,63 @@ export default function App() {
 
     // 2. Persist to Firestore
     try {
-      // Remove any undefined fields to prevent FirebaseError
       const sanitizedSession = JSON.parse(JSON.stringify(session));
-      await setDoc(doc(db, 'halaqahAttendanceSessions', session.id), {
-        ...sanitizedSession,
-        syncedWithHX: true,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await safeFirestoreWrite(
+        () =>
+          setDoc(
+            doc(db, 'halaqahAttendanceSessions', session.id),
+            {
+              ...sanitizedSession,
+              syncedWithHX: true,
+              updatedAt: new Date().toISOString()
+            },
+            { merge: true }
+          ),
+        { force: true }
+      );
     } catch (e) {
       console.error('Error saving attendance session to Firestore:', e);
     }
 
-    // 3. Award XP to attendee members who are 'hadir'
-    if (session.members && session.members.length > 0) {
-      const attendees = session.members.filter((m) => m.status === 'hadir');
-      if (attendees.length > 0) {
-        setRegisteredUsers((prev) =>
-          prev.map((u) => {
-            const found = attendees.find((a) => a.userId === u.id);
-            if (found) {
-              const bonus = 15;
-              const newXp = (u.totalXp || 0) + bonus;
-              setDoc(doc(db, 'users', u.id), { totalXp: newXp }, { merge: true }).catch(() => {});
-              return { ...u, totalXp: newXp };
-            }
-            return u;
-          })
-        );
+    // 3. Calculate XP delta per member (handles both new session & editing an existing session)
+    const computeAdjustedUsers = (usersList: ActiveUser[]) => {
+      const updates: Array<{ userId: string; newXp: number }> = [];
+      const updatedUsers = usersList.map((u) => {
+        if (u.role !== 'member') return u;
+        const oldMember = findMatchingAttendanceMember(previousSession?.members, u);
+        const newMember = findMatchingAttendanceMember(session.members, u);
+        const oldXp = getAttendanceMemberXp(oldMember);
+        const newXpAward = getAttendanceMemberXp(newMember);
+        const deltaXp = newXpAward - oldXp;
+
+        if (deltaXp !== 0) {
+          const newXp = Math.max(0, Math.round(((u.totalXp || 0) + deltaXp) * 100) / 100);
+          updates.push({ userId: u.id, newXp });
+          return { ...u, totalXp: newXp };
+        }
+        return u;
+      });
+      return { updatedUsers, updates };
+    };
+
+    const { updates: xpUpdatesToSync } = computeAdjustedUsers(registeredUsers);
+
+    setRegisteredUsers((prev) => {
+      const { updatedUsers } = computeAdjustedUsers(prev);
+      try {
+        localStorage.setItem('noorworship_registered_users_prod_v1', JSON.stringify(updatedUsers));
+      } catch {}
+      return updatedUsers;
+    });
+
+    for (const upd of xpUpdatesToSync) {
+      safeFirestoreWrite(
+        () => setDoc(doc(db, 'users', upd.userId), { totalXp: upd.newXp }, { merge: true }),
+        { force: true }
+      );
+      if (activeUser?.id === upd.userId) {
+        setTotalXp(upd.newXp);
+        setActiveUser((curr) => (curr.id === upd.userId ? { ...curr, totalXp: upd.newXp } : curr));
       }
     }
 
@@ -525,7 +595,9 @@ export default function App() {
   };
 
   const handleDeleteAttendanceSession = async (sessionId: string) => {
-    // 1. Update state & localStorage
+    const targetSession = attendanceSessions.find((s) => s.id === sessionId);
+
+    // 1. Update attendanceSessions state & localStorage
     setAttendanceSessions((prev) => {
       const updated = prev.filter((s) => s.id !== sessionId);
       try {
@@ -534,10 +606,64 @@ export default function App() {
       return updated;
     });
 
-    // 2. Delete from Firestore
+    // 2. Deduct XP from members who earned XP in the deleted session
+    const hadirCountInSession =
+      targetSession?.members?.filter((m) => getAttendanceMemberXp(m) > 0).length || 0;
+    let deductedCount = 0;
+
+    if (targetSession && targetSession.members && targetSession.members.length > 0) {
+      const computeDeductedUsers = (usersList: ActiveUser[]) => {
+        const deductions: Array<{ userId: string; newXp: number }> = [];
+        const updatedUsers = usersList.map((u) => {
+          if (u.role !== 'member') return u;
+          const matchedMember = findMatchingAttendanceMember(targetSession.members, u);
+          const xpToDeduct = getAttendanceMemberXp(matchedMember);
+
+          if (xpToDeduct > 0) {
+            const newXp = Math.max(0, Math.round(((u.totalXp || 0) - xpToDeduct) * 100) / 100);
+            deductions.push({ userId: u.id, newXp });
+            return { ...u, totalXp: newXp };
+          }
+          return u;
+        });
+        return { updatedUsers, deductions };
+      };
+
+      const { deductions: deductedUpdates } = computeDeductedUsers(registeredUsers);
+      deductedCount = deductedUpdates.length;
+
+      setRegisteredUsers((prev) => {
+        const { updatedUsers } = computeDeductedUsers(prev);
+        try {
+          localStorage.setItem('noorworship_registered_users_prod_v1', JSON.stringify(updatedUsers));
+        } catch {}
+        return updatedUsers;
+      });
+
+      for (const upd of deductedUpdates) {
+        safeFirestoreWrite(
+          () => setDoc(doc(db, 'users', upd.userId), { totalXp: upd.newXp }, { merge: true }),
+          { force: true }
+        );
+        if (activeUser?.id === upd.userId) {
+          setTotalXp(upd.newXp);
+          setActiveUser((curr) => (curr.id === upd.userId ? { ...curr, totalXp: upd.newXp } : curr));
+        }
+      }
+    }
+
+    // 3. Delete session document from Firestore
     try {
-      await deleteDoc(doc(db, 'halaqahAttendanceSessions', sessionId));
-      showToast('Sesi presensi berhasil dihapus.');
+      await safeFirestoreWrite(
+        () => deleteDoc(doc(db, 'halaqahAttendanceSessions', sessionId)),
+        { force: true }
+      );
+      const countToDisplay = deductedCount || hadirCountInSession;
+      showToast(
+        countToDisplay > 0
+          ? `Sesi presensi dihapus & poin XP (-15 XP) dari ${countToDisplay} anggota telah dikurangi.`
+          : 'Sesi presensi berhasil dihapus.'
+      );
     } catch (e) {
       console.error('Error deleting attendance session:', e);
       showToast('Gagal menghapus sesi presensi dari database.');
@@ -644,15 +770,15 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, [ibadahDirectives.map(d => d.id).join(',')]);
 
-  // Helper to resolve merged completions for today across Firestore (dailyCompletions) & localStorage
+  // Helper to resolve merged completions for today (local calendar day only) across Firestore & localStorage
   const getEffectiveTodayCompletions = React.useCallback(
     (
       user?: ActiveUser,
-      allUsers?: ActiveUser[]
+      allUsers?: ActiveUser[],
+      targetLocalTodayStr?: string
     ): Record<string, DailyTaskCompletionRecord> => {
       if (!user) return {};
-      const localTodayStr = getLocalDateString();
-      const utcTodayStr = new Date().toISOString().split('T')[0];
+      const localTodayStr = targetLocalTodayStr || getLocalDateString();
       const personKey = normalizePersonKey(user.name, user.role);
 
       const matchedInRegistry = (allUsers || []).find(
@@ -665,15 +791,16 @@ export default function App() {
       const mergeIntoCombined = (map?: Record<string, DailyTaskCompletionRecord>) => {
         if (!map || typeof map !== 'object') return;
         Object.entries(map).forEach(([taskId, comp]) => {
-          if (!comp) return;
+          if (!isCompletionValidForDate(comp, localTodayStr)) return;
           const prev = combined[taskId];
           if (prev) {
             combined[taskId] = {
               ...prev,
               ...comp,
-              completed: Boolean(prev.completed || comp.completed),
+              completed: true,
               xp: comp.xp !== undefined ? comp.xp : prev.xp,
-              note: comp.note || prev.note
+              note: comp.note || prev.note,
+              completedAt: comp.completedAt || prev.completedAt
             };
           } else {
             combined[taskId] = comp;
@@ -681,23 +808,14 @@ export default function App() {
         });
       };
 
-      // 1. Read from localStorage (by user.id, matchedInRegistry.id, and personKey for both local & UTC date)
+      // 1. Read from localStorage for localTodayStr only (never UTC date, which lags by 7h in WIB)
       const storageKeys = Array.from(
         new Set([
           `noorworship_completions_${user.id}_${localTodayStr}`,
-          `noorworship_completions_${user.id}_${utcTodayStr}`,
           ...(matchedInRegistry
-            ? [
-                `noorworship_completions_${matchedInRegistry.id}_${localTodayStr}`,
-                `noorworship_completions_${matchedInRegistry.id}_${utcTodayStr}`
-              ]
+            ? [`noorworship_completions_${matchedInRegistry.id}_${localTodayStr}`]
             : []),
-          ...(personKey
-            ? [
-                `noorworship_completions_${personKey}_${localTodayStr}`,
-                `noorworship_completions_${personKey}_${utcTodayStr}`
-              ]
-            : [])
+          ...(personKey ? [`noorworship_completions_${personKey}_${localTodayStr}`] : [])
         ])
       );
 
@@ -710,10 +828,8 @@ export default function App() {
         } catch {}
       });
 
-      // 2. Read from Firestore-synced user.dailyCompletions & matchedInRegistry.dailyCompletions
-      mergeIntoCombined(user.dailyCompletions?.[utcTodayStr]);
+      // 2. Read from Firestore-synced user.dailyCompletions & matchedInRegistry.dailyCompletions for localTodayStr only
       mergeIntoCombined(user.dailyCompletions?.[localTodayStr]);
-      mergeIntoCombined(matchedInRegistry?.dailyCompletions?.[utcTodayStr]);
       mergeIntoCombined(matchedInRegistry?.dailyCompletions?.[localTodayStr]);
 
       return combined;
@@ -722,8 +838,9 @@ export default function App() {
   );
 
   const backfilledCloudCompletionSignatureRef = useRef<string>('');
+  const currentLocalTodayStr = getLocalDateString(new Date(directiveClockMs));
 
-  // Keep activeUser and localStorage completions synchronized in real-time when Firestore users update
+  // Keep activeUser and localStorage completions synchronized in real-time when Firestore users update or day rolls over
   useEffect(() => {
     if (!activeUser?.id) return;
     const personKey = normalizePersonKey(activeUser.name, activeUser.role);
@@ -733,54 +850,72 @@ export default function App() {
         (personKey && normalizePersonKey(u.name, u.role) === personKey)
     );
 
-    const localTodayStr = getLocalDateString();
-    const utcTodayStr = new Date().toISOString().split('T')[0];
-    const effectiveCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers);
+    const localTodayStr = currentLocalTodayStr;
+    const effectiveCompletions = getEffectiveTodayCompletions(
+      activeUser,
+      registeredUsers,
+      localTodayStr
+    );
     const hasEffectiveCompletions = Object.keys(effectiveCompletions).length > 0;
 
-    if (hasEffectiveCompletions) {
-      try {
+    try {
+      const storageKeysToSync = Array.from(
+        new Set([
+          `noorworship_completions_${activeUser.id}_${localTodayStr}`,
+          ...(matched ? [`noorworship_completions_${matched.id}_${localTodayStr}`] : []),
+          ...(personKey ? [`noorworship_completions_${personKey}_${localTodayStr}`] : [])
+        ])
+      );
+      if (hasEffectiveCompletions) {
         const serialized = JSON.stringify(effectiveCompletions);
-        localStorage.setItem(`noorworship_completions_${activeUser.id}_${localTodayStr}`, serialized);
-        localStorage.setItem(`noorworship_completions_${activeUser.id}_${utcTodayStr}`, serialized);
-        if (personKey) {
-          localStorage.setItem(`noorworship_completions_${personKey}_${localTodayStr}`, serialized);
-        }
-      } catch {}
-    }
+        storageKeysToSync.forEach((k) => localStorage.setItem(k, serialized));
+      } else {
+        storageKeysToSync.forEach((k) => localStorage.removeItem(k));
+      }
+    } catch {}
 
     if (!matched) return;
 
-    const mergedUser = mergeTwoUserRecords(matched, activeUser);
-    const nextDailyCompletions = hasEffectiveCompletions
-      ? mergeDailyCompletions(mergedUser.dailyCompletions, {
-          [localTodayStr]: effectiveCompletions,
-          [utcTodayStr]: effectiveCompletions
-        })
-      : mergedUser.dailyCompletions;
+    const mergedUser = mergeTwoUserRecords(matched, activeUser, true);
+    const nextDailyCompletions = mergeDailyCompletions(
+      mergedUser.dailyCompletions,
+      hasEffectiveCompletions ? { [localTodayStr]: effectiveCompletions } : undefined
+    );
 
-    // Backfill local completions to Firestore if this device has completions not yet in Firestore's matched record
-    if (hasEffectiveCompletions && matched.role === 'member') {
-      const cloudTodayMap = matched.dailyCompletions?.[localTodayStr] || {};
-      const missingInCloud = Object.keys(effectiveCompletions).some(
-        (taskId) => effectiveCompletions[taskId]?.completed && !cloudTodayMap[taskId]?.completed
-      );
-      const sig = `${matched.id}:${localTodayStr}:${Object.keys(effectiveCompletions).sort().join(',')}`;
-      if (missingInCloud && backfilledCloudCompletionSignatureRef.current !== sig) {
+    // Sync to Firestore if cloud record either lacks today's valid completions OR has stale/contaminated entries for today
+    if (matched.role === 'member') {
+      const cloudTodayRaw = matched.dailyCompletions?.[localTodayStr] || {};
+      const cleanTodayMap = nextDailyCompletions?.[localTodayStr] || {};
+      const cloudNeedsSync =
+        JSON.stringify(cloudTodayRaw) !== JSON.stringify(cleanTodayMap);
+      const sig = `${matched.id}:${localTodayStr}:${JSON.stringify(cleanTodayMap)}`;
+      if (cloudNeedsSync && backfilledCloudCompletionSignatureRef.current !== sig) {
         backfilledCloudCompletionSignatureRef.current = sig;
         safeFirestoreWrite(
           () =>
-            setDoc(
+            updateDoc(
               doc(db, 'users', matched.id),
               sanitizeFirestoreData({
-                dailyCompletions: nextDailyCompletions,
+                dailyCompletions: nextDailyCompletions || {},
                 totalXp: mergedUser.totalXp,
                 streakDays: mergedUser.streakDays,
                 longestStreak: mergedUser.longestStreak,
                 lastActiveDate: mergedUser.lastActiveDate,
                 activeDates: mergedUser.activeDates
-              }),
-              { merge: true }
+              })
+            ).catch(() =>
+              setDoc(
+                doc(db, 'users', matched.id),
+                sanitizeFirestoreData({
+                  dailyCompletions: nextDailyCompletions || {},
+                  totalXp: mergedUser.totalXp,
+                  streakDays: mergedUser.streakDays,
+                  longestStreak: mergedUser.longestStreak,
+                  lastActiveDate: mergedUser.lastActiveDate,
+                  activeDates: mergedUser.activeDates
+                }),
+                { merge: true }
+              )
             ),
           { force: true }
         );
@@ -798,20 +933,26 @@ export default function App() {
     ) {
       const syncedActiveUser: ActiveUser = {
         ...mergedUser,
-        ...(nextDailyCompletions ? { dailyCompletions: nextDailyCompletions } : {})
+        dailyCompletions: nextDailyCompletions
       };
       setActiveUser(syncedActiveUser);
       if (syncedActiveUser.totalXp !== totalXp) setTotalXp(syncedActiveUser.totalXp);
       if (syncedActiveUser.streakDays !== streakDays) setStreakDays(syncedActiveUser.streakDays);
     }
-  }, [registeredUsers, activeUser?.id, activeUser?.name, getEffectiveTodayCompletions]);
+  }, [
+    registeredUsers,
+    activeUser?.id,
+    activeUser?.name,
+    currentLocalTodayStr,
+    getEffectiveTodayCompletions
+  ]);
 
   // Merge 11 Amalan Paten Dept HX + Ustadz directives for activeUser
   useEffect(() => {
     if (!activeUser) return;
 
-    const todayStr = getLocalDateString();
-    const userCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers);
+    const todayStr = currentLocalTodayStr;
+    const userCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers, todayStr);
 
     // 1. Amalan Paten Dept HX (11 Baku)
     const patenItems = getStoredStandardAmalan().filter((p) => p.isActive);
@@ -851,7 +992,9 @@ export default function App() {
         );
         const comp = userCompletions[taskId];
         const resetAfterMidnight = d.lastResetAt && Date.parse(d.lastResetAt) > new Date(todayStr).getTime();
-        const isDone = Boolean(submission?.isCompleted || (!resetAfterMidnight && comp?.completed));
+        const isSubmissionCompletedToday =
+          Boolean(submission?.isCompleted) && (submission as any)?.completedDate === todayStr;
+        const isDone = Boolean(isSubmissionCompletedToday || (!resetAfterMidnight && comp?.completed));
         const validityDays = d.type === 'yaumiyah' ? 1 : 7;
 
         return {
@@ -881,6 +1024,7 @@ export default function App() {
     activeUser?.dailyCompletions,
     registeredUsers,
     directiveClockMs,
+    currentLocalTodayStr,
     getEffectiveTodayCompletions
   ]);
 
@@ -1662,10 +1806,9 @@ export default function App() {
     }
 
     const localTodayStr = getLocalDateString();
-    const utcTodayStr = new Date().toISOString().split('T')[0];
     const personKey = normalizePersonKey(activeUser.name, activeUser.role);
     const userCompletions = {
-      ...getEffectiveTodayCompletions(activeUser, registeredUsers)
+      ...getEffectiveTodayCompletions(activeUser, registeredUsers, localTodayStr)
     };
 
     const finalXp = extraDetails?.earnedXp !== undefined ? extraDetails.earnedXp : task.xp;
@@ -1682,7 +1825,6 @@ export default function App() {
     try {
       const serialized = JSON.stringify(userCompletions);
       localStorage.setItem(`noorworship_completions_${activeUser.id}_${localTodayStr}`, serialized);
-      localStorage.setItem(`noorworship_completions_${activeUser.id}_${utcTodayStr}`, serialized);
       if (personKey) {
         localStorage.setItem(`noorworship_completions_${personKey}_${localTodayStr}`, serialized);
       }
@@ -1708,8 +1850,7 @@ export default function App() {
     setStreakDays(isMonitoringHx ? 0 : streakResult.streakDays);
 
     const updatedDailyCompletions = mergeDailyCompletions(activeUser.dailyCompletions, {
-      [localTodayStr]: userCompletions,
-      [utcTodayStr]: userCompletions
+      [localTodayStr]: userCompletions
     });
 
     const updatedUser: ActiveUser = {
@@ -1764,6 +1905,7 @@ export default function App() {
               studentAvatar: activeUser.avatar || '',
               halaqah: activeUser.halaqah || '',
               isCompleted: true,
+              completedDate: localTodayStr,
               completedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
             },
             { merge: true }
@@ -1935,9 +2077,9 @@ export default function App() {
       }
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     const userCompletionKey = `noorworship_completions_${activeUser.id}_${todayStr}`;
-    let userCompletions: Record<string, { completed: boolean; xp?: number; note?: string }> = {};
+    let userCompletions: Record<string, DailyTaskCompletionRecord> = {};
     try {
       const raw = localStorage.getItem(userCompletionKey);
       if (raw) userCompletions = JSON.parse(raw);
@@ -1947,7 +2089,12 @@ export default function App() {
       prev.map((t) => {
         const isRecitationTask = t.id === 'task-3' || t.isRecitationTest || t.category === 'Al-Qur’an' || t.category === 'Tilawah & Hifdz' || /setor|tilawah|alqur'an|quran/i.test(t.title);
         if (isRecitationTask) {
-          userCompletions[t.id] = { completed: true, xp: t.xp, note: 'Telah disetor' };
+          userCompletions[t.id] = {
+            completed: true,
+            xp: t.xp,
+            note: 'Telah disetor',
+            completedAt: new Date().toISOString()
+          };
           return { ...t, completed: true };
         }
         return t;

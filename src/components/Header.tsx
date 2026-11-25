@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'admin':
         return `Dashboard Supervisor ${getUstadzTitle(activeUser)}`;
       case 'students':
-        return activeUser?.halaqah ? `Karyawan Binaan • ${activeUser.halaqah}` : 'Daftar Karyawan Halaqah';
+        return activeUser?.halaqah ? `Karyawan Peserta • ${activeUser.halaqah}` : 'Daftar Karyawan Halaqah';
       case 'dept-hx':
       case 'hq-admin':
         return 'Dashboard Pusat Dept HX';
