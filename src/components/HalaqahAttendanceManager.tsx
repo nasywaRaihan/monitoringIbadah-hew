@@ -1,7 +1,50 @@
 import React, { useState, useMemo } from 'react';
-import { ActiveUser, HalaqahAttendanceSession, MemberAttendance, AttendanceStatus, UstadzAttendanceStatus } from '../types';
+import {
+  ActiveUser,
+  HalaqahAttendanceSession,
+  MemberAttendance,
+  AttendanceStatus,
+  UstadzAttendanceStatus,
+  ArrivalTimeCategory
+} from '../types';
 import { PremiumInitialAvatar } from './PremiumInitialAvatar';
 import { getUstadzTitle, formatSupervisorDisplayName } from '../services/ustadzTitle';
+
+const ARRIVAL_CATEGORY_OPTIONS: Array<{
+  val: ArrivalTimeCategory;
+  label: string;
+  shortLabel: string;
+  activeCls: string;
+  badgeCls: string;
+}> = [
+  {
+    val: 'tepat_waktu',
+    label: 'Datang Tepat Waktu',
+    shortLabel: 'Tepat Waktu',
+    activeCls: 'bg-[#00452c] text-white border-[#00452c] shadow-2xs',
+    badgeCls: 'bg-emerald-100 text-emerald-900 border-emerald-200'
+  },
+  {
+    val: 'pertengahan',
+    label: 'Pertengahan',
+    shortLabel: 'Pertengahan',
+    activeCls: 'bg-amber-600 text-white border-amber-600 shadow-2xs',
+    badgeCls: 'bg-amber-100 text-amber-900 border-amber-200'
+  },
+  {
+    val: 'akhir_waktu',
+    label: 'Akhir Waktu',
+    shortLabel: 'Akhir Waktu',
+    activeCls: 'bg-orange-600 text-white border-orange-600 shadow-2xs',
+    badgeCls: 'bg-orange-100 text-orange-900 border-orange-200'
+  }
+];
+
+export const formatArrivalCategoryLabel = (cat?: ArrivalTimeCategory): string => {
+  if (cat === 'pertengahan') return 'Pertengahan';
+  if (cat === 'akhir_waktu') return 'Akhir Waktu';
+  return 'Datang Tepat Waktu';
+};
 
 interface HalaqahAttendanceManagerProps {
   activeUser: ActiveUser;
@@ -46,6 +89,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
 
   // Form State: Presensi Ustadz
   const [ustadzStatus, setUstadzStatus] = useState<UstadzAttendanceStatus>('hadir');
+  const [ustadzArrivalCategory, setUstadzArrivalCategory] = useState<ArrivalTimeCategory>('tepat_waktu');
   const [ustadzNotes, setUstadzNotes] = useState<string>('Materi: Adab Penuntut Ilmu & Muraqabah Tartil Ayat');
   const [penggantiName, setPenggantiName] = useState<string>('');
   const [penggantiKeterangan, setPenggantiKeterangan] = useState<string>('');
@@ -58,10 +102,15 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
   const [sessionToDelete, setSessionToDelete] = useState<HalaqahAttendanceSession | null>(null);
 
   // Form State: Presensi Anggota (Map of userId -> MemberAttendance)
-  const [memberRecords, setMemberRecords] = useState<Record<string, { status: AttendanceStatus; notes: string }>>(() => {
-    const initial: Record<string, { status: AttendanceStatus; notes: string }> = {};
+  const [memberRecords, setMemberRecords] = useState<
+    Record<string, { status: AttendanceStatus; arrivalCategory: ArrivalTimeCategory; notes: string }>
+  >(() => {
+    const initial: Record<
+      string,
+      { status: AttendanceStatus; arrivalCategory: ArrivalTimeCategory; notes: string }
+    > = {};
     halaqahMembers.forEach((m) => {
-      initial[m.id] = { status: 'hadir', notes: '' };
+      initial[m.id] = { status: 'hadir', arrivalCategory: 'tepat_waktu', notes: '' };
     });
     return initial;
   });
@@ -90,13 +139,15 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
   // Re-sync members if new members are added to halaqah
   React.useEffect(() => {
     setMemberRecords((prev) => {
+      let changed = false;
       const updated = { ...prev };
       halaqahMembers.forEach((m) => {
         if (!updated[m.id]) {
-          updated[m.id] = { status: 'hadir', notes: '' };
+          updated[m.id] = { status: 'hadir', arrivalCategory: 'tepat_waktu', notes: '' };
+          changed = true;
         }
       });
-      return updated;
+      return changed ? updated : prev;
     });
   }, [halaqahMembers]);
 
@@ -109,7 +160,10 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setMemberRecords((prev) => {
       const updated = { ...prev };
       halaqahMembers.forEach((m) => {
-        updated[m.id] = { ...updated[m.id], status };
+        updated[m.id] = {
+          ...(updated[m.id] || { arrivalCategory: 'tepat_waktu', notes: '' }),
+          status
+        };
       });
       return updated;
     });
@@ -124,14 +178,22 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setSessionTitle(session.sessionTitle);
     setSessionLocation(session.location);
     setUstadzStatus(session.ustadzStatus);
+    setUstadzArrivalCategory(session.ustadzArrivalCategory || 'tepat_waktu');
     setUstadzNotes(session.ustadzNotes || '');
     setPenggantiName(session.ustadzPenggantiName || '');
     setPenggantiKeterangan(session.ustadzPenggantiKeterangan || '');
     
     // Populate member records
-    const newRecords: Record<string, { status: AttendanceStatus; notes: string }> = {};
-    session.members.forEach(m => {
-      newRecords[m.userId] = { status: m.status, notes: m.notes || '' };
+    const newRecords: Record<
+      string,
+      { status: AttendanceStatus; arrivalCategory: ArrivalTimeCategory; notes: string }
+    > = {};
+    session.members.forEach((m) => {
+      newRecords[m.userId] = {
+        status: m.status,
+        arrivalCategory: m.arrivalCategory || 'tepat_waktu',
+        notes: m.notes || ''
+      };
     });
     setMemberRecords(newRecords);
     
@@ -146,14 +208,18 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setSessionTitle('Pertemuan ke- 1: Perkenalan');
     setSessionLocation('Masjid Herba Emas');
     setUstadzStatus('hadir');
+    setUstadzArrivalCategory('tepat_waktu');
     setUstadzNotes('Materi: Adab Penuntut Ilmu & Muraqabah Tartil Ayat');
     setPenggantiName('');
     setPenggantiKeterangan('');
     
     // Reset member records
-    const initial: Record<string, { status: AttendanceStatus; notes: string }> = {};
+    const initial: Record<
+      string,
+      { status: AttendanceStatus; arrivalCategory: ArrivalTimeCategory; notes: string }
+    > = {};
     halaqahMembers.forEach((m) => {
-      initial[m.id] = { status: 'hadir', notes: '' };
+      initial[m.id] = { status: 'hadir', arrivalCategory: 'tepat_waktu', notes: '' };
     });
     setMemberRecords(initial);
     
@@ -165,8 +231,19 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setMemberRecords((prev) => ({
       ...prev,
       [userId]: {
-        ...(prev[userId] || { notes: '' }),
+        ...(prev[userId] || { arrivalCategory: 'tepat_waktu', notes: '' }),
         status: newStatus
+      }
+    }));
+  };
+
+  // Toggle single member arrival time category
+  const handleMemberArrivalCategoryChange = (userId: string, newCat: ArrivalTimeCategory) => {
+    setMemberRecords((prev) => ({
+      ...prev,
+      [userId]: {
+        ...(prev[userId] || { status: 'hadir', notes: '' }),
+        arrivalCategory: newCat
       }
     }));
   };
@@ -176,7 +253,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     setMemberRecords((prev) => ({
       ...prev,
       [userId]: {
-        ...(prev[userId] || { status: 'hadir' }),
+        ...(prev[userId] || { status: 'hadir', arrivalCategory: 'tepat_waktu' }),
         notes: note
       }
     }));
@@ -211,12 +288,19 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
     }
 
     const membersPayload: MemberAttendance[] = halaqahMembers.map((m) => {
-      const rec = memberRecords[m.id] || { status: 'hadir', notes: '' };
+      const rec = memberRecords[m.id] || {
+        status: 'hadir',
+        arrivalCategory: 'tepat_waktu',
+        notes: ''
+      };
       return {
         userId: m.id,
         userName: m.name,
         userAvatar: m.avatar || '',
         status: rec.status,
+        ...(rec.status === 'hadir'
+          ? { arrivalCategory: rec.arrivalCategory || 'tepat_waktu' }
+          : {}),
         notes: rec.notes.trim() || '',
         markedAt: `${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`,
         xpAwarded: rec.status === 'hadir' ? 15 : 0
@@ -447,7 +531,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { val: 'hadir' as const, label: '✓ Hadir Membina', color: 'bg-[#e9fbf2] text-[#00452c] border-[#92f7c3]' },
+                    { val: 'hadir' as const, label: '✓ Hadir Mengampu', color: 'bg-[#e9fbf2] text-[#00452c] border-[#92f7c3]' },
                     { val: 'izin' as const, label: '✉ Izin Dinas', color: 'bg-blue-50 text-blue-900 border-blue-200' },
                     { val: 'sakit' as const, label: '🏥 Sakit', color: 'bg-amber-50 text-amber-900 border-amber-200' },
                     { val: 'pengganti' as const, label: '👤 Ustadz/ah Pengganti', color: 'bg-purple-50 text-purple-900 border-purple-200' }
@@ -471,7 +555,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
               {/* Topic / Materi Halaqah */}
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1">
-                  Materi / Topik Pembinaan yang Disampaikan:
+                  Materi / Topik Pengampuan yang Disampaikan:
                 </label>
                 <input
                   type="text"
@@ -565,11 +649,15 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
               ) : (
                 <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
                   {halaqahMembers.map((member, idx) => {
-                    const record = memberRecords[member.id] || { status: 'hadir', notes: '' };
+                    const record = memberRecords[member.id] || {
+                      status: 'hadir',
+                      arrivalCategory: 'tepat_waktu',
+                      notes: ''
+                    };
                     return (
                       <div
                         key={member.id}
-                        className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        className={`p-3 rounded-2xl border transition-all flex flex-col gap-2.5 ${
                           record.status === 'hadir'
                             ? 'bg-[#f9fbf9] border-[#92f7c3]/60'
                             : record.status === 'alpa'
@@ -577,61 +665,92 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                             : 'bg-[#f9f9ff] border-gray-200'
                         }`}
                       >
-                        {/* Member Info */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xs font-mono font-bold text-[#717973] w-5 text-center">
-                            {idx + 1}.
-                          </span>
-                          <PremiumInitialAvatar
-                            name={member.name}
-                            className="w-10 h-10 rounded-full shrink-0 ring-1 ring-gray-200"
-                          />
-                          <div className="min-w-0">
-                            <span className="font-bold text-xs sm:text-sm text-[#141b2b] truncate block">
-                              {member.name}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          {/* Member Info */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-xs font-mono font-bold text-[#717973] w-5 text-center">
+                              {idx + 1}.
                             </span>
-                            <span className="text-[11px] text-[#717973] block truncate">
-                              {member.totalXp} XP • Streak: {member.streakDays} hari
-                            </span>
+                            <PremiumInitialAvatar
+                              name={member.name}
+                              className="w-10 h-10 rounded-full shrink-0 ring-1 ring-gray-200"
+                            />
+                            <div className="min-w-0">
+                              <span className="font-bold text-xs sm:text-sm text-[#141b2b] truncate block">
+                                {member.name}
+                              </span>
+                              <span className="text-[11px] text-[#717973] block truncate">
+                                {member.totalXp} XP • Streak: {member.streakDays} hari
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Status Buttons & Notes */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
+                            <div className="grid grid-cols-4 sm:flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
+                              {(
+                                [
+                                  { key: 'hadir' as const, label: 'Hadir', activeCls: 'bg-[#00452c] text-white shadow-xs' },
+                                  { key: 'izin' as const, label: 'Izin', activeCls: 'bg-blue-600 text-white shadow-xs' },
+                                  { key: 'sakit' as const, label: 'Sakit', activeCls: 'bg-amber-600 text-white shadow-xs' },
+                                  { key: 'alpa' as const, label: 'Alpa', activeCls: 'bg-rose-600 text-white shadow-xs' }
+                                ] as const
+                              ).map((btn) => (
+                                <button
+                                  key={btn.key}
+                                  type="button"
+                                  onClick={() => handleMemberStatusChange(member.id, btn.key)}
+                                  className={`py-2 px-2.5 sm:py-1 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center active:scale-95 ${
+                                    record.status === btn.key
+                                      ? btn.activeCls
+                                      : 'text-[#414844] hover:bg-gray-100'
+                                  }`}
+                                  title={btn.label}
+                                >
+                                  {btn.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Optional Member Note */}
+                            <input
+                              type="text"
+                              value={record.notes}
+                              onChange={(e) => handleMemberNoteChange(member.id, e.target.value)}
+                              placeholder="Catatan izin/alpa..."
+                              className="px-3 py-2 sm:py-1 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#00452c] w-full sm:w-36 min-h-[38px] sm:min-h-[32px]"
+                            />
                           </div>
                         </div>
 
-                        {/* Status Buttons & Notes */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
-                          <div className="grid grid-cols-4 sm:flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
-                            {(
-                              [
-                                { key: 'hadir' as const, label: 'Hadir', activeCls: 'bg-[#00452c] text-white shadow-xs' },
-                                { key: 'izin' as const, label: 'Izin', activeCls: 'bg-blue-600 text-white shadow-xs' },
-                                { key: 'sakit' as const, label: 'Sakit', activeCls: 'bg-amber-600 text-white shadow-xs' },
-                                { key: 'alpa' as const, label: 'Alpa', activeCls: 'bg-rose-600 text-white shadow-xs' }
-                              ] as const
-                            ).map((btn) => (
-                              <button
-                                key={btn.key}
-                                type="button"
-                                onClick={() => handleMemberStatusChange(member.id, btn.key)}
-                                className={`py-2 px-2.5 sm:py-1 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center active:scale-95 ${
-                                  record.status === btn.key
-                                    ? btn.activeCls
-                                    : 'text-[#414844] hover:bg-gray-100'
-                                }`}
-                                title={btn.label}
-                              >
-                                {btn.label}
-                              </button>
-                            ))}
+                        {/* Kategori Waktu Kedatangan Peserta (Tampil jika status = Hadir) */}
+                        {record.status === 'hadir' && (
+                          <div className="pt-2 border-t border-[#92f7c3]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                            <span className="text-[11px] font-semibold text-[#414844] flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px] text-[#00452c]">schedule</span>
+                              Kategori Kedatangan:
+                            </span>
+                            <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
+                              {ARRIVAL_CATEGORY_OPTIONS.map((cat) => {
+                                const isSelected = (record.arrivalCategory || 'tepat_waktu') === cat.val;
+                                return (
+                                  <button
+                                    key={cat.val}
+                                    type="button"
+                                    onClick={() => handleMemberArrivalCategoryChange(member.id, cat.val)}
+                                    className={`py-1.5 px-2.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer text-center active:scale-95 ${
+                                      isSelected
+                                        ? cat.activeCls
+                                        : 'bg-white text-[#414844] border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {cat.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-
-                          {/* Optional Member Note */}
-                          <input
-                            type="text"
-                            value={record.notes}
-                            onChange={(e) => handleMemberNoteChange(member.id, e.target.value)}
-                            placeholder="Catatan izin/alpa..."
-                            className="px-3 py-2 sm:py-1 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#00452c] w-full sm:w-36 min-h-[38px] sm:min-h-[32px]"
-                          />
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -843,7 +962,7 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                   <span className="text-[10px] text-[#717973] uppercase font-bold block">{getUstadzTitle(selectedHistorySession.ustadzName)} Pembimbing:</span>
                   <strong className="text-sm text-[#00452c]">{formatSupervisorDisplayName(selectedHistorySession.ustadzName)}</strong>
                   <span className="text-[11px] text-[#414844] block">
-                    {selectedHistorySession.ustadzNotes || 'Membina halaqah'}
+                    {selectedHistorySession.ustadzNotes || 'Mengampu halaqah'}
                   </span>
                 </div>
               </div>
@@ -889,7 +1008,20 @@ export const HalaqahAttendanceManager: React.FC<HalaqahAttendanceManagerProps> =
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                      {m.status === 'hadir' && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            m.arrivalCategory === 'pertengahan'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : m.arrivalCategory === 'akhir_waktu'
+                              ? 'bg-orange-50 text-orange-800 border-orange-200'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}
+                        >
+                          {formatArrivalCategoryLabel(m.arrivalCategory)}
+                        </span>
+                      )}
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                           m.status === 'hadir'

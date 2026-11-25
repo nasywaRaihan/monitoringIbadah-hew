@@ -236,7 +236,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
       return {
         name,
         code: detail?.code || 'HF-DIR',
-        supervisor: formatSupervisorDisplayName(detail?.supervisor) || 'Ustadz/ah Pembina',
+        supervisor: formatSupervisorDisplayName(detail?.supervisor) || 'Ustadz/ah Pengampu',
         dept: detail?.dept || 'Dept Operasional',
         memberCount: members.length,
         totalXp,
@@ -291,7 +291,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               <p className="text-[11px] text-[#c1ecd4]/90 mt-1 sm:mt-0.5 leading-snug">
                 {isDeptHX
                   ? scope === 'group'
-                    ? 'Memantau kompetisi sehat antar santri di tiap kelompok halaqah binaan secara terpisah.'
+                    ? 'Memantau kompetisi sehat antar peserta di tiap kelompok halaqah ampuan secara terpisah.'
                     : 'Memantau klasemen agregat seluruh karyawan secara nasional lintas seluruh halaqah.'
                   : `Akun ${getUstadzTitle(activeUser)} berfungsi memantau. Poin & peringkat sepenuhnya milik santri/karyawan.`}
               </p>
@@ -384,7 +384,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#012d1d] min-w-0 flex-1">
               <span className="material-symbols-outlined text-[18px] text-[#00452c] shrink-0">hub</span>
-              <span className="leading-snug">Pilih Tampilan Peringkat Halaqah Binaan</span>
+              <span className="leading-snug">Pilih Tampilan Peringkat Halaqah Ampuan</span>
             </div>
             <span className="text-[10px] bg-[#c1ecd4] text-[#002114] px-2 py-0.5 rounded-full font-bold shrink-0 whitespace-nowrap">
               {allHalaqahNames.length} Halaqah Aktif

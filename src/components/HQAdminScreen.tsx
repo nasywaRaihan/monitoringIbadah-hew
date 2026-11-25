@@ -917,6 +917,12 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     let counter = 1;
 
     filteredAttendanceSessions.forEach((session) => {
+      const formatArrivalCat = (cat?: string) => {
+        if (cat === 'pertengahan') return 'Pertengahan';
+        if (cat === 'akhir_waktu') return 'Akhir Waktu';
+        return 'Datang Tepat Waktu';
+      };
+
       if (session.members && session.members.length > 0) {
         session.members.forEach((member) => {
           rows.push([
@@ -926,10 +932,16 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
             session.halaqahName,
             session.halaqahCode || '-',
             session.ustadzName,
-            session.ustadzStatus === 'hadir' ? 'Hadir Membina' : session.ustadzStatus === 'pengganti' ? `${getUstadzTitle(session.ustadzPenggantiName)} Pengganti` : session.ustadzStatus,
+            session.ustadzStatus === 'hadir'
+              ? 'Hadir Mengampu'
+              : session.ustadzStatus === 'pengganti'
+              ? `${getUstadzTitle(session.ustadzPenggantiName)} Pengganti`
+              : session.ustadzStatus,
             session.ustadzNotes || '-',
             member.userName,
-            member.status.toUpperCase(),
+            member.status === 'hadir'
+              ? `HADIR (${formatArrivalCat(member.arrivalCategory)})`
+              : member.status.toUpperCase(),
             member.notes || '-',
             member.status === 'hadir' ? (member.xpAwarded || 15) : 0
           ]);
@@ -958,12 +970,18 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   };
 
   const handleExportSingleSessionCSV = (session: HalaqahAttendanceSession) => {
-    const headers = ['No', 'ID Karyawan', 'Nama Karyawan', 'Status Kehadiran', 'Catatan Anggota', 'Poin XP'];
+    const formatArrivalCat = (cat?: string) => {
+      if (cat === 'pertengahan') return 'Pertengahan';
+      if (cat === 'akhir_waktu') return 'Akhir Waktu';
+      return 'Datang Tepat Waktu';
+    };
+    const headers = ['No', 'ID Karyawan', 'Nama Karyawan', 'Status Kehadiran', 'Kategori Kedatangan', 'Catatan Anggota', 'Poin XP'];
     const rows = session.members.map((m, idx) => [
       idx + 1,
       m.userId,
       m.userName,
       m.status.toUpperCase(),
+      m.status === 'hadir' ? formatArrivalCat(m.arrivalCategory) : '-',
       m.notes || '-',
       m.status === 'hadir' ? (m.xpAwarded || 15) : 0
     ]);
@@ -979,6 +997,21 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
   const [patenSearch, setPatenSearch] = useState<string>('');
   const [ustadzTaskSearch, setUstadzTaskSearch] = useState<string>('');
   const [ustadzTaskHalaqahFilter, setUstadzTaskHalaqahFilter] = useState<string>('all');
+
+  useEffect(() => {
+    const syncPatenList = () => {
+      const next = getStoredStandardAmalan();
+      setStandardAmalanList((prev) =>
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+      );
+    };
+    window.addEventListener('noorworship_standard_amalan_updated', syncPatenList);
+    window.addEventListener('storage', syncPatenList);
+    return () => {
+      window.removeEventListener('noorworship_standard_amalan_updated', syncPatenList);
+      window.removeEventListener('storage', syncPatenList);
+    };
+  }, []);
 
   // Form states for Paten Amalan Editor
   const [formPatenTitle, setFormPatenTitle] = useState('');
@@ -999,7 +1032,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     setFormPatenCategory(item.category);
     setFormPatenBaseXp(item.baseXp);
     setFormPatenHasJamaah(isFardhu5);
-    setFormPatenJamaahBonus(isFardhu5 ? (item.jamaahBonusXp || 5) : 0);
+    setFormPatenJamaahBonus(isFardhu5 ? (item.jamaahBonusXp ?? 5) : 0);
     setFormPatenTimeWindow(item.timeWindowDescription || '');
     setFormPatenNote(item.note || '');
     setFormPatenPenalty(item.penaltyLateXp || 25);
@@ -1010,15 +1043,17 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
     if (!editingPaten) return;
     const titleTrim = formPatenTitle.trim() || editingPaten.title;
     const isFardhu5 = isFiveDailyFardhuPrayer({ ...editingPaten, title: titleTrim });
+    const safeBaseXp = Math.max(1, Number(formPatenBaseXp) || 1);
+    const safeJamaahBonus = isFardhu5 ? Math.max(0, Number(formPatenJamaahBonus) || 0) : undefined;
     const updated = standardAmalanList.map((item) => {
       if (item.id === editingPaten.id) {
         return {
           ...item,
           title: titleTrim,
           category: formPatenCategory,
-          baseXp: formPatenBaseXp,
+          baseXp: safeBaseXp,
           hasJamaahOption: isFardhu5,
-          jamaahBonusXp: isFardhu5 ? formPatenJamaahBonus : undefined,
+          jamaahBonusXp: safeJamaahBonus,
           timeWindowDescription: formPatenTimeWindow,
           note: formPatenNote,
           penaltyLateXp: formPatenPenalty,
@@ -1028,10 +1063,10 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
       return item;
     });
 
-    setStandardAmalanList(updated);
     saveStoredStandardAmalan(updated);
+    setStandardAmalanList(getStoredStandardAmalan());
     setEditingPaten(null);
-    onShowToast(`Amalan Pasti "${titleTrim}" berhasil diperbarui oleh Dept HX!`);
+    onShowToast(`Amalan Pasti "${titleTrim}" (+${safeBaseXp} XP) berhasil diperbarui & disinkronkan ke seluruh karyawan!`);
   };
 
   const handleTogglePatenActive = (id: string) => {
@@ -1777,7 +1812,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
           <div className="p-4 rounded-2xl bg-white shadow-sm border border-[#1b4332]/10 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f3ff] flex-wrap gap-2">
               <div>
-                <h3 className="text-sm font-bold text-[#141b2b]">Direktori Halaqah Binaan Dept HX</h3>
+                <h3 className="text-sm font-bold text-[#141b2b]">Direktori Halaqah Ampuan Dept HX</h3>
                 <p className="text-xs text-[#414844]">Klik salah satu halaqah untuk melihat daftar anggota karyawan</p>
               </div>
               <div className="flex items-center gap-2">
@@ -2167,7 +2202,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
               type="text"
               value={ustadzSearchQuery}
               onChange={(e) => setUstadzSearchQuery(e.target.value)}
-              placeholder="Cari nama ustadz/ah, halaqah binaan, atau kode halaqah..."
+              placeholder="Cari nama ustadz/ah, halaqah ampuan, atau kode halaqah..."
               className="w-full h-11 pl-10 pr-10 bg-white rounded-xl text-xs sm:text-sm text-[#141b2b] placeholder:text-[#717973] border border-[#1b4332]/5 focus:outline-none focus:ring-1 focus:ring-[#012d1d] shadow-sm"
             />
             {ustadzSearchQuery && (
@@ -2232,7 +2267,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                               )}
                             </div>
                             <span className="text-xs text-[#414844] block mt-0.5 truncate">
-                              Membina {ust.memberCount} Karyawan • {ust.location}
+                              Mengampu {ust.memberCount} Karyawan • {ust.location}
                             </span>
                           </div>
                         </div>
@@ -2370,11 +2405,6 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                 <span className="flex items-center gap-1">
                   <span className="material-symbols-outlined text-[16px]">alarm</span>
                   Kalkulasi Waktu Sholat Otomatis
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">groups</span>
-                  Opsi Berjamaah (+5 XP)
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
@@ -2730,7 +2760,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#414844] mt-0.5">
-                    Data kehadiran Ustadz/ah pembimbing &amp; seluruh karyawan binaan tersinkronisasi otomatis dari lapangan.
+                    Data kehadiran Ustadz/ah pembimbing &amp; seluruh peserta yang diampu tersinkronisasi otomatis dari lapangan.
                   </p>
                 </div>
               </div>
@@ -2777,7 +2807,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   onShowToast(
                     attendanceStatusFilter === 'hadir'
                       ? 'Menampilkan semua status kehadiran ustadz/ah'
-                      : 'Memfilter sesi dengan Ustadz/ah Hadir Membina'
+                      : 'Memfilter sesi dengan Ustadz/ah Hadir Mengampu'
                   );
                 }}
                 className="p-3 rounded-2xl bg-[#f9f9ff] hover:bg-emerald-50/70 border border-[#1b4332]/5 hover:border-emerald-500/30 transition-all cursor-pointer active:scale-[0.98]"
@@ -2798,7 +2828,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   <span className="text-xs text-emerald-600 font-semibold">Tepat</span>
                 </div>
                 <span className="text-[10px] text-[#414844] mt-0.5 block">
-                  Filter Hadir Membina →
+                  Filter Hadir Mengampu →
                 </span>
               </div>
 
@@ -2910,7 +2940,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                 className="w-full px-3 py-2 rounded-xl bg-white text-xs font-medium text-[#141b2b] border border-[#1b4332]/10 focus:border-[#012d1d] focus:outline-none shadow-xs cursor-pointer"
               >
                 <option value="all">Semua Status</option>
-                <option value="hadir">Hadir Membina</option>
+                <option value="hadir">Hadir Mengampu</option>
                 <option value="pengganti">Ustadz/ah Pengganti</option>
                 <option value="izin">Ustadz/ah Izin</option>
                 <option value="sakit">Ustadz/ah Sakit</option>
@@ -3045,7 +3075,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                               }`}
                             >
                               {session.ustadzStatus === 'hadir'
-                                ? '✓ Hadir Membina'
+                                ? '✓ Hadir Mengampu'
                                 : session.ustadzStatus === 'pengganti'
                                 ? `${getUstadzTitle(session.ustadzPenggantiName)} Pengganti`
                                 : session.ustadzStatus === 'izin'
@@ -3432,7 +3462,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   Pendaftaran Karyawan / Ustadz/ah Baru
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[#414844] leading-snug mt-0.5">
-                  Tetapkan halaqah binaan dan terbitkan akses masuk resmi
+                  Tetapkan halaqah ampuan dan terbitkan akses masuk resmi
                 </p>
               </div>
               <button
@@ -3673,7 +3703,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
 
 
 
-      {/* Modal Manajemen & Kelola Halaqah Binaan Dept HX */}
+      {/* Modal Manajemen & Kelola Halaqah Ampuan Dept HX */}
       {selectedHalaqahGroup && (() => {
         const groupObj = halaqahGroups.find(g => g.halaqahName === selectedHalaqahGroup);
         if (!groupObj) return null;
@@ -4292,7 +4322,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   }`}
                 >
                   {selectedStudentDetail.role === 'admin'
-                    ? 'Profil & Halaqah Binaan Ustadz/ah'
+                    ? 'Profil & Halaqah Ampuan Ustadz/ah'
                     : 'Profil & Rekam Jejak Karyawan'}
                 </span>
                 <h3 className="text-base font-bold text-[#141b2b] mt-0.5">
@@ -4346,7 +4376,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                  <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Binaan</span>
+                  <span className="text-[10px] font-semibold text-emerald-800 uppercase block">Mengampu</span>
                   <span className="text-sm font-extrabold text-emerald-950 mt-0.5 block">
                     {selectedStudentDetail.memberCount ?? 0} Karyawan
                   </span>
@@ -4420,7 +4450,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     Daftar Halaqah Baru
                   </h3>
                   <p className="text-[11px] sm:text-xs text-[#414844] truncate">
-                    Registrasi kelompok halaqah binaan resmi Dept HX
+                    Registrasi kelompok halaqah ampuan resmi Dept HX
                   </p>
                 </div>
               </div>
@@ -4796,7 +4826,7 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                     }`}
                   >
                     {selectedAttendanceSessionDetail.ustadzStatus === 'hadir'
-                      ? '✓ Hadir Membina'
+                      ? '✓ Hadir Mengampu'
                       : selectedAttendanceSessionDetail.ustadzStatus === 'pengganti'
                       ? `${getUstadzTitle(selectedAttendanceSessionDetail.ustadzPenggantiName)} Pengganti (Badal)`
                       : selectedAttendanceSessionDetail.ustadzStatus === 'izin'
@@ -4908,13 +4938,30 @@ export const HQAdminScreen: React.FC<HQAdminScreenProps> = ({
                                 </p>
                               ) : (
                                 <p className="text-[10px] text-[#717973] truncate">
-                                  Karyawan Binaan
+                                  Peserta Halaqah
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end shrink-0">
+                            {member.status === 'hadir' && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${
+                                  member.arrivalCategory === 'pertengahan'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : member.arrivalCategory === 'akhir_waktu'
+                                    ? 'bg-orange-50 text-orange-800 border-orange-200'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                }`}
+                              >
+                                {member.arrivalCategory === 'pertengahan'
+                                  ? 'Pertengahan'
+                                  : member.arrivalCategory === 'akhir_waktu'
+                                  ? 'Akhir Waktu'
+                                  : 'Datang Tepat Waktu'}
+                              </span>
+                            )}
                             {member.status === 'hadir' && (
                               <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold whitespace-nowrap">
                                 +15 XP

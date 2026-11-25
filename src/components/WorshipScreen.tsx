@@ -331,9 +331,11 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
     const isLate = prayerStatus.isLate;
 
     const isFardhuPrayer = isFiveDailyFardhuPrayer(task);
+    const baseTaskXp = Number(task.xp) || 15;
+    const jamaahBonusXp = task.jamaahBonusXp !== undefined ? Number(task.jamaahBonusXp) : 5;
     const originalXp = isFardhuPrayer
-      ? 15 + (selectedPrayerMode === 'jamaah' ? 5 : 0)
-      : task.xp;
+      ? baseTaskXp + (selectedPrayerMode === 'jamaah' ? jamaahBonusXp : 0)
+      : baseTaskXp;
 
     const { earnedXp } = calculateTaskXpWithLatePolicy(originalXp, isLate);
 
@@ -1641,7 +1643,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                   onChange={(e) => setNewAmalanHalaqah(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#f9f9ff] border border-[#1b4332]/15 text-xs text-[#141b2b] focus:outline-none focus:ring-2 focus:ring-[#00452c]/30 font-semibold"
                 >
-                  <option value={activeUser.halaqah}>{activeUser.halaqah} (Halaqah Binaan Anda)</option>
+                  <option value={activeUser.halaqah}>{activeUser.halaqah} (Halaqah Ampuan Anda)</option>
                   <option value="Halaqah Al-Fajr">Halaqah Al-Fajr</option>
                   <option value="Hafiz Circle">Hafiz Circle</option>
                   <option value="Semua Halaqah">Semua Halaqah (Umum)</option>
@@ -1754,6 +1756,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
         isOpen={showFastingModal}
         onClose={() => setShowFastingModal(false)}
         onSelectFasting={handleSelectFastingOption}
+        taskXp={selectedTaskForConfirm?.xp}
       />
 
       {/* Modal Muraqabah Confirmation & Oath */}

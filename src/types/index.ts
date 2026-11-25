@@ -28,6 +28,7 @@ export interface DailyTask {
   isPatenHX?: boolean;
   prayerId?: 'subuh' | 'zhuhur' | 'ashar' | 'maghrib' | 'isya' | 'dzikir-pagi' | 'sholat-dhuha' | 'dzikir-petang';
   hasJamaahOption?: boolean;
+  jamaahBonusXp?: number;
   isJamaah?: boolean;
   isFastingTask?: boolean;
   fastingType?: string;
@@ -159,12 +160,14 @@ export interface ActiveUser {
 
 export type AttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'alpa';
 export type UstadzAttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'pengganti';
+export type ArrivalTimeCategory = 'tepat_waktu' | 'pertengahan' | 'akhir_waktu';
 
 export interface MemberAttendance {
   userId: string;
   userName: string;
   userAvatar?: string;
   status: AttendanceStatus;
+  arrivalCategory?: ArrivalTimeCategory;
   notes?: string;
   markedAt?: string;
   xpAwarded?: number;
@@ -184,6 +187,7 @@ export interface HalaqahAttendanceSession {
   ustadzName: string;
   ustadzAvatar?: string;
   ustadzStatus: UstadzAttendanceStatus;
+  ustadzArrivalCategory?: ArrivalTimeCategory;
   ustadzNotes?: string;
   ustadzPenggantiName?: string;
   ustadzPenggantiKeterangan?: string;

@@ -34,10 +34,13 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
   const isFardhuPrayer = isFiveDailyFardhuPrayer(task);
   const isLate = Boolean(prayerStatus?.isLate);
 
+  const baseTaskXp = Number(task.xp) || 15;
+  const jamaahBonusXp = task.jamaahBonusXp !== undefined ? Number(task.jamaahBonusXp) : 5;
+
   // Calculate original & final XP (75% of original points when late)
   const originalXp = isFardhuPrayer
-    ? 15 + (selectedPrayerMode === 'jamaah' ? 5 : 0)
-    : task.xp;
+    ? baseTaskXp + (selectedPrayerMode === 'jamaah' ? jamaahBonusXp : 0)
+    : baseTaskXp;
 
   const { earnedXp: calculatedXp, deductedXp } = calculateTaskXpWithLatePolicy(
     originalXp,
@@ -111,7 +114,7 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="text-xs font-bold">Berjamaah</span>
                   <span className="text-[10px] font-extrabold text-[#00452c] bg-white px-1.5 py-0.2 rounded-full border border-[#00452c]/20">
-                    +20 XP
+                    +{formatXpValue(baseTaskXp + jamaahBonusXp)} XP
                   </span>
                 </div>
                 <p className="text-[10px] text-[#717973] leading-tight">
@@ -131,7 +134,7 @@ export const MuraqabahConfirmModal: React.FC<MuraqabahConfirmModalProps> = ({
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="text-xs font-bold">Munfarid</span>
                   <span className="text-[10px] font-extrabold text-[#775a19] bg-white px-1.5 py-0.2 rounded-full border border-[#775a19]/20">
-                    +15 XP
+                    +{formatXpValue(baseTaskXp)} XP
                   </span>
                 </div>
                 <p className="text-[10px] text-[#717973] leading-tight">

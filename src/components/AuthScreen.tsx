@@ -927,7 +927,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span className="text-xs uppercase tracking-wider">Portal Masuk Supervisor Ustadz/ah</span>
                 </div>
                 <p className="text-[10px] text-[#e9fbf2]">
-                  Pilih lingkaran halaqah binaan Anda dan masukkan PIN Ustadz/ah untuk mengakses konsol evaluasi tajwid dan presensi halaqah.
+                  Pilih lingkaran halaqah ampuan Anda dan masukkan PIN Ustadz/ah untuk mengakses konsol evaluasi tajwid dan presensi halaqah.
                 </p>
               </div>
 
@@ -940,7 +940,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-[#141b2b] mb-1">
-                  Pilih Lingkaran Halaqah Binaan
+                  Pilih Lingkaran Halaqah Ampuan
                 </label>
                 {availableHalaqahs.length > 0 ? (
                   <div className="relative flex items-center">

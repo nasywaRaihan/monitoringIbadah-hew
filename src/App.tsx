@@ -77,7 +77,14 @@ import { AuthModal } from './components/AuthModal';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { ImportedReciterRecord, downloadPerColumnCSV } from './services/csvExport';
 import { DeptHXPasscodeModal } from './components/DeptHXPasscodeModal';
-import { getStoredStandardAmalan, findConflictingStandardAmalan } from './services/amalanPaten';
+import {
+  StandardAmalanHX,
+  getStoredStandardAmalan,
+  applyCloudStandardAmalan,
+  serializeStandardAmalanForFirestore,
+  findConflictingStandardAmalan,
+  isFiveDailyFardhuPrayer
+} from './services/amalanPaten';
 import {
   recordDailyActivityStreak,
   evaluateStreakOnLoad,
@@ -947,6 +954,57 @@ export default function App() {
     getEffectiveTodayCompletions
   ]);
 
+  const [standardAmalanItems, setStandardAmalanItems] = useState<StandardAmalanHX[]>(() =>
+    getStoredStandardAmalan()
+  );
+  // Real-time sync for Amalan Pasti Dept HX across localStorage events and Firestore
+  useEffect(() => {
+    const updateIfDifferent = (next: StandardAmalanHX[]) => {
+      setStandardAmalanItems((prev) =>
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+      );
+    };
+
+    const handleLocalStandardAmalanUpdate = () => {
+      updateIfDifferent(getStoredStandardAmalan());
+    };
+
+    window.addEventListener('noorworship_standard_amalan_updated', handleLocalStandardAmalanUpdate);
+    window.addEventListener('storage', handleLocalStandardAmalanUpdate);
+
+    const unsubFirestorePaten = onSnapshot(
+      doc(db, 'systemSettings', 'standardAmalanHX'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data?.items) && data.items.length > 0) {
+            const synced = applyCloudStandardAmalan(data.items as StandardAmalanHX[]);
+            updateIfDifferent(synced);
+          }
+        } else {
+          const currentLocal = getStoredStandardAmalan();
+          safeFirestoreWrite(() =>
+            setDoc(
+              doc(db, 'systemSettings', 'standardAmalanHX'),
+              {
+                items: serializeStandardAmalanForFirestore(currentLocal),
+                updatedAt: new Date().toISOString()
+              },
+              { merge: true }
+            )
+          );
+        }
+      },
+      () => {}
+    );
+
+    return () => {
+      window.removeEventListener('noorworship_standard_amalan_updated', handleLocalStandardAmalanUpdate);
+      window.removeEventListener('storage', handleLocalStandardAmalanUpdate);
+      unsubFirestorePaten();
+    };
+  }, []);
+
   // Merge 11 Amalan Paten Dept HX + Ustadz directives for activeUser
   useEffect(() => {
     if (!activeUser) return;
@@ -955,22 +1013,40 @@ export default function App() {
     const userCompletions = getEffectiveTodayCompletions(activeUser, registeredUsers, todayStr);
 
     // 1. Amalan Paten Dept HX (11 Baku)
-    const patenItems = getStoredStandardAmalan().filter((p) => p.isActive);
+    const patenItems = standardAmalanItems.filter((p) => p.isActive);
     const patenTasks: DailyTask[] = patenItems.map((p) => {
       const taskId = `paten-${p.id}`;
       const comp = userCompletions[taskId];
+      const isCompleted = Boolean(comp?.completed);
+      const isFardhu5 = isFiveDailyFardhuPrayer(p);
+      const currentFullXp =
+        isFardhu5 && comp?.isJamaah
+          ? Number(p.baseXp) + Number(p.jamaahBonusXp ?? 5)
+          : Number(p.baseXp);
+      const currentLateXp = Math.round(currentFullXp * 0.75 * 100) / 100;
+      const displayXp = isCompleted
+        ? comp?.xp !== undefined &&
+          (Math.abs(Number(comp.xp) - currentFullXp) < 0.05 ||
+            Math.abs(Number(comp.xp) - currentLateXp) < 0.05)
+          ? Number(comp.xp)
+          : comp?.xp !== undefined && Number(comp.xp) % 1 !== 0
+          ? currentLateXp
+          : currentFullXp
+        : p.baseXp;
+
       return {
         id: taskId,
         title: p.title,
         category: p.category,
-        xp: comp?.xp !== undefined ? comp.xp : p.baseXp,
-        completed: Boolean(comp?.completed),
+        xp: displayXp,
+        jamaahBonusXp: p.jamaahBonusXp,
+        completed: isCompleted,
         isPatenHX: true,
         prayerId: p.prayerId,
         hasJamaahOption: p.hasJamaahOption,
         isFastingTask: p.isFastingTask,
         timeWindowInfo: p.timeWindowDescription,
-        note: comp?.note || p.note
+        note: (isCompleted && comp?.note) || p.note
       };
     });
 
@@ -1002,7 +1078,7 @@ export default function App() {
           directiveId: d.id,
           title: d.title,
           category: d.category,
-          xp: comp?.xp !== undefined ? comp.xp : d.xp,
+          xp: isDone && comp?.xp !== undefined ? comp.xp : d.xp,
           completed: isDone,
           isAssigned: true,
           isRecitationTest: (d as any).isRecitationTest || false,
@@ -1010,13 +1086,15 @@ export default function App() {
           type: d.type,
           validityDays: d.validityDays || validityDays,
           expiresAt: d.expiresAt || (getDirectiveExpiresAtMs(d) ? new Date(getDirectiveExpiresAtMs(d)!).toISOString() : undefined),
-          note: comp?.note || d.target,
+          note: (isDone && comp?.note) || d.target,
           targetHalaqah: (d as any).targetHalaqah || activeUser.halaqah
         };
       });
 
-    setTasks([...patenTasks, ...ustadzTasks]);
+    const nextTasks = [...patenTasks, ...ustadzTasks];
+    setTasks((prev) => (JSON.stringify(prev) === JSON.stringify(nextTasks) ? prev : nextTasks));
   }, [
+    standardAmalanItems,
     ibadahDirectives,
     activeUser?.id,
     activeUser?.name,
@@ -1459,7 +1537,7 @@ export default function App() {
           schedule: 'Senin & Kamis 05:30 WIB',
           location: 'Masjid Perusahaan',
           department: 'Dept HX',
-          description: `Halaqah binaan ${cleanSupervisor}`,
+          description: `Halaqah ampuan ${cleanSupervisor}`,
           targetJuz: 'Juz 30 & Tahsin'
         });
         if (!newHalaqahNames.includes(cleanHalaqah)) {

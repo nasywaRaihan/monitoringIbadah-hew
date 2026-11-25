@@ -1,3 +1,5 @@
+import { doc, setDoc } from 'firebase/firestore';
+import { db, safeFirestoreWrite } from './firebase';
 import { calculatePrayerTimes, DEFAULT_INDONESIAN_REGIONS, RegionLocation } from './prayerTimes';
 
 export interface StandardAmalanHX {
@@ -704,27 +706,45 @@ export function checkFastingMatch(
 const STORAGE_KEY_PATEN = 'noorworship_standard_amalan_hx_v1';
 
 function sanitizeStandardAmalanItems(items: StandardAmalanHX[]): StandardAmalanHX[] {
-  return items.map((item) => {
+  return items.map((item, idx) => {
     const isFardhu5 = isFiveDailyFardhuPrayer(item);
     const isOlahraga =
       item.id === 'paten-olahraga' ||
       /\bolahraga\b|\bkebugaran\s+jasmani\b/i.test(item.title || '');
     const resolvedPrayerId = isOlahraga ? undefined : resolveTaskPrayerId(item);
+    const baseXpNum = Math.max(1, Number(item.baseXp) || 0);
+    const lateXpVal = Math.round(baseXpNum * 0.75 * 100) / 100;
     const updatedNote = item.note
-      ? item.note.replace(/dipotong\s*5\s*XP/gi, 'mendapatkan 75% dari poin asli')
+      ? item.note
+          .replace(/dipotong\s*5\s*XP/gi, 'mendapatkan 75% dari poin asli')
+          .replace(/75%\s+dari\s+poin\s+asli\s*\([\d.,]+\s*XP\)/gi, `75% dari poin asli (${lateXpVal} XP)`)
       : item.note;
     const updatedWindowDesc =
       isOlahraga && (!item.timeWindowDescription || /pagi atau sore hari/i.test(item.timeWindowDescription))
         ? 'Sepanjang hari (pagi sampai malam, minimal 15-30 menit)'
-        : item.timeWindowDescription;
+        : item.timeWindowDescription || 'Sepanjang Hari';
+    const jamaahBonusVal = isFardhu5
+      ? item.jamaahBonusXp !== undefined
+        ? Number(item.jamaahBonusXp)
+        : 5
+      : undefined;
+    const penaltyVal = isOlahraga ? undefined : item.penaltyLateXp ? 25 : undefined;
+
     return {
-      ...item,
+      id: String(item.id || `paten-${idx + 1}`),
+      title: String(item.title || ''),
+      category: String(item.category || 'Ibadah Harian'),
+      baseXp: baseXpNum,
+      jamaahBonusXp: jamaahBonusVal,
+      hasJamaahOption: isFardhu5 ? true : false,
       prayerId: resolvedPrayerId,
       timeWindowDescription: updatedWindowDesc,
-      hasJamaahOption: isFardhu5 ? true : false,
-      jamaahBonusXp: isFardhu5 ? (item.jamaahBonusXp ?? 5) : undefined,
-      penaltyLateXp: isOlahraga ? undefined : item.penaltyLateXp ? 25 : undefined,
-      note: updatedNote
+      isFastingTask: Boolean(item.isFastingTask),
+      isActive: item.isActive !== false,
+      recurrence: item.recurrence === 'specific_days' ? 'specific_days' : 'daily',
+      penaltyLateXp: penaltyVal,
+      note: updatedNote,
+      order: Number(item.order) || idx + 1
     };
   });
 }
@@ -744,11 +764,53 @@ export function getStoredStandardAmalan(): StandardAmalanHX[] {
   return sanitizeStandardAmalanItems(DEFAULT_STANDARD_AMALAN_HX);
 }
 
+export function serializeStandardAmalanForFirestore(
+  items: StandardAmalanHX[]
+): Record<string, any>[] {
+  return sanitizeStandardAmalanItems(items).map((item) => {
+    const clean: Record<string, any> = {};
+    Object.entries(item).forEach(([k, v]) => {
+      if (v !== undefined) clean[k] = v;
+    });
+    return clean;
+  });
+}
+
+export function applyCloudStandardAmalan(items: StandardAmalanHX[]): StandardAmalanHX[] {
+  const sanitized = sanitizeStandardAmalanItems(items);
+  try {
+    const currentSanitized = getStoredStandardAmalan();
+    const currentJson = JSON.stringify(currentSanitized);
+    const nextJson = JSON.stringify(sanitized);
+    if (currentJson !== nextJson) {
+      localStorage.setItem(STORAGE_KEY_PATEN, nextJson);
+      window.dispatchEvent(new Event('noorworship_standard_amalan_updated'));
+    }
+  } catch (e) {
+    console.warn('Could not apply cloud standard amalan', e);
+  }
+  return sanitized;
+}
+
 export function saveStoredStandardAmalan(items: StandardAmalanHX[]): void {
   try {
     const sanitized = sanitizeStandardAmalanItems(items);
     localStorage.setItem(STORAGE_KEY_PATEN, JSON.stringify(sanitized));
     window.dispatchEvent(new Event('noorworship_standard_amalan_updated'));
+
+    const firestoreItems = serializeStandardAmalanForFirestore(sanitized);
+    safeFirestoreWrite(
+      () =>
+        setDoc(
+          doc(db, 'systemSettings', 'standardAmalanHX'),
+          {
+            items: firestoreItems,
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        ),
+      { force: true }
+    );
   } catch (e) {
     console.warn('Could not save standard amalan', e);
   }

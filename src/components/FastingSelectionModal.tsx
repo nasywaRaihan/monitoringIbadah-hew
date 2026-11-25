@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { FASTING_OPTIONS, FastingOption, checkFastingMatch } from '../services/amalanPaten';
+import { FASTING_OPTIONS, FastingOption, checkFastingMatch, formatXpValue } from '../services/amalanPaten';
 
 interface FastingSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectFasting: (fastingOption: FastingOption, customNote?: string) => void;
+  taskXp?: number;
 }
 
 export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
   isOpen,
   onClose,
-  onSelectFasting
+  onSelectFasting,
+  taskXp
 }) => {
   const [selectedFastingId, setSelectedFastingId] = useState<string>('senin');
   const [customDescription, setCustomDescription] = useState<string>('');
@@ -64,7 +66,7 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
                 Hari Ini: {currentDayName}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-[#c1ecd4] text-[#002114] text-[10px] font-bold">
-                +10 XP
+                +{formatXpValue(taskXp ?? 10)} XP
               </span>
             </div>
             <h3 className="font-bold text-base text-[#141b2b] mt-0.5">
@@ -190,7 +192,7 @@ export const FastingSelectionModal: React.FC<FastingSelectionModalProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
-            <span>Konfirmasi Puasa Sunnah (+10 XP)</span>
+            <span>Konfirmasi Puasa Sunnah (+{formatXpValue(taskXp ?? 10)} XP)</span>
           </button>
         </div>
       </div>
