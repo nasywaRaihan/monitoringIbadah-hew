@@ -92,11 +92,7 @@ export const downloadPerColumnCSV = (
 export const downloadImportTemplateSheet = () => {
   const headers = ['No', 'Nama Karyawan', 'Kelompok Halaqah', 'Ustadz/ah Pembimbing', 'Passcode Login'];
   const sampleRows = [
-    [1, 'Ahmad Fauzi', 'Halaqah Al-Fajr', 'Ustadz Farhan', '1234'],
-    [2, 'Rizky Ramadhan', 'Hafiz Circle', 'Ustadz Tariq Mansoor', '1234'],
-    [3, 'Irfan Maulana', 'Youth Tajweed', 'Ustadzah Sarah', '1234'],
-    [4, 'Danang Prasetyo', 'Halaqah Ar-Rayyan', 'Ustadz Zulkifli', '1234'],
-    [5, 'Fikri Hakim', 'Madinah Memorization Circle', 'Ustadz Mansoor', '1234']
+    [1, 'Ahmad Fauzi', 'Halaqah Al-Fajr', 'Ustadz Farhan', '1234']
   ];
 
   downloadExcelSheet(
