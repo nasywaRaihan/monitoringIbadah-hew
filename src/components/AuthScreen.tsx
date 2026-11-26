@@ -841,7 +841,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       setSantriPassword(e.target.value);
                       if (santriError) setSantriError(null);
                     }}
-                    placeholder="Masukkan PIN akun karyawan"
+                    placeholder="Masukkan password (sama dengan password App HEW)"
                     className="w-full pl-9.5 pr-10 py-2.5 rounded-xl bg-[#f1f3ff] text-xs font-semibold text-[#141b2b] placeholder:text-[#717973] focus:bg-white focus:ring-2 focus:ring-[#012d1d] focus:outline-none transition-all"
                   />
                   <button
@@ -854,6 +854,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     </span>
                   </button>
                 </div>
+                <p className="mt-1.5 text-[11px] font-semibold text-[#00452c] bg-[#c1ecd4]/40 border border-[#00452c]/15 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-[#00452c] shrink-0">
+                    info
+                  </span>
+                  <span>
+                    Informasi: Password karyawan <strong>sama dengan password App HEW</strong>.
+                  </span>
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-0.5">

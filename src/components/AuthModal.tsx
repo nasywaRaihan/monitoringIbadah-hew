@@ -429,7 +429,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         setInputPasscode(e.target.value);
                         setUnlockError(null);
                       }}
-                      placeholder="Ketik password akun..."
+                      placeholder="Ketik password (sama dengan App HEW)..."
                       className="w-full h-12 bg-[#f1f3ff] rounded-xl px-3 pr-10 text-sm font-bold tracking-widest text-[#141b2b] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#012d1d]"
                     />
                     <button
@@ -442,6 +442,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       </span>
                     </button>
                   </div>
+                  <p className="mt-1 text-[11px] font-semibold text-[#00452c] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">info</span>
+                    <span>Password karyawan sama dengan password App HEW.</span>
+                  </p>
                   {unlockError && (
                     <span className="text-xs text-[#ba1a1a] font-semibold mt-1 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">error</span>

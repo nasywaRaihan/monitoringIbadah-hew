@@ -14,11 +14,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   const isSantri = currentRole === 'member';
   const isUstadz = currentRole === 'admin';
+  const isDeptHX = currentRole === 'dept-hx' || currentRole === 'hq-admin';
 
   // Navigation items customized per role:
-  // - Santri (member): Ibadah, Peringkat, Tilawah
-  // - Ustadz (admin): Dashboard, Karyawan (list binaan), Peringkat
-  // - Dept HX / HQ: Dashboard (Dept HX), Tilawah, Peringkat
+  // - Santri (member): Ibadah, Peringkat, Tilawah (Locked)
+  // - Ustadz (admin): Dashboard, Karyawan (list mengampu), Peringkat
+  // - Dept HX / HQ: Dashboard (Dept HX), Tilawah (Unlocked for testing), Peringkat
   let navItems: { id: TabType; label: string; icon: string }[];
 
   if (isSantri) {
@@ -52,7 +53,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           const isActive =
             currentTab === item.id ||
             (item.id === 'dept-hx' && currentTab === 'hq-admin');
-          const isLockedTab = item.id === 'recitation';
+          const isLockedTab = item.id === 'recitation' && !isDeptHX;
           return (
             <button
               key={item.id}
