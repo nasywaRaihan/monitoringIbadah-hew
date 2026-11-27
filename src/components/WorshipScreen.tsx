@@ -939,18 +939,18 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
         {/* Task List */}
         <div className="space-y-2.5">
           {visibleTasks.map((task) => {
-            const isRecitationType =
-              task.isRecitationTest ||
-              task.category === 'Al-Qur’an' ||
-              task.category === 'Tilawah & Hifdz' ||
-              /setor|ujian|rekam|murottal|tartil|surah|juz|hafalan/i.test(task.title);
+            // Hanya tugas yang dibuat khusus lewat menu "Tugaskan Setoran Ayat" (koreksi suara Tilawah AI)
+            // yang dikunci. Tugas Usbu'iyah/Yaumiyah kategori Al-Qur'an & Tilawah tetap tampil sebagai checklist biasa.
+            const isSetoranAyatRecitationTask =
+              Boolean(task.isRecitationTest) ||
+              Boolean(task.directiveId && task.directiveId.startsWith('ibadah-recitation-'));
 
-            if (task.isAssigned && isRecitationType) {
-              // Special Assigned Task Card (Surah Al-Mulk / Ujian Tilawah) — Locked
+            if (task.isAssigned && isSetoranAyatRecitationTask) {
+              // Special Assigned Task Card (Tugas Setoran Ayat / Koreksi Tilawah) — Locked
               return (
                 <div
                   key={task.id}
-                  onClick={() => onShowToast('Fitur Ujian & Penilaian Tilawah sedang dikunci sementara 🔒')}
+                  onClick={() => onShowToast('Fitur Tugas Setoran Ayat & Koreksi Tilawah sedang dikunci sementara 🔒')}
                   className="p-3.5 sm:p-4 rounded-2xl bg-[#f1f3ff] shadow-xs border border-[#1b4332]/8 flex flex-col space-y-3 opacity-85 cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-2.5">
@@ -964,7 +964,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                             {task.title}
                           </h4>
                           <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
-                            🔒 Tilawah Dikunci
+                            🔒 Koreksi Tilawah Dikunci
                           </span>
                         </div>
                         <p className="text-xs text-[#414844] mt-0.5">{task.category}</p>
@@ -1610,7 +1610,7 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
                     'Sunnah Harian',
-                    'Tilawah & Hifdz',
+                    'Al-Qur’an & Tilawah',
                     'Shalat Rawatib',
                     'Dzikir & Doa',
                     'Adab & Akhlak',
@@ -1702,15 +1702,18 @@ export const WorshipScreen: React.FC<WorshipScreenProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setNewAmalanVerification('setoran')}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                      newAmalanVerification === 'setoran'
-                        ? 'border-[#00452c] bg-[#e9fbf2] text-[#00452c]'
-                        : 'border-[#1b4332]/10 bg-[#f9f9ff] text-[#414844]'
-                    }`}
+                    onClick={() =>
+                      onShowToast(
+                        '🔒 Fitur koreksi Tilawah (Setoran Ayat) masih dikunci sementara. Gunakan mode Checklist Mandiri.'
+                      )
+                    }
+                    className="p-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-left cursor-not-allowed transition-all"
                   >
-                    <span className="font-bold block text-xs">Verifikasi Ustadz/ah</span>
-                    <span className="text-[10px] text-[#717973] block mt-0.5">Divalidasi langsung oleh Pembimbing</span>
+                    <span className="font-bold flex items-center gap-1 text-xs">
+                      <span className="material-symbols-outlined text-[13px]">lock</span>
+                      <span>Setoran Ayat (Tilawah)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">🔒 Koreksi Tilawah dikunci sementara</span>
                   </button>
                 </div>
               </div>
